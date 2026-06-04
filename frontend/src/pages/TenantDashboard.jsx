@@ -1,38 +1,57 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost } from '../supabase'
+import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://form.typeform.com/to/placeholder'
 
 export default function TenantDashboard() {
   const { unitId, hoaId, user } = useAuth()
+  const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
   const [docs, setDocs] = useState([])
-  const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '', document_url: '' })
+  const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
     if (!unitId) return
-    apiGet(`/unit/${unitId}/policy`).then(setPolicy).catch(() => {})
+    apiGet(`/unit/${unitId}/policy`).then(setPolicy).catch(e => setError(e.message))
     apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
   }, [unitId])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setSuccess('')
+    setUploading(true)
     try {
+      let document_url = null
+      if (file) {
+        const ext = file.name.split('.').pop()
+        const path = `${unitId}/${Date.now()}.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('policy-documents')
+          .upload(path, file, { upsert: true })
+        if (uploadErr) throw new Error(uploadErr.message)
+        const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+        document_url = data.publicUrl
+      }
       const saved = await apiPost(`/unit/${unitId}/policy`, {
         ...form,
         expiration_date: form.expiration_date || null,
+        document_url,
       })
       setPolicy(saved)
       setSuccess('Policy uploaded successfully.')
-      setForm({ insurer: '', policy_number: '', expiration_date: '', document_url: '' })
+      setForm({ insurer: '', policy_number: '', expiration_date: '' })
+      setFile(null)
     } catch (e) {
       setError(e.message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -96,7 +115,6 @@ export default function TenantDashboard() {
               { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
               { label: 'Policy Number', key: 'policy_number', placeholder: 'HO-123456' },
               { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
-              { label: 'Document URL (Supabase Storage)', key: 'document_url', placeholder: 'https://...' },
             ].map(({ label, key, placeholder, type }) => (
               <div key={key}>
                 <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
@@ -109,11 +127,21 @@ export default function TenantDashboard() {
                 />
               </div>
             ))}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
+              <input
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={e => setFile(e.target.files[0] || null)}
+                className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {file && <p className="text-xs text-slate-500 mt-1">{file.name}</p>}
+            </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-green-600">{success}</p>}
-            <button type="submit"
-              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-              Submit Policy
+            <button type="submit" disabled={uploading}
+              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+              {uploading ? 'Uploading…' : 'Submit Policy'}
             </button>
           </form>
         </div>
