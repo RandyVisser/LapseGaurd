@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
-const HOA_ID = import.meta.env.VITE_HOA_ID || '00000000-0000-0000-0000-000000000001'
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://form.typeform.com/to/placeholder'
 
 function StatCard({ label, value, color }) {
@@ -16,24 +16,26 @@ function StatCard({ label, value, color }) {
 }
 
 export default function AdminDashboard() {
+  const { hoaId } = useAuth()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!hoaId) return
     Promise.all([
-      apiGet(`/hoa/${HOA_ID}/compliance`),
-      apiGet(`/hoa/${HOA_ID}/units`),
+      apiGet(`/hoa/${hoaId}/compliance`),
+      apiGet(`/hoa/${hoaId}/units`),
     ])
       .then(([s, u]) => { setSummary(s); setUnits(u) })
       .catch(e => setError(e.message))
-  }, [])
+  }, [hoaId])
 
   function quoteUrl(unit) {
     const params = new URLSearchParams({
       tenant_name: unit.tenant_name || '',
       unit: unit.unit_number,
-      hoa: HOA_ID,
+      hoa: hoaId,
     })
     return `${QUOTE_FORM_URL}?${params}`
   }
@@ -86,7 +88,7 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {units.length === 0 && (
+              {units.length === 0 && !error && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import { apiGet, apiPost } from '../supabase'
-
-const HOA_ID = import.meta.env.VITE_HOA_ID || '00000000-0000-0000-0000-000000000001'
+import { useAuth } from '../context/AuthContext'
 
 export default function AdminDocuments() {
+  const { hoaId } = useAuth()
   const [docs, setDocs] = useState([])
   const [name, setName] = useState('')
   const [fileUrl, setFileUrl] = useState('')
@@ -12,22 +12,22 @@ export default function AdminDocuments() {
   const [success, setSuccess] = useState('')
 
   async function load() {
+    if (!hoaId) return
     try {
-      // Use unit 010 as a proxy to fetch HOA docs
-      const data = await apiGet(`/unit/00000000-0000-0000-0000-000000000010/documents`)
+      const data = await apiGet(`/hoa/${hoaId}/documents`)
       setDocs(data)
     } catch (e) {
       setError(e.message)
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [hoaId])
 
   async function handleUpload(e) {
     e.preventDefault()
     setError(''); setSuccess('')
     try {
-      await apiPost(`/hoa/${HOA_ID}/documents`, { name, file_url: fileUrl })
+      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: fileUrl })
       setName(''); setFileUrl('')
       setSuccess('Document uploaded.')
       load()

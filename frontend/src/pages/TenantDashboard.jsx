@@ -1,29 +1,29 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, supabase } from '../supabase'
+import { apiGet, apiPost } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
-const UNIT_ID = import.meta.env.VITE_TENANT_UNIT_ID || '00000000-0000-0000-0000-000000000010'
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://form.typeform.com/to/placeholder'
 
 export default function TenantDashboard() {
+  const { unitId, hoaId, user } = useAuth()
   const [policy, setPolicy] = useState(null)
   const [docs, setDocs] = useState([])
-  const [user, setUser] = useState(null)
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '', document_url: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user))
-    apiGet(`/unit/${UNIT_ID}/documents`).then(setDocs).catch(() => {})
-  }, [])
+    if (!unitId) return
+    apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
+  }, [unitId])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setSuccess('')
     try {
-      const saved = await apiPost(`/unit/${UNIT_ID}/policy`, {
+      const saved = await apiPost(`/unit/${unitId}/policy`, {
         ...form,
         expiration_date: form.expiration_date || null,
       })
@@ -35,15 +35,21 @@ export default function TenantDashboard() {
     }
   }
 
-  const needsQuote = policy && (policy.status === 'lapsed' || policy.status === 'missing')
+  const needsQuote = !policy || policy.status === 'lapsed' || policy.status === 'missing'
   const quoteUrl = (() => {
     const params = new URLSearchParams({
       tenant_name: user?.user_metadata?.name || user?.email || '',
-      unit: UNIT_ID,
-      hoa: import.meta.env.VITE_HOA_ID || '',
+      unit: unitId || '',
+      hoa: hoaId || '',
     })
     return `${QUOTE_FORM_URL}?${params}`
   })()
+
+  if (!unitId) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+      Loading your profile…
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -61,12 +67,8 @@ export default function TenantDashboard() {
               )}
             </div>
             {needsQuote && (
-              <a
-                href={quoteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm"
-              >
+              <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
                 Get a Quote
               </a>
             )}
@@ -79,12 +81,8 @@ export default function TenantDashboard() {
               <p className="font-semibold text-red-700">No policy on file</p>
               <p className="text-sm text-red-600 mt-1">Your condo association requires proof of insurance.</p>
             </div>
-            <a
-              href={quoteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm"
-            >
+            <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
               Get a Quote
             </a>
           </div>
@@ -112,10 +110,8 @@ export default function TenantDashboard() {
             ))}
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-green-600">{success}</p>}
-            <button
-              type="submit"
-              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg"
-            >
+            <button type="submit"
+              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">
               Submit Policy
             </button>
           </form>
@@ -130,9 +126,8 @@ export default function TenantDashboard() {
               {docs.map(d => (
                 <li key={d.id} className="px-4 py-3 flex items-center justify-between text-sm">
                   <span className="text-slate-700">{d.name}</span>
-                  <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
-                    View
-                  </a>
+                  <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline text-xs">View</a>
                 </li>
               ))}
             </ul>

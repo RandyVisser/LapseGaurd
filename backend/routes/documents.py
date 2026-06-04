@@ -37,6 +37,24 @@ async def list_unit_documents(
     return [DocumentOut(**dict(r)) for r in rows]
 
 
+@router.get("/hoa/{hoa_id}/documents", response_model=List[DocumentOut])
+async def list_hoa_documents(
+    hoa_id: str,
+    user: AuthUser = Depends(get_current_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    if user.role != "hoa_admin":
+        raise HTTPException(status_code=403, detail="HOA admin access required")
+    if user.hoa_id and user.hoa_id != hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied to this HOA")
+
+    rows = await conn.fetch(
+        "SELECT * FROM documents WHERE hoa_id = $1 ORDER BY created_at DESC",
+        hoa_id,
+    )
+    return [DocumentOut(**dict(r)) for r in rows]
+
+
 @router.post("/hoa/{hoa_id}/documents", response_model=DocumentOut)
 async def upload_hoa_document(
     hoa_id: str,

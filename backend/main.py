@@ -10,6 +10,7 @@ from routes.hoa import router as hoa_router
 from routes.units import router as units_router
 from routes.documents import router as documents_router
 from routes.alerts import router as alerts_router
+from routes.tenants import router as tenants_router
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ app.include_router(hoa_router)
 app.include_router(units_router)
 app.include_router(documents_router)
 app.include_router(alerts_router)
+app.include_router(tenants_router)
 
 
 @app.exception_handler(Exception)
