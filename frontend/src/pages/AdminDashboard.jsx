@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet } from '../supabase'
+import { apiGet, apiPost } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-
-const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://form.typeform.com/to/placeholder'
 
 function StatCard({ label, value, color }) {
   return (
@@ -22,6 +20,23 @@ export default function AdminDashboard() {
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
   const [error, setError] = useState('')
+  const [notifying, setNotifying] = useState(null)
+  const [notifySuccess, setNotifySuccess] = useState(null)
+
+  async function handleNotify(e, tenantId) {
+    e.stopPropagation()
+    setNotifying(tenantId)
+    setNotifySuccess(null)
+    try {
+      await apiPost(`/tenant/${tenantId}/notify`, {})
+      setNotifySuccess(tenantId)
+      setTimeout(() => setNotifySuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setNotifying(null)
+    }
+  }
 
   useEffect(() => {
     if (!hoaId) return
@@ -32,15 +47,6 @@ export default function AdminDashboard() {
       .then(([s, u]) => { setSummary(s); setUnits(u) })
       .catch(e => setError(e.message))
   }, [hoaId])
-
-  function quoteUrl(unit) {
-    const params = new URLSearchParams({
-      tenant_name: unit.tenant_name || '',
-      unit: unit.unit_number,
-      hoa: hoaId,
-    })
-    return `${QUOTE_FORM_URL}?${params}`
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -81,15 +87,18 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    {(u.status === 'lapsed' || u.status === 'missing') && (
-                      <a
-                        href={quoteUrl(u)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded-full"
-                      >
-                        Request Quote
-                      </a>
+                    {u.tenant_id && (u.status === 'lapsed' || u.status === 'missing' || u.status === 'expiring') && (
+                      notifySuccess === u.tenant_id ? (
+                        <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
+                      ) : (
+                        <button
+                          onClick={e => handleNotify(e, u.tenant_id)}
+                          disabled={notifying === u.tenant_id}
+                          className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded-full disabled:opacity-60"
+                        >
+                          {notifying === u.tenant_id ? 'Sending…' : 'Notify Tenant'}
+                        </button>
+                      )
                     )}
                   </td>
                 </tr>

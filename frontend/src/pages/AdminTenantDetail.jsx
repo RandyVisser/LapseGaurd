@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet } from '../supabase'
+import { apiGet, apiPost } from '../supabase'
 
 function Field({ label, value }) {
   if (!value) return null
@@ -24,6 +24,22 @@ export default function AdminTenantDetail() {
   const navigate = useNavigate()
   const [tenant, setTenant] = useState(null)
   const [error, setError] = useState('')
+  const [notifying, setNotifying] = useState(false)
+  const [notifySuccess, setNotifySuccess] = useState(false)
+
+  async function handleNotify() {
+    setNotifying(true)
+    setNotifySuccess(false)
+    try {
+      await apiPost(`/tenant/${tenantId}/notify`, {})
+      setNotifySuccess(true)
+      setTimeout(() => setNotifySuccess(false), 4000)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setNotifying(false)
+    }
+  }
 
   useEffect(() => {
     apiGet(`/tenant/${tenantId}`)
@@ -57,7 +73,20 @@ export default function AdminTenantDetail() {
                 <p className="text-sm text-slate-500 mt-1">{tenant.email}</p>
                 <p className="text-xs text-slate-400 mt-1">Unit {tenant.unit_number}</p>
               </div>
-              {latest && <StatusBadge status={latest.status} />}
+              <div className="flex flex-col items-end gap-2">
+                {latest && <StatusBadge status={latest.status} />}
+                {notifySuccess ? (
+                  <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
+                ) : (
+                  <button
+                    onClick={handleNotify}
+                    disabled={notifying}
+                    className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
+                  >
+                    {notifying ? 'Sending…' : 'Notify Tenant'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Current policy */}

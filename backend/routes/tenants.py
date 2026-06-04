@@ -1,9 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 import asyncpg
 
 from models.db import get_conn
 from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
+from services.email import send_email, admin_notify_html
+
+
+class NotifyRequest(BaseModel):
+    message: str | None = None
 
 router = APIRouter()
 
@@ -89,3 +95,39 @@ async def get_tenant_detail(
         email=row["email"],
         policies=policies,
     )
+
+
+@router.post("/tenant/{tenant_id}/notify")
+async def notify_tenant(
+    tenant_id: str,
+    body: NotifyRequest,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    row = await conn.fetchrow(
+        """
+        SELECT t.id, t.name, t.email, u.unit_number, u.hoa_id, h.name AS hoa_name
+        FROM tenants t
+        JOIN units u ON u.id = t.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
+        WHERE t.id = $1
+        """,
+        tenant_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    subject, html = admin_notify_html(
+        row["name"], row["unit_number"], row["hoa_name"], body.message
+    )
+    sent = await send_email(row["email"], subject, html)
+    if not sent:
+        raise HTTPException(status_code=502, detail="Failed to send email")
+
+    await conn.execute(
+        "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
+        tenant_id,
+    )
+    return {"sent": True}

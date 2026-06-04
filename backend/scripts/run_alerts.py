@@ -6,50 +6,17 @@ Called by route: POST /alerts/run
 """
 import asyncio
 import os
+import sys
 from datetime import date, timedelta
 
 import asyncpg
-import httpx
+
+# Allow running as a standalone script from the backend/ directory
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from services.email import send_email, renewal_notice_html
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@lapseguard.io")
-
-
-def _email_html(tenant_name: str, unit_number: str, hoa_name: str, expiration_date, status: str) -> str:
-    exp_str = expiration_date.isoformat() if expiration_date else "N/A"
-    if status == "lapsed":
-        subject_line = "Your insurance policy has lapsed"
-        body_line = f"Your policy expired on <strong>{exp_str}</strong>. Please upload a current policy immediately."
-    else:
-        subject_line = "Your insurance policy is expiring soon"
-        body_line = f"Your policy expires on <strong>{exp_str}</strong>. Please renew and upload your updated policy."
-
-    return f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-      <h2 style="color:#1e40af">LapseGuard Insurance Alert</h2>
-      <p>Hi {tenant_name},</p>
-      <p>{body_line}</p>
-      <p><strong>Unit:</strong> {unit_number}<br>
-         <strong>HOA:</strong> {hoa_name}</p>
-      <p>Log in to your LapseGuard tenant dashboard to upload your proof of insurance.</p>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="color:#6b7280;font-size:12px">LapseGuard — HOA Insurance Compliance</p>
-    </body></html>
-    """
-
-
-async def send_email(to_email: str, subject: str, html: str) -> bool:
-    if not RESEND_API_KEY:
-        print(f"[alerts] RESEND_API_KEY not set — skipping email to {to_email}")
-        return False
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
-            json={"from": FROM_EMAIL, "to": [to_email], "subject": subject, "html": html},
-        )
-        return resp.status_code == 200
 
 
 async def process_alerts(conn: asyncpg.Connection) -> int:
@@ -93,12 +60,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         )
 
         if new_status in ("lapsed", "expiring"):
-            subject = (
-                "Your insurance policy has lapsed"
-                if new_status == "lapsed"
-                else "Your insurance policy is expiring soon"
-            )
-            html = _email_html(
+            subject, html = renewal_notice_html(
                 row["tenant_name"],
                 row["unit_number"],
                 row["hoa_name"],

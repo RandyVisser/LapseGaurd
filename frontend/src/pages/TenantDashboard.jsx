@@ -4,7 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
-const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://form.typeform.com/to/placeholder'
+const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
 
 export default function TenantDashboard() {
   const { unitId, hoaId, user } = useAuth()
@@ -158,6 +158,21 @@ export default function TenantDashboard() {
                 </ul>
                 <p className="text-xs text-yellow-600 mt-2">Please upload a corrected policy using the form below.</p>
               </div>
+            )}
+
+            {QUOTE_FORM_URL && (
+              <a
+                href={`${QUOTE_FORM_URL}?tenant_name=${encodeURIComponent(user?.email || '')}&unit=${encodeURIComponent('')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 hover:bg-blue-100 transition-colors"
+              >
+                <div>
+                  <p className="font-semibold text-blue-800 text-sm">Need a new or updated policy?</p>
+                  <p className="text-blue-600 text-xs mt-0.5">Get a free quote in minutes</p>
+                </div>
+                <span className="text-blue-700 font-semibold text-sm">Request a Quote →</span>
+              </a>
             )}
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
