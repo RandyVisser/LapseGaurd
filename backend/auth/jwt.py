@@ -1,14 +1,22 @@
 import os
 import jwt
+from jwt import PyJWKClient
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-# SUPABASE_JWT_SECRET is the HS256 signing secret for user access tokens.
-# Found in Supabase → Settings → JWT Keys (left nav).
-# Note: Supabase's newer sb_publishable_/sb_secret_ API keys are separate —
-# those are for initializing the client SDK, not for verifying user tokens.
-# User access tokens are still standard HS256 JWTs regardless of key format.
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "super-secret-jwt-token-for-dev")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+
+# Fetches Supabase's public signing keys from the JWKS endpoint and caches them.
+# Handles ES256 (ECC P-256) and survives key rotation automatically.
+_jwks_client: PyJWKClient | None = None
+
+
+def _get_jwks_client() -> PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        _jwks_client = PyJWKClient(f"{SUPABASE_URL}/.well-known/jwks.json")
+    return _jwks_client
+
 
 security = HTTPBearer(auto_error=False)
 
@@ -23,10 +31,11 @@ class AuthUser:
 
 def decode_token(token: str) -> dict:
     try:
+        signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256"],
             options={"verify_aud": False},
         )
         return payload
