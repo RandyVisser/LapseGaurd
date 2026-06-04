@@ -16,6 +16,7 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!unitId) return
+    apiGet(`/unit/${unitId}/policy`).then(setPolicy).catch(() => {})
     apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
   }, [unitId])
 
