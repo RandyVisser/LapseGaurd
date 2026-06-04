@@ -49,6 +49,8 @@ async def get_policy(
         status=row["status"],
         document_url=row["document_url"],
         uploaded_at=row["uploaded_at"],
+        extracted_data=dict(row["extracted_data"]) if row["extracted_data"] else None,
+        parsed_at=row["parsed_at"],
     )
 
 
@@ -87,6 +89,12 @@ async def upload_policy(
         tenant = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="No tenant found for this unit")
+
+    if body.expiration_date and body.expiration_date < date.today():
+        raise HTTPException(
+            status_code=422,
+            detail=f"Policy is already expired — expiration date {body.expiration_date} is in the past. Please upload a current policy."
+        )
 
     status = _compute_status(body.expiration_date)
 

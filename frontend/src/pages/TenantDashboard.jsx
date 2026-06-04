@@ -30,6 +30,13 @@ export default function TenantDashboard() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setSuccess('')
+
+    // Catch expired date before hitting the server
+    if (form.expiration_date && new Date(form.expiration_date) < new Date()) {
+      setError('Policy is already expired — please upload a current policy.')
+      return
+    }
+
     setUploading(true)
     try {
       let document_url = null
@@ -137,6 +144,21 @@ export default function TenantDashboard() {
               </div>
             )}
 
+
+            {/* AI validation warnings */}
+            {policy?.extracted_data?.validation?.passed === false && (
+              <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
+                <p className="font-semibold text-yellow-800 text-sm mb-2">Action Required — Issues found with your uploaded policy</p>
+                <ul className="space-y-1">
+                  {policy.extracted_data.validation.flags.map((f, i) => (
+                    <li key={i} className="text-sm text-yellow-700 flex gap-2">
+                      <span>•</span><span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-yellow-600 mt-2">Please upload a corrected policy using the form below.</p>
+              </div>
+            )}
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <h2 className="font-semibold text-slate-700 mb-4">
