@@ -45,3 +45,15 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/me/debug")
+async def debug_token(credentials: HTTPAuthorizationCredentials | None = Security(HTTPBearer(auto_error=False))):
+    if not credentials:
+        return {"error": "no token"}
+    import jwt as pyjwt
+    try:
+        unverified = pyjwt.decode(credentials.credentials, options={"verify_signature": False})
+        return {"payload": unverified}
+    except Exception as e:
+        return {"error": str(e)}
