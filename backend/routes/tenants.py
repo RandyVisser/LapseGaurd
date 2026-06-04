@@ -57,7 +57,11 @@ async def get_tenant_detail(
         raise HTTPException(status_code=403, detail="Access denied")
 
     policy_rows = await conn.fetch(
-        "SELECT * FROM policies WHERE tenant_id = $1 ORDER BY uploaded_at DESC",
+        """SELECT * FROM policies WHERE tenant_id = $1
+           ORDER BY
+               CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
+               expiration_date DESC NULLS LAST,
+               uploaded_at DESC""",
         tenant_id,
     )
 

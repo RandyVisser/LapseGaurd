@@ -36,7 +36,10 @@ async def list_units(
         LEFT JOIN LATERAL (
             SELECT status FROM policies
             WHERE tenant_id = t.id
-            ORDER BY uploaded_at DESC
+            ORDER BY
+                CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
+                expiration_date DESC NULLS LAST,
+                uploaded_at DESC
             LIMIT 1
         ) p ON true
         WHERE u.hoa_id = $1
@@ -79,7 +82,10 @@ async def compliance_summary(
         LEFT JOIN LATERAL (
             SELECT status FROM policies
             WHERE tenant_id = t.id
-            ORDER BY uploaded_at DESC
+            ORDER BY
+                CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
+                expiration_date DESC NULLS LAST,
+                uploaded_at DESC
             LIMIT 1
         ) p ON true
         WHERE u.hoa_id = $1

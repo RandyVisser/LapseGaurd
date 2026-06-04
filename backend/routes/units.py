@@ -35,7 +35,12 @@ async def get_policy(
         raise HTTPException(status_code=403, detail="Not your unit")
 
     row = await conn.fetchrow(
-        "SELECT * FROM policies WHERE tenant_id = $1 ORDER BY uploaded_at DESC LIMIT 1",
+        """SELECT * FROM policies WHERE tenant_id = $1
+           ORDER BY
+               CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
+               expiration_date DESC NULLS LAST,
+               uploaded_at DESC
+           LIMIT 1""",
         tenant["id"],
     )
     if row is None:
