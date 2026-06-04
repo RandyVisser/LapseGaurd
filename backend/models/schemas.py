@@ -1,0 +1,69 @@
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+from datetime import date, datetime
+from enum import Enum
+import uuid
+
+
+class PolicyStatus(str, Enum):
+    active = "active"
+    expiring = "expiring"
+    lapsed = "lapsed"
+    missing = "missing"
+
+
+class PolicyCreate(BaseModel):
+    insurer: Optional[str] = None
+    policy_number: Optional[str] = None
+    expiration_date: Optional[date] = None
+    document_url: Optional[str] = None
+
+
+class PolicyOut(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    insurer: Optional[str]
+    policy_number: Optional[str]
+    expiration_date: Optional[date]
+    status: PolicyStatus
+    document_url: Optional[str]
+    uploaded_at: datetime
+
+
+class TenantOut(BaseModel):
+    id: uuid.UUID
+    unit_id: uuid.UUID
+    name: str
+    email: str
+    created_at: datetime
+
+
+class UnitComplianceOut(BaseModel):
+    unit_id: uuid.UUID
+    unit_number: str
+    tenant_name: Optional[str]
+    tenant_email: Optional[str]
+    tenant_id: Optional[uuid.UUID]
+    status: PolicyStatus
+
+
+class ComplianceSummary(BaseModel):
+    total_units: int
+    compliant: int
+    expiring: int
+    lapsed: int
+    missing: int
+
+
+class DocumentCreate(BaseModel):
+    name: str
+    file_url: str
+
+
+class DocumentOut(BaseModel):
+    id: uuid.UUID
+    hoa_id: uuid.UUID
+    name: str
+    file_url: str
+    uploaded_by: Optional[uuid.UUID]
+    created_at: datetime
