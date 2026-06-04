@@ -1,6 +1,7 @@
 import os
 import jwt
 from jwt import PyJWKClient
+from jwt.exceptions import PyJWKClientError, PyJWKSetError
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -41,8 +42,12 @@ def decode_token(token: str) -> dict:
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
+    except (PyJWKClientError, PyJWKSetError) as e:
+        raise HTTPException(status_code=401, detail=f"JWKS error: {e}")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Auth error: {e}")
 
 
 async def get_current_user(

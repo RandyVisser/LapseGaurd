@@ -1,7 +1,8 @@
 import asyncpg
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from models.db import get_pool
 from routes.hoa import router as hoa_router
@@ -30,6 +31,15 @@ app.include_router(hoa_router)
 app.include_router(units_router)
 app.include_router(documents_router)
 app.include_router(alerts_router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 
 @app.get("/health")
