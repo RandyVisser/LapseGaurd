@@ -28,6 +28,17 @@ class PolicyOut(BaseModel):
     status: PolicyStatus
     document_url: Optional[str]
     uploaded_at: datetime
+    extracted_data: Optional[dict] = None
+    parsed_at: Optional[datetime] = None
+
+
+class TenantDetailOut(BaseModel):
+    tenant_id: uuid.UUID
+    unit_id: uuid.UUID
+    unit_number: str
+    name: str
+    email: str
+    policies: list[PolicyOut]
 
 
 class TenantOut(BaseModel):

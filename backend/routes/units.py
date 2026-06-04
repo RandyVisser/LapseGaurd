@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
-from datetime import date, timedelta
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from datetime import date, timedelta, timezone, datetime
 import asyncpg
 
 from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
-from models.db import get_conn
+from models.db import get_conn, get_pool
 from auth.jwt import AuthUser, get_current_user
+from services.policy_parser import parse_dec_page
 
 router = APIRouter()
 
@@ -51,10 +52,24 @@ async def get_policy(
     )
 
 
+async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
+    extracted = await parse_dec_page(document_url, submitted)
+    if extracted:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE policies SET extracted_data = $1, parsed_at = $2 WHERE id = $3",
+                extracted,
+                datetime.now(timezone.utc),
+                policy_id,
+            )
+
+
 @router.post("/unit/{unit_id}/policy", response_model=PolicyOut)
 async def upload_policy(
     unit_id: str,
     body: PolicyCreate,
+    background_tasks: BackgroundTasks,
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
@@ -89,7 +104,7 @@ async def upload_policy(
         body.document_url,
     )
 
-    return PolicyOut(
+    policy = PolicyOut(
         id=row["id"],
         tenant_id=row["tenant_id"],
         insurer=row["insurer"],
@@ -99,3 +114,13 @@ async def upload_policy(
         document_url=row["document_url"],
         uploaded_at=row["uploaded_at"],
     )
+
+    if body.document_url:
+        submitted = {
+            "insurer": body.insurer,
+            "policy_number": body.policy_number,
+            "expiration_date": str(body.expiration_date) if body.expiration_date else None,
+        }
+        background_tasks.add_task(_run_parsing, str(row["id"]), body.document_url, submitted)
+
+    return policy

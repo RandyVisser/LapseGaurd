@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminDocuments from './pages/AdminDocuments'
+import AdminTenantDetail from './pages/AdminTenantDetail'
 import TenantDashboard from './pages/TenantDashboard'
 
 function RequireAuth({ role: requiredRole, children }) {
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/admin/dashboard" element={<RequireAuth role="hoa_admin"><AdminDashboard /></RequireAuth>} />
           <Route path="/admin/documents" element={<RequireAuth role="hoa_admin"><AdminDocuments /></RequireAuth>} />
+          <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />
           <Route path="/tenant/dashboard" element={<RequireAuth role="tenant"><TenantDashboard /></RequireAuth>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

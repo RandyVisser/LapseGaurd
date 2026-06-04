@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet } from '../supabase'
@@ -17,6 +18,7 @@ function StatCard({ label, value, color }) {
 
 export default function AdminDashboard() {
   const { hoaId } = useAuth()
+  const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
   const [error, setError] = useState('')
@@ -69,12 +71,16 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {units.map(u => (
-                <tr key={u.unit_id} className="hover:bg-slate-50">
+                <tr
+                  key={u.unit_id}
+                  onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
+                  className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
+                >
                   <td className="px-4 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No tenant</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     {(u.status === 'lapsed' || u.status === 'missing') && (
                       <a
                         href={quoteUrl(u)}
