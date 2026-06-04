@@ -1,0 +1,33 @@
+# Stage 1 — build
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Railway passes all service env vars as Docker build args.
+# Declare each VITE_ var so Vite bakes them into the bundle at build time.
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_API_URL
+ARG VITE_HOA_ID
+ARG VITE_QUOTE_FORM_URL
+
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+    VITE_API_URL=$VITE_API_URL \
+    VITE_HOA_ID=$VITE_HOA_ID \
+    VITE_QUOTE_FORM_URL=$VITE_QUOTE_FORM_URL
+
+COPY . .
+RUN npm run build
+
+# Stage 2 — serve
+FROM node:22-alpine
+RUN npm install -g serve@14
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+
+# 'serve -s' enables SPA mode: unknown paths fall through to index.html
+# PORT is injected by Railway at runtime
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]

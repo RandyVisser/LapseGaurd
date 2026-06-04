@@ -5,10 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'dev-anon-key'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// In dev: falls back to '/api' which Vite proxies to the backend container.
+// In production: set VITE_API_URL to the Railway backend URL (no trailing slash).
+const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
+
 export async function apiGet(path) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!res.ok) throw new Error(await res.text())
@@ -18,7 +22,7 @@ export async function apiGet(path) {
 export async function apiPost(path, body) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
