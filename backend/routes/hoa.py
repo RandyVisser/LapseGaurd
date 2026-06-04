@@ -4,20 +4,20 @@ import asyncpg
 
 from models.schemas import UnitComplianceOut, ComplianceSummary, PolicyStatus
 from models.db import get_conn
-from auth.jwt import AuthUser, get_current_user
+from auth.jwt import AuthUser, require_hoa_admin
 
 router = APIRouter()
 
 
 def _assert_hoa_access(user: AuthUser, hoa_id: str):
-    if user.role == "hoa_admin" and user.hoa_id and user.hoa_id != hoa_id:
+    if user.hoa_id and user.hoa_id != hoa_id:
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
 
 
 @router.get("/hoa/{hoa_id}/units", response_model=List[UnitComplianceOut])
 async def list_units(
     hoa_id: str,
-    user: AuthUser = Depends(get_current_user),
+    user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _assert_hoa_access(user, hoa_id)
@@ -61,7 +61,7 @@ async def list_units(
 @router.get("/hoa/{hoa_id}/compliance", response_model=ComplianceSummary)
 async def compliance_summary(
     hoa_id: str,
-    user: AuthUser = Depends(get_current_user),
+    user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _assert_hoa_access(user, hoa_id)
