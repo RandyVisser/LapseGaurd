@@ -77,7 +77,7 @@ export default function TenantDashboard() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex items-center justify-between">
             <div>
               <p className="font-semibold text-red-700">No policy on file</p>
-              <p className="text-sm text-red-600 mt-1">Your HOA requires proof of insurance.</p>
+              <p className="text-sm text-red-600 mt-1">Your condo association requires proof of insurance.</p>
             </div>
             <a
               href={quoteUrl}
@@ -124,7 +124,7 @@ export default function TenantDashboard() {
         {docs.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200">
-              <h2 className="font-semibold text-slate-700">HOA Shared Documents</h2>
+              <h2 className="font-semibold text-slate-700">Condo Association Shared Documents</h2>
             </div>
             <ul className="divide-y divide-slate-100">
               {docs.map(d => (

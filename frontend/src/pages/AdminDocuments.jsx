@@ -40,7 +40,7 @@ export default function AdminDocuments() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-xl font-bold text-slate-800 mb-6">HOA Shared Documents</h1>
+        <h1 className="text-xl font-bold text-slate-800 mb-6">Condo Association Shared Documents</h1>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
           <h2 className="font-semibold text-slate-700 mb-4">Upload New Document</h2>

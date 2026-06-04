@@ -25,7 +25,7 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
         <h1 className="text-2xl font-bold text-blue-800 mb-1">LapseGuard</h1>
-        <p className="text-sm text-slate-500 mb-6">HOA Insurance Compliance</p>
+        <p className="text-sm text-slate-500 mb-6">Condo Association Insurance Compliance</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
