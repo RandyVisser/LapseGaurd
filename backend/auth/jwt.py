@@ -3,6 +3,11 @@ import jwt
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+# SUPABASE_JWT_SECRET is the HS256 signing secret for user access tokens.
+# Found in Supabase → Settings → JWT Keys (left nav).
+# Note: Supabase's newer sb_publishable_/sb_secret_ API keys are separate —
+# those are for initializing the client SDK, not for verifying user tokens.
+# User access tokens are still standard HS256 JWTs regardless of key format.
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "super-secret-jwt-token-for-dev")
 
 security = HTTPBearer(auto_error=False)
