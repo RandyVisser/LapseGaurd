@@ -10,6 +10,7 @@ export default function TenantDashboard() {
   const { unitId, hoaId, user } = useAuth()
   const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
+  const [policyLoading, setPolicyLoading] = useState(true)
   const [docs, setDocs] = useState([])
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
   const [file, setFile] = useState(null)
@@ -19,7 +20,10 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!unitId) return
-    apiGet(`/unit/${unitId}/policy`).then(setPolicy).catch(e => setError(e.message))
+    apiGet(`/unit/${unitId}/policy`)
+      .then(setPolicy)
+      .catch(e => setError(e.message))
+      .finally(() => setPolicyLoading(false))
     apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
   }, [unitId])
 
@@ -93,7 +97,9 @@ export default function TenantDashboard() {
 
         {tab === 'policy' && (
           <div className="space-y-6">
-            {policy ? (
+            {policyLoading ? (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-20 animate-pulse" />
+            ) : policy ? (
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-500">Current status</p>
@@ -130,6 +136,7 @@ export default function TenantDashboard() {
                 </a>
               </div>
             )}
+
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <h2 className="font-semibold text-slate-700 mb-4">
