@@ -60,9 +60,10 @@ async def get_current_user(
     payload = decode_token(credentials.credentials)
     sub = payload.get("sub", "")
     email = payload.get("email", "")
-    meta = payload.get("user_metadata", {}) or payload.get("app_metadata", {})
-    role = meta.get("role", "tenant")
-    hoa_id = meta.get("hoa_id")
+    app_meta = payload.get("app_metadata", {}) or {}
+    user_meta = payload.get("user_metadata", {}) or {}
+    role = app_meta.get("role") or user_meta.get("role", "tenant")
+    hoa_id = app_meta.get("hoa_id") or user_meta.get("hoa_id")
 
     return AuthUser(sub=sub, email=email, role=role, hoa_id=hoa_id)
 
