@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
       session,
       user: session?.user || null,
       role,
-      hoaId,
+      hoaId: hoaId || tenantProfile?.hoa_id || null,
       unitId: tenantProfile?.unit_id || null,
       tenantProfile,
     }}>

@@ -38,6 +38,11 @@ export default function Login() {
             Account created! Sign in to upload your policy.
           </div>
         )}
+        {welcome === 'reset' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
+            Password updated! Sign in with your new password.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
@@ -67,7 +72,16 @@ export default function Login() {
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
+          <div className="text-center">
+            <a href="/forgot-password" className="text-sm text-slate-500 hover:text-slate-700">
+              Forgot password?
+            </a>
+          </div>
         </form>
+        <p className="text-center text-sm text-slate-500 mt-4">
+          New association?{' '}
+          <a href="/signup" className="text-blue-600 hover:underline">Get started free</a>
+        </p>
       </div>
     </div>
   )

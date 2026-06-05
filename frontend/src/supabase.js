@@ -9,14 +9,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // In production: set VITE_API_URL to the Railway backend URL (no trailing slash).
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
+async function _handleResponse(res) {
+  if (res.ok) return res.json()
+  const text = await res.text()
+  try {
+    const data = JSON.parse(text)
+    throw new Error(data.detail || data.message || text)
+  } catch (e) {
+    if (e instanceof SyntaxError) throw new Error(text)
+    throw e
+  }
+}
+
 export async function apiGet(path) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
   const res = await fetch(`${API_BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  return _handleResponse(res)
 }
 
 export async function apiPost(path, body) {
@@ -30,6 +41,5 @@ export async function apiPost(path, body) {
     },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  return _handleResponse(res)
 }

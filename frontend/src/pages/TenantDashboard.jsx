@@ -14,6 +14,7 @@ export default function TenantDashboard() {
   const [docs, setDocs] = useState([])
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
   const [file, setFile] = useState(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -59,6 +60,7 @@ export default function TenantDashboard() {
       setSuccess('Policy uploaded successfully.')
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
+      setFileInputKey(k => k + 1)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -160,9 +162,9 @@ export default function TenantDashboard() {
               </div>
             )}
 
-            {QUOTE_FORM_URL && (
+            {QUOTE_FORM_URL && !needsQuote && (
               <a
-                href={`${QUOTE_FORM_URL}?tenant_name=${encodeURIComponent(user?.email || '')}&unit=${encodeURIComponent('')}`}
+                href={quoteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 hover:bg-blue-100 transition-colors"
@@ -199,6 +201,7 @@ export default function TenantDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
                   <input
+                    key={fileInputKey}
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg"
                     onChange={e => setFile(e.target.files[0] || null)}

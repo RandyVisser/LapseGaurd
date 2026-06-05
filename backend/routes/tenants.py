@@ -160,19 +160,22 @@ async def invite_tenant(
     if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Upsert invite — reuse existing token if already sent to same email
+    # Reuse an existing pending invite for the same email+unit, or create a new one
     invite = await conn.fetchrow(
         """
-        INSERT INTO unit_invites (unit_id, email)
-        VALUES ($1, $2)
-        ON CONFLICT DO NOTHING
-        RETURNING token
+        SELECT token FROM unit_invites
+        WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL
+        ORDER BY created_at DESC LIMIT 1
         """,
         unit_id, body.email,
     )
     if not invite:
         invite = await conn.fetchrow(
-            "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2",
+            """
+            INSERT INTO unit_invites (unit_id, email)
+            VALUES ($1, $2)
+            RETURNING token
+            """,
             unit_id, body.email,
         )
 

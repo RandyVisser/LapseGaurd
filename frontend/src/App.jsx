@@ -4,6 +4,8 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Join from './pages/Join'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminDocuments from './pages/AdminDocuments'
 import AdminTenantDetail from './pages/AdminTenantDetail'
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/join/:token" element={<Join />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin/dashboard" element={<RequireAuth role="hoa_admin"><AdminDashboard /></RequireAuth>} />
           <Route path="/admin/documents" element={<RequireAuth role="hoa_admin"><AdminDocuments /></RequireAuth>} />
           <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />

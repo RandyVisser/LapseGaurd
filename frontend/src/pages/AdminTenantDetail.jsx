@@ -149,9 +149,11 @@ export default function AdminTenantDetail() {
                           <Field label="Liability Coverage" value={currency(latest.extracted_data.liability_coverage)} />
                           <Field label="Deductible" value={currency(latest.extracted_data.deductible)} />
                         </div>
-                        <p className="text-xs text-slate-400 mt-3">
-                          Parsed {new Date(latest.parsed_at).toLocaleString()}
-                        </p>
+                        {latest.parsed_at && (
+                          <p className="text-xs text-slate-400 mt-3">
+                            Parsed {new Date(latest.parsed_at).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )

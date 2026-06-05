@@ -127,7 +127,8 @@ async def accept_invite(
     row = await conn.fetchrow(
         """
         SELECT i.id, i.email, i.unit_id, i.accepted_at,
-               u.unit_number, h.name AS hoa_name
+               u.unit_number, u.hoa_id,
+               h.name AS hoa_name
         FROM unit_invites i
         JOIN units u ON u.id = i.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -144,18 +145,28 @@ async def accept_invite(
     user_id = await _create_supabase_user(
         row["email"],
         body.password,
-        {"role": "tenant"},
+        {"role": "tenant", "hoa_id": str(row["hoa_id"])},
     )
 
-    # Create tenant record linked to unit
-    await conn.execute(
+    # Upsert: update existing tenant by email for this unit (handles pre-seeded tenants),
+    # or insert a new row if none exists.
+    updated = await conn.fetchrow(
         """
-        INSERT INTO tenants (unit_id, supabase_user_id, name, email)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (supabase_user_id) DO NOTHING
+        UPDATE tenants SET supabase_user_id = $1, name = $2
+        WHERE unit_id = $3 AND email = $4
+        RETURNING id
         """,
-        row["unit_id"], user_id, body.name, row["email"],
+        user_id, body.name, row["unit_id"], row["email"],
     )
+    if not updated:
+        await conn.execute(
+            """
+            INSERT INTO tenants (unit_id, supabase_user_id, name, email)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (supabase_user_id) DO NOTHING
+            """,
+            row["unit_id"], user_id, body.name, row["email"],
+        )
 
     # Mark invite accepted
     await conn.execute(
