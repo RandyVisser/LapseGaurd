@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
-import { apiGet, apiPost } from '../supabase'
+import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
 export default function AdminDocuments() {
   const { hoaId } = useAuth()
   const [docs, setDocs] = useState([])
   const [name, setName] = useState('')
-  const [fileUrl, setFileUrl] = useState('')
+  const [file, setFile] = useState(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   async function load() {
     if (!hoaId) return
     try {
-      const data = await apiGet(`/hoa/${hoaId}/documents`)
-      setDocs(data)
+      setDocs(await apiGet(`/hoa/${hoaId}/documents`))
     } catch (e) {
       setError(e.message)
     }
@@ -25,14 +26,29 @@ export default function AdminDocuments() {
 
   async function handleUpload(e) {
     e.preventDefault()
+    if (!file) { setError('Please select a file'); return }
     setError(''); setSuccess('')
+    setUploading(true)
     try {
-      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: fileUrl })
-      setName(''); setFileUrl('')
+      const ext = file.name.split('.').pop()
+      const path = `${hoaId}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('hoa-documents')
+        .upload(path, file)
+      if (uploadErr) throw new Error(uploadErr.message)
+
+      const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
+      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: data.publicUrl })
+
+      setName('')
+      setFile(null)
+      setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
       load()
     } catch (e) {
       setError(e.message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -40,7 +56,7 @@ export default function AdminDocuments() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-xl font-bold text-slate-800 mb-6">Condo Association Shared Documents</h1>
+        <h1 className="text-xl font-bold text-slate-800 mb-6">Shared Documents</h1>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
           <h2 className="font-semibold text-slate-700 mb-4">Upload New Document</h2>
@@ -56,22 +72,24 @@ export default function AdminDocuments() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">File URL (Supabase Storage)</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1">File</label>
               <input
-                required
-                value={fileUrl}
-                onChange={e => setFileUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                key={fileInputKey}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                onChange={e => setFile(e.target.files[0] || null)}
+                className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              {file && <p className="text-xs text-slate-500 mt-1">{file.name}</p>}
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-green-600">{success}</p>}
             <button
               type="submit"
-              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+              disabled={uploading}
+              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
             >
-              Upload
+              {uploading ? 'Uploading…' : 'Upload Document'}
             </button>
           </form>
         </div>
@@ -91,7 +109,8 @@ export default function AdminDocuments() {
                   <td className="px-4 py-3 font-medium">{d.name}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
-                    <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                    <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline text-xs">
                       View
                     </a>
                   </td>

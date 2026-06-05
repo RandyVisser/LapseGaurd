@@ -1,3 +1,4 @@
+import os
 import asyncpg
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Security
@@ -22,9 +23,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LapseGuard API", lifespan=lifespan)
 
+_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
