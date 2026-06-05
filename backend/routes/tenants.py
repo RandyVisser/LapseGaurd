@@ -5,7 +5,14 @@ import asyncpg
 from models.db import get_conn
 from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
-from services.email import send_email, admin_notify_html
+import os
+from services.email import send_email, admin_notify_html, invite_email_html
+
+APP_URL = os.environ.get("APP_URL", "https://lapsegaurd.com")
+
+
+class InviteRequest(BaseModel):
+    email: str
 
 
 class NotifyRequest(BaseModel):
@@ -131,3 +138,50 @@ async def notify_tenant(
         tenant_id,
     )
     return {"sent": True}
+
+
+@router.post("/unit/{unit_id}/invite")
+async def invite_tenant(
+    unit_id: str,
+    body: InviteRequest,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    row = await conn.fetchrow(
+        """
+        SELECT u.unit_number, u.hoa_id, h.name AS hoa_name
+        FROM units u JOIN hoas h ON h.id = u.hoa_id
+        WHERE u.id = $1
+        """,
+        unit_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Upsert invite — reuse existing token if already sent to same email
+    invite = await conn.fetchrow(
+        """
+        INSERT INTO unit_invites (unit_id, email)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+        RETURNING token
+        """,
+        unit_id, body.email,
+    )
+    if not invite:
+        invite = await conn.fetchrow(
+            "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2",
+            unit_id, body.email,
+        )
+
+    invite_url = f"{APP_URL}/join/{invite['token']}"
+    subject, html = invite_email_html(
+        body.email, row["unit_number"], row["hoa_name"], invite_url
+    )
+    sent = await send_email(body.email, subject, html)
+    if not sent:
+        raise HTTPException(status_code=502, detail="Failed to send invite email")
+
+    return {"sent": True, "invite_url": invite_url}

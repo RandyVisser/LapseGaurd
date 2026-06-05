@@ -127,6 +127,34 @@ def admin_notify_html(
     return subject, html
 
 
+def invite_email_html(
+    email: str,
+    unit_number: str,
+    hoa_name: str,
+    invite_url: str,
+) -> tuple[str, str]:
+    subject = f"You've been invited to join {hoa_name} on LapseGuard"
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Hi,</p>
+      <p style="color:#374151">
+        Your condo association <strong>{hoa_name}</strong> has invited you to set up
+        your insurance compliance profile for <strong>Unit {unit_number}</strong>.
+      </p>
+      <p style="color:#374151">
+        Once you create your account you can upload your proof of insurance,
+        track your policy status, and receive renewal reminders — all in one place.
+      </p>
+      {_btn(invite_url, "Create Your Account")}
+      <p style="color:#6b7280;font-size:13px;margin-top:8px">
+        This link is unique to you ({email}) and can only be used once.
+      </p>
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def _build_quote_url(tenant_name: str, unit_number: str) -> str:
     if not QUOTE_FORM_URL:
         return APP_URL

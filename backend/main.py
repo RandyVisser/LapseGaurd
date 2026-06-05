@@ -11,6 +11,7 @@ from routes.units import router as units_router
 from routes.documents import router as documents_router
 from routes.alerts import router as alerts_router
 from routes.tenants import router as tenants_router
+from routes.onboarding import router as onboarding_router
 
 
 @asynccontextmanager
@@ -34,6 +35,7 @@ app.include_router(units_router)
 app.include_router(documents_router)
 app.include_router(alerts_router)
 app.include_router(tenants_router)
+app.include_router(onboarding_router)
 
 
 @app.exception_handler(Exception)

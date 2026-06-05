@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Login() {
@@ -8,6 +8,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const welcome = params.get('welcome')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -25,7 +27,17 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
         <h1 className="text-2xl font-bold text-blue-800 mb-1">LapseGuard</h1>
-        <p className="text-sm text-slate-500 mb-6">Condo Association Insurance Compliance</p>
+        <p className="text-sm text-slate-500 mb-4">Condo Association Insurance Compliance</p>
+        {welcome === '1' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
+            Account created! Sign in to access your dashboard.
+          </div>
+        )}
+        {welcome === 'tenant' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
+            Account created! Sign in to upload your policy.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>

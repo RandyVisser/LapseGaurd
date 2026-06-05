@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 import asyncpg
+from pydantic import BaseModel
 
 from models.schemas import UnitComplianceOut, ComplianceSummary, PolicyStatus
 from models.db import get_conn
 from auth.jwt import AuthUser, require_hoa_admin
+
+
+class UnitCreate(BaseModel):
+    unit_number: str
 
 router = APIRouter()
 
@@ -100,3 +105,18 @@ async def compliance_summary(
         lapsed=row["lapsed"],
         missing=row["missing"],
     )
+
+
+@router.post("/hoa/{hoa_id}/units", status_code=201)
+async def add_unit(
+    hoa_id: str,
+    body: UnitCreate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    _assert_hoa_access(user, hoa_id)
+    row = await conn.fetchrow(
+        "INSERT INTO units (hoa_id, unit_number) VALUES ($1, $2) RETURNING id, unit_number",
+        hoa_id, body.unit_number,
+    )
+    return {"unit_id": str(row["id"]), "unit_number": row["unit_number"]}
