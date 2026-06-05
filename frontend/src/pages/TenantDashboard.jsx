@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
 
 export default function TenantDashboard() {
-  const { unitId, hoaId, user } = useAuth()
+  const { unitId, hoaId, user, profileError } = useAuth()
   const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
   const [policyLoading, setPolicyLoading] = useState(true)
@@ -79,8 +79,16 @@ export default function TenantDashboard() {
   })()
 
   if (!unitId) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
-      Loading your profile…
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+      {profileError ? (
+        <div className="text-center max-w-sm">
+          <p className="text-slate-700 font-medium mb-1">Couldn't load your profile</p>
+          <p className="text-sm text-slate-500">{profileError}</p>
+          <p className="text-xs text-slate-400 mt-3">Contact your association manager if this persists.</p>
+        </div>
+      ) : (
+        <p className="text-slate-400 text-sm">Loading your profile…</p>
+      )}
     </div>
   )
 
@@ -126,7 +134,7 @@ export default function TenantDashboard() {
                     </a>
                   )}
                 </div>
-                {needsQuote && (
+                {needsQuote && QUOTE_FORM_URL && (
                   <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
                     className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
                     Get a Quote
@@ -139,10 +147,12 @@ export default function TenantDashboard() {
                   <p className="font-semibold text-red-700">No policy on file</p>
                   <p className="text-sm text-red-600 mt-1">Your condo association requires proof of insurance.</p>
                 </div>
-                <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
-                  Get a Quote
-                </a>
+                {QUOTE_FORM_URL && (
+                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
+                    Get a Quote
+                  </a>
+                )}
               </div>
             )}
 

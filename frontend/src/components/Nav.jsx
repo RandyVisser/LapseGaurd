@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Nav({ role }) {
@@ -15,14 +15,12 @@ export default function Nav({ role }) {
       <div className="flex items-center gap-4 text-sm">
         {role === 'hoa_admin' && (
           <>
-            <a href="/admin/dashboard" className="hover:underline">Dashboard</a>
-            <a href="/admin/documents" className="hover:underline">Documents</a>
+            <Link to="/admin/dashboard" className="hover:underline">Dashboard</Link>
+            <Link to="/admin/documents" className="hover:underline">Documents</Link>
           </>
         )}
         {role === 'tenant' && (
-          <>
-            <a href="/tenant/dashboard" className="hover:underline">My Policy</a>
-          </>
+          <Link to="/tenant/dashboard" className="hover:underline">My Policy</Link>
         )}
         <button
           onClick={handleLogout}

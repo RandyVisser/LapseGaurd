@@ -38,7 +38,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
-        WHERE p.expiration_date <= $1 OR p.status = 'missing'
+        WHERE p.expiration_date <= $1
         """,
         threshold,
     )
@@ -59,23 +59,39 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             row["policy_id"],
         )
 
-        if new_status in ("lapsed", "expiring"):
-            subject, html = renewal_notice_html(
-                row["tenant_name"],
-                row["unit_number"],
-                row["hoa_name"],
-                row["expiration_date"],
+        if new_status not in ("lapsed", "expiring"):
+            continue
+
+        # Only send one alert per tenant per alert type per 7-day window
+        already_sent = await conn.fetchval(
+            """
+            SELECT 1 FROM alert_log
+            WHERE tenant_id = $1 AND alert_type = $2
+              AND sent_at > NOW() - INTERVAL '7 days'
+            LIMIT 1
+            """,
+            row["tenant_id"],
+            new_status,
+        )
+        if already_sent:
+            continue
+
+        subject, html = renewal_notice_html(
+            row["tenant_name"],
+            row["unit_number"],
+            row["hoa_name"],
+            row["expiration_date"],
+            new_status,
+        )
+        sent = await send_email(row["tenant_email"], subject, html)
+        if sent:
+            await conn.execute(
+                "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
+                row["tenant_id"],
                 new_status,
             )
-            sent = await send_email(row["tenant_email"], subject, html)
-            if sent:
-                await conn.execute(
-                    "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
-                    row["tenant_id"],
-                    new_status,
-                )
-                count += 1
-                print(f"[alerts] Sent {new_status} alert to {row['tenant_email']}")
+            count += 1
+            print(f"[alerts] Sent {new_status} alert to {row['tenant_email']}")
 
     return count
 

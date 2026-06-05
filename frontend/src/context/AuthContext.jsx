@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
   const [tenantProfile, setTenantProfile] = useState(null)
+  const [profileError, setProfileError] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -29,7 +30,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (session && role === 'tenant' && !tenantProfile) {
-      apiGet('/tenant/me').then(setTenantProfile).catch(() => {})
+      setProfileError(null)
+      apiGet('/tenant/me').then(setTenantProfile).catch(e => setProfileError(e.message))
     }
   }, [session?.user?.id, role])
 
@@ -42,6 +44,7 @@ export function AuthProvider({ children }) {
       hoaId: hoaId || tenantProfile?.hoa_id || null,
       unitId: tenantProfile?.unit_id || null,
       tenantProfile,
+      profileError,
     }}>
       {children}
     </AuthContext.Provider>

@@ -54,7 +54,8 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict) -
             },
         )
     if resp.status_code not in (200, 201):
-        detail = resp.json().get("msg") or resp.json().get("message") or resp.text
+        data = resp.json()
+        detail = data.get("msg") or data.get("message") or resp.text
         raise HTTPException(status_code=400, detail=detail)
     return resp.json()["id"]
 
@@ -66,11 +67,6 @@ async def signup_association(
     body: AssociationSignup,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    # Check email not already used
-    existing = await conn.fetchval(
-        "SELECT id FROM auth.users WHERE email = $1", body.email
-    ) if False else None  # handled by Supabase
-
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
