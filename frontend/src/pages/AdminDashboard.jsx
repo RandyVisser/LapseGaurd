@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [addingUnit, setAddingUnit] = useState(false)
   const [inviteUnit, setInviteUnit] = useState(null)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteType, setInviteType] = useState('primary')
   const [inviting, setInviting] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [activeFilter, setActiveFilter] = useState('all')
@@ -51,7 +52,7 @@ export default function AdminDashboard() {
     setInviting(true)
     try {
       await apiPost(`/unit/${inviteUnit}/invite`, { email: inviteEmail })
-      setInviteSuccess(inviteUnit)
+      setInviteSuccess(inviteUnit + '-' + inviteType)
       setInviteUnit(null)
       setInviteEmail('')
       setTimeout(() => setInviteSuccess(null), 4000)
@@ -109,7 +110,7 @@ export default function AdminDashboard() {
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-4">Invite Unit-Owner</h2>
+              <h2 className="font-semibold text-slate-800 mb-4">Invite {inviteType === 'secondary' ? 'Secondary' : 'Primary'} Owner</h2>
               <form onSubmit={handleInvite} className="space-y-3">
                 <input
                   type="email"
@@ -192,30 +193,28 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    {!u.tenant_id ? (
-                      inviteSuccess === u.unit_id ? (
+                    <div className="flex flex-col gap-1">
+                      {inviteSuccess === u.unit_id + '-primary' ? (
                         <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
                       ) : (
                         <button
-                          onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail('') }}
-                          className="text-xs bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded-full"
+                          onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') }}
+                          className="text-xs bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded-full text-left"
                         >
-                          Invite Unit-Owner
+                          Invite Primary
                         </button>
-                      )
-                    ) : (u.status === 'lapsed' || u.status === 'missing' || u.status === 'expiring') && (
-                      notifySuccess === u.tenant_id ? (
-                        <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
+                      )}
+                      {inviteSuccess === u.unit_id + '-secondary' ? (
+                        <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
                       ) : (
                         <button
-                          onClick={e => handleNotify(e, u.tenant_id)}
-                          disabled={notifying === u.tenant_id}
-                          className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded-full disabled:opacity-60"
+                          onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
+                          className="text-xs bg-slate-500 hover:bg-slate-600 text-white px-3 py-1 rounded-full text-left"
                         >
-                          {notifying === u.tenant_id ? 'Sending…' : 'Notify Unit-Owner'}
+                          Invite Secondary
                         </button>
-                      )
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
