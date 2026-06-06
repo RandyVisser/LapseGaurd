@@ -5,12 +5,15 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
-function StatCard({ label, value, color }) {
+function StatCard({ label, value, color, active, onClick }) {
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col gap-1 ${color}`}>
+    <button
+      onClick={onClick}
+      className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col gap-1 text-left w-full transition-all ${color} ${active ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+    >
       <span className="text-3xl font-bold">{value ?? '—'}</span>
       <span className="text-sm text-slate-500">{label}</span>
-    </div>
+    </button>
   )
 }
 
@@ -28,6 +31,7 @@ export default function AdminDashboard() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState(null)
+  const [activeFilter, setActiveFilter] = useState('all')
 
   async function handleAddUnit(e) {
     e.preventDefault()
@@ -132,10 +136,10 @@ export default function AdminDashboard() {
 
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <StatCard label="Total Units" value={summary.total_units} color="text-slate-800" />
-            <StatCard label="Compliant" value={summary.compliant} color="text-green-700" />
-            <StatCard label="Expiring Soon" value={summary.expiring} color="text-yellow-700" />
-            <StatCard label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" />
+            <StatCard label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+            <StatCard label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+            <StatCard label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
+            <StatCard label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
           </div>
         )}
 
@@ -155,7 +159,11 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {units.map(u => (
+              {units.filter(u => {
+                if (activeFilter === 'all') return true
+                if (activeFilter === 'lapsed') return u.status === 'lapsed' || u.status === 'missing'
+                return u.status === activeFilter
+              }).map(u => (
                 <tr
                   key={u.unit_id}
                   onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
@@ -197,7 +205,11 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {units.length === 0 && !error && (
+              {units.filter(u => {
+                if (activeFilter === 'all') return true
+                if (activeFilter === 'lapsed') return u.status === 'lapsed' || u.status === 'missing'
+                return u.status === activeFilter
+              }).length === 0 && !error && (
                 <tr>
                   <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
