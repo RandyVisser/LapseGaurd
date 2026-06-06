@@ -180,8 +180,8 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.email_primary || u.tenant_email || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.email_secondary || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
