@@ -62,6 +62,9 @@ class UnitComplianceOut(BaseModel):
     subdivision: Optional[str]
     tenant_name: Optional[str]
     tenant_email: Optional[str]
+    owner_secondary: Optional[str]
+    email_secondary: Optional[str]
+    purchase_date: Optional[date]
     tenant_id: Optional[uuid.UUID]
     status: PolicyStatus
 

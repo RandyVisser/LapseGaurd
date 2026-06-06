@@ -151,8 +151,11 @@ export default function AdminDashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Assessor Parcel Number</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner (Primary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Primary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner (Secondary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Secondary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Purchase Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
@@ -179,6 +182,9 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.email_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
                   <td className="px-4 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
@@ -219,7 +225,7 @@ export default function AdminDashboard() {
                 return u.status === activeFilter
               }).length === 0 && !error && (
                 <tr>
-                  <td colSpan={13} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={16} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
