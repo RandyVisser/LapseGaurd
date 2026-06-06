@@ -87,7 +87,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-full mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-slate-800">Compliance Overview</h1>
           <form onSubmit={handleAddUnit} className="flex gap-2">
@@ -143,8 +143,8 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">RadarID</th>
