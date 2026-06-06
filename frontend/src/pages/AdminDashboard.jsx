@@ -5,6 +5,23 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
+function SortTh({ label, col, sortCol, sortDir, onSort }) {
+  const active = sortCol === col
+  return (
+    <th
+      onClick={() => onSort(col)}
+      className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
+    >
+      <span className="flex items-center gap-1">
+        {label}
+        <span className="text-slate-400 text-xs">
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </span>
+    </th>
+  )
+}
+
 function StatCard({ label, value, color, active, onClick }) {
   return (
     <button
@@ -34,6 +51,13 @@ export default function AdminDashboard() {
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [activeFilter, setActiveFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [sortCol, setSortCol] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
+
+  function handleSort(col) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
 
   async function handleAddUnit(e) {
     e.preventDefault()
@@ -164,26 +188,26 @@ export default function AdminDashboard() {
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">RadarID</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">APN</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Primary Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Primary)</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Secondary Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Secondary)</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Purchase Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
+                <SortTh label="RadarID"           col="radar_id"              sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="APN"               col="assessor_parcel_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Subdivision"       col="subdivision"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Email (Secondary)" col="email_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Purchase Date"     col="purchase_date"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Street Address"    col="street_address"        sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="City"              col="city"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="St"                col="state"                 sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Zip"               col="zip"                   sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {units.filter(u => {
+            {(() => {
+              const filtered = units.filter(u => {
                 if (activeFilter !== 'all') {
                   if (activeFilter === 'lapsed' && u.status !== 'lapsed' && u.status !== 'missing') return false
                   if (activeFilter !== 'lapsed' && u.status !== activeFilter) return false
@@ -198,7 +222,17 @@ export default function AdminDashboard() {
                   )
                 }
                 return true
-              }).map(u => (
+              })
+              if (sortCol) {
+                filtered.sort((a, b) => {
+                  const av = (a[sortCol] || '').toString().toLowerCase()
+                  const bv = (b[sortCol] || '').toString().toLowerCase()
+                  return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+                })
+              }
+              return (
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map(u => (
                 <tr
                   key={u.unit_id}
                   onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
@@ -245,27 +279,14 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {units.filter(u => {
-                if (activeFilter !== 'all') {
-                  if (activeFilter === 'lapsed' && u.status !== 'lapsed' && u.status !== 'missing') return false
-                  if (activeFilter !== 'lapsed' && u.status !== activeFilter) return false
-                }
-                if (search) {
-                  const q = search.toLowerCase()
-                  return (
-                    (u.unit_number || '').toLowerCase().includes(q) ||
-                    (u.owner_primary || '').toLowerCase().includes(q) ||
-                    (u.owner_secondary || '').toLowerCase().includes(q) ||
-                    (u.tenant_name || '').toLowerCase().includes(q)
-                  )
-                }
-                return true
-              }).length === 0 && !error && (
+              {filtered.length === 0 && !error && (
                 <tr>
                   <td colSpan={16} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
+              )
+            })()}
           </table>
         </div>
       </main>
