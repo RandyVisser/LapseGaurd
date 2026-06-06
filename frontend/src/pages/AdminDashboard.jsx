@@ -148,7 +148,7 @@ export default function AdminDashboard() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">RadarID</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Assessor Parcel Number</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">APN</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner (Primary)</th>
