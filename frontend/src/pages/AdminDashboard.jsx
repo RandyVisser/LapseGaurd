@@ -151,9 +151,9 @@ export default function AdminDashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">APN</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner (Primary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Primary Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Primary)</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner (Secondary)</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Secondary Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Email (Secondary)</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Purchase Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
