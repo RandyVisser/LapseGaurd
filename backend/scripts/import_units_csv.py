@@ -24,11 +24,14 @@ DEFAULT_STATE = 'FL'
 
 
 def parse_address(raw: str):
-    """Split '9 ISLAND AVE APT 501' into (street, unit)."""
+    """Split '9 ISLAND AVE APT 501' or '9 ISLAND AVE PH 1' into (street, unit)."""
     raw = (raw or '').strip()
-    match = re.search(r'\bAPT\s+(\S+)', raw, re.IGNORECASE)
+    # Match APT, UNIT, STE, PH followed by identifier
+    match = re.search(r'\b(APT|UNIT|STE|PH)\s*(\S+)', raw, re.IGNORECASE)
     if match:
-        unit = match.group(1)
+        prefix = match.group(1).upper()
+        identifier = match.group(2)
+        unit = f'{prefix}{identifier}' if prefix == 'PH' else identifier
         street = raw[:match.start()].strip().rstrip(',')
     else:
         unit = ''
