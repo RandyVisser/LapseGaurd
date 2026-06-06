@@ -4,7 +4,7 @@ import httpx
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
 QUOTE_FORM_URL = os.environ.get("QUOTE_FORM_URL", "")
-APP_URL = os.environ.get("APP_URL", "https://condo.insure")
+APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
 
 async def send_email(to_email: str, subject: str, html: str) -> bool:

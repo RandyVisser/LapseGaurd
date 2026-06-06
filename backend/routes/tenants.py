@@ -8,7 +8,7 @@ from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 import os
 from services.email import send_email, admin_notify_html, invite_email_html
 
-APP_URL = os.environ.get("APP_URL", "https://condo.insure")
+APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
 
 class InviteRequest(BaseModel):
