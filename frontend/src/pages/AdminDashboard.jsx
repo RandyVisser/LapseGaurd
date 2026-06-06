@@ -152,6 +152,10 @@ export default function AdminDashboard() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">RadarID</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Assessor Parcel Number</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
@@ -174,6 +178,10 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.radar_id || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
@@ -211,7 +219,7 @@ export default function AdminDashboard() {
                 return u.status === activeFilter
               }).length === 0 && !error && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={13} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
