@@ -147,17 +147,17 @@ export default function AdminDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">RadarID</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Assessor Parcel Number</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Subdivision</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
               </tr>
@@ -173,17 +173,17 @@ export default function AdminDashboard() {
                   onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
                   className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
                 >
-                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
-                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.radar_id || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     {!u.tenant_id ? (
