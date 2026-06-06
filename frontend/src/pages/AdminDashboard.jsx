@@ -143,8 +143,8 @@ export default function AdminDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
@@ -161,8 +161,8 @@ export default function AdminDashboard() {
                   onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
                   className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
                 >
-                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
