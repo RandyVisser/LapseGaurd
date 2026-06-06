@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [inviting, setInviting] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [activeFilter, setActiveFilter] = useState('all')
+  const [search, setSearch] = useState('')
 
   async function handleAddUnit(e) {
     e.preventDefault()
@@ -106,6 +107,21 @@ export default function AdminDashboard() {
         </div>
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or unit…"
+            className="w-full sm:w-80 border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
         {/* Invite modal */}
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -168,9 +184,20 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {units.filter(u => {
-                if (activeFilter === 'all') return true
-                if (activeFilter === 'lapsed') return u.status === 'lapsed' || u.status === 'missing'
-                return u.status === activeFilter
+                if (activeFilter !== 'all') {
+                  if (activeFilter === 'lapsed' && u.status !== 'lapsed' && u.status !== 'missing') return false
+                  if (activeFilter !== 'lapsed' && u.status !== activeFilter) return false
+                }
+                if (search) {
+                  const q = search.toLowerCase()
+                  return (
+                    (u.unit_number || '').toLowerCase().includes(q) ||
+                    (u.owner_primary || '').toLowerCase().includes(q) ||
+                    (u.owner_secondary || '').toLowerCase().includes(q) ||
+                    (u.tenant_name || '').toLowerCase().includes(q)
+                  )
+                }
+                return true
               }).map(u => (
                 <tr
                   key={u.unit_id}
@@ -219,9 +246,20 @@ export default function AdminDashboard() {
                 </tr>
               ))}
               {units.filter(u => {
-                if (activeFilter === 'all') return true
-                if (activeFilter === 'lapsed') return u.status === 'lapsed' || u.status === 'missing'
-                return u.status === activeFilter
+                if (activeFilter !== 'all') {
+                  if (activeFilter === 'lapsed' && u.status !== 'lapsed' && u.status !== 'missing') return false
+                  if (activeFilter !== 'lapsed' && u.status !== activeFilter) return false
+                }
+                if (search) {
+                  const q = search.toLowerCase()
+                  return (
+                    (u.unit_number || '').toLowerCase().includes(q) ||
+                    (u.owner_primary || '').toLowerCase().includes(q) ||
+                    (u.owner_secondary || '').toLowerCase().includes(q) ||
+                    (u.tenant_name || '').toLowerCase().includes(q)
+                  )
+                }
+                return true
               }).length === 0 && !error && (
                 <tr>
                   <td colSpan={16} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
