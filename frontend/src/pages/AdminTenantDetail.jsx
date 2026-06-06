@@ -83,7 +83,7 @@ export default function AdminTenantDetail() {
                     disabled={notifying}
                     className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
                   >
-                    {notifying ? 'Sending…' : 'Notify Tenant'}
+                    {notifying ? 'Sending…' : 'Notify Unit-Owner'}
                   </button>
                 )}
               </div>
@@ -166,7 +166,7 @@ export default function AdminTenantDetail() {
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-xl p-5">
                 <p className="font-semibold text-red-700">No policy on file</p>
-                <p className="text-sm text-red-600 mt-1">This tenant has not uploaded proof of insurance.</p>
+                <p className="text-sm text-red-600 mt-1">This unit-owner has not uploaded proof of insurance.</p>
               </div>
             )}
 

@@ -32,6 +32,10 @@ async def list_units(
         SELECT
             u.id AS unit_id,
             u.unit_number,
+            u.street_address,
+            u.city,
+            u.state,
+            u.zip,
             t.name AS tenant_name,
             t.email AS tenant_email,
             t.id AS tenant_id,
@@ -57,6 +61,10 @@ async def list_units(
         UnitComplianceOut(
             unit_id=r["unit_id"],
             unit_number=r["unit_number"],
+            street_address=r["street_address"],
+            city=r["city"],
+            state=r["state"],
+            zip=r["zip"],
             tenant_name=r["tenant_name"],
             tenant_email=r["tenant_email"],
             tenant_id=r["tenant_id"],

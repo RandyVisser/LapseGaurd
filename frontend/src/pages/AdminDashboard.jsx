@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-4">Invite Tenant</h2>
+              <h2 className="font-semibold text-slate-800 mb-4">Invite Unit-Owner</h2>
               <form onSubmit={handleInvite} className="space-y-3">
                 <input
                   type="email"
@@ -144,7 +144,11 @@ export default function AdminDashboard() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Tenant</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Street Address</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">City</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">St</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Zip</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Unit-Owner</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
@@ -158,7 +162,11 @@ export default function AdminDashboard() {
                   className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
                 >
                   <td className="px-4 py-3 font-medium">{u.unit_number}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No tenant</span>}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.tenant_email || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
@@ -170,7 +178,7 @@ export default function AdminDashboard() {
                           onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail('') }}
                           className="text-xs bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded-full"
                         >
-                          Invite Tenant
+                          Invite Unit-Owner
                         </button>
                       )
                     ) : (u.status === 'lapsed' || u.status === 'missing' || u.status === 'expiring') && (
@@ -182,7 +190,7 @@ export default function AdminDashboard() {
                           disabled={notifying === u.tenant_id}
                           className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded-full disabled:opacity-60"
                         >
-                          {notifying === u.tenant_id ? 'Sending…' : 'Notify Tenant'}
+                          {notifying === u.tenant_id ? 'Sending…' : 'Notify Unit-Owner'}
                         </button>
                       )
                     )}
@@ -191,7 +199,7 @@ export default function AdminDashboard() {
               ))}
               {units.length === 0 && !error && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>

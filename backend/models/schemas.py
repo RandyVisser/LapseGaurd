@@ -52,6 +52,10 @@ class TenantOut(BaseModel):
 class UnitComplianceOut(BaseModel):
     unit_id: uuid.UUID
     unit_number: str
+    street_address: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
+    zip: Optional[str]
     tenant_name: Optional[str]
     tenant_email: Optional[str]
     tenant_id: Optional[uuid.UUID]
