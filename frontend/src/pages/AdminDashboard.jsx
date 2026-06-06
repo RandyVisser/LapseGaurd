@@ -193,7 +193,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-row gap-1">
                       {inviteSuccess === u.unit_id + '-primary' ? (
                         <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
                       ) : (
