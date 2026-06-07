@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import json
 import random
+import re
 import asyncpg
 
 from models.db import get_conn
@@ -176,7 +177,19 @@ async def create_tenant_record(
         return {"id": str(existing["id"])}
 
     name = unit["owner_primary"] or f"Unit {unit['unit_number']} Owner"
-    email = unit["email_primary"] or f"noemail+{random.randint(1000, 9999)}@condo.insure"
+
+    if unit["email_primary"]:
+        email = unit["email_primary"]
+    else:
+        parts = (unit["owner_primary"] or "").strip().lower().split()
+        if len(parts) >= 2:
+            slug = f"{parts[0]}.{parts[-1]}"
+        elif parts:
+            slug = parts[0]
+        else:
+            slug = "owner"
+        slug = re.sub(r"[^a-z0-9.]", "", slug)
+        email = f"{slug}+{random.randint(1000, 9999)}@condo.insure"
 
     row = await conn.fetchrow(
         """
