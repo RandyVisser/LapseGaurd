@@ -325,15 +325,23 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
-                  <td className="px-4 py-3" onClick={e => { if (u.status === 'missing' && u.tenant_id) e.stopPropagation() }}>
+                  <td className="px-4 py-3" onClick={e => { if (u.status === 'missing') e.stopPropagation() }}>
                     {u.assoc_title === 'Property Manager'
                       ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
-                      : u.status === 'missing' && u.tenant_id ? (
+                      : u.status === 'missing' ? (
                         <button
                           type="button"
-                          onClick={() => navigate(`/admin/tenant/${u.tenant_id}`)}
+                          onClick={() => {
+                            if (u.tenant_id) {
+                              navigate(`/admin/tenant/${u.tenant_id}`)
+                            } else {
+                              setInviteUnit(u.unit_id)
+                              setInviteEmail(u.email_primary || u.tenant_email || '')
+                              setInviteType('primary')
+                            }
+                          }}
                           className="cursor-pointer hover:underline decoration-dotted"
-                          title="Add dec page on behalf of this unit-owner"
+                          title={u.tenant_id ? 'Add dec page on behalf of this unit-owner' : 'No unit-owner on file yet — invite them first to add a dec page'}
                         >
                           <StatusBadge status={u.status} />
                         </button>
