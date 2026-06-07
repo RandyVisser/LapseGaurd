@@ -300,33 +300,26 @@ export default function AdminDashboard() {
               {filtered.map(u => (
                 <tr
                   key={u.unit_id}
-                  onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
-                  className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
+                  onClick={async () => {
+                    if (u.tenant_id) {
+                      navigate(`/admin/tenant/${u.tenant_id}`)
+                      return
+                    }
+                    if (u.status === 'missing') {
+                      try {
+                        const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
+                        navigate(`/admin/tenant/${res.id}`)
+                      } catch (err) {
+                        setError(err.message)
+                      }
+                    }
+                  }}
+                  className={`hover:bg-slate-50 ${(u.tenant_id || u.status === 'missing') ? 'cursor-pointer' : ''}`}
                 >
-                  <td className="px-4 py-3" onClick={e => { if (u.status === 'missing') e.stopPropagation() }}>
+                  <td className="px-4 py-3">
                     {u.assoc_title === 'Property Manager'
                       ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
-                      : u.status === 'missing' ? (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (u.tenant_id) {
-                              navigate(`/admin/tenant/${u.tenant_id}`)
-                              return
-                            }
-                            try {
-                              const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
-                              navigate(`/admin/tenant/${res.id}`)
-                            } catch (err) {
-                              setError(err.message)
-                            }
-                          }}
-                          className="cursor-pointer hover:underline decoration-dotted"
-                          title="Add dec page on behalf of this unit-owner"
-                        >
-                          <StatusBadge status={u.status} />
-                        </button>
-                      ) : <StatusBadge status={u.status} />}
+                      : <StatusBadge status={u.status} />}
                   </td>
                   <td className="px-4 py-3">
                     {u.assoc_title
