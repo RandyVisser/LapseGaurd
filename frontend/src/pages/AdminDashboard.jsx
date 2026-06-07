@@ -193,7 +193,8 @@ export default function AdminDashboard() {
                 <SortTh label="RadarID"           col="radar_id"              sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="APN"               col="assessor_parcel_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Subdivision"       col="subdivision"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Subdivision (PropRadar)" col="subdivision"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Corp Name (SunBiz)" col="corp_name"            sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -248,6 +249,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.corp_name || '—'}</td>
                   <td className="px-4 py-3">
                     {u.assoc_title
                       ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
@@ -298,7 +300,7 @@ export default function AdminDashboard() {
               ))}
               {filtered.length === 0 && !error && (
                 <tr>
-                  <td colSpan={19} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={20} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
