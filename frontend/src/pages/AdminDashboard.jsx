@@ -168,7 +168,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
-      <main className="max-w-full mx-auto px-4 pt-3 pb-8">
+      <main className="max-w-full mx-auto px-4 pt-0 pb-8 -mt-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3">
