@@ -62,9 +62,11 @@ async def get_tenant_detail(
     row = await conn.fetchrow(
         """
         SELECT t.id, t.unit_id, t.name, t.email, u.unit_number, u.hoa_id,
-               u.street_address, u.city, u.state, u.zip
+               u.street_address, u.city, u.state, u.zip,
+               h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
         WHERE t.id = $1
         """,
         tenant_id,
@@ -116,6 +118,9 @@ async def get_tenant_detail(
         zip=row["zip"],
         policies=policies,
         needs_wind_policy=evaluation["needs_wind_policy"],
+        ho6_coverage_a_min=row["ho6_coverage_a_min"],
+        ho6_coverage_e_min=row["ho6_coverage_e_min"],
+        ho6_wind_required=row["ho6_wind_required"],
     )
 
 

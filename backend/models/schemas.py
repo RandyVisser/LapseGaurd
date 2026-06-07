@@ -47,6 +47,9 @@ class TenantDetailOut(BaseModel):
     zip: Optional[str] = None
     policies: list[PolicyOut]
     needs_wind_policy: bool = False
+    ho6_coverage_a_min: Optional[float] = None
+    ho6_coverage_e_min: Optional[float] = None
+    ho6_wind_required: bool = False
 
 
 class TenantOut(BaseModel):

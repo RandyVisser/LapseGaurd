@@ -292,7 +292,8 @@ export default function AdminTenantDetail() {
           <div className="space-y-6">
 
             {/* Header */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex items-start justify-between flex-1">
               <div>
                 <h1 className="text-xl font-bold text-slate-800">{tenant.name}</h1>
                 {!tenant.email?.toLowerCase().endsWith('@condo.insure') && (
@@ -325,6 +326,29 @@ export default function AdminTenantDetail() {
                   </button>
                 )}
               </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-72">
+              <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
+              <ul className="text-slate-600 space-y-1">
+                <li className="flex items-center justify-between gap-6">
+                  <span>Coverage A (Dwelling) min</span>
+                  <span className="font-medium text-slate-800">
+                    {tenant.ho6_coverage_a_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_a_min).toLocaleString()}`}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-6">
+                  <span>Coverage E (Liability) min</span>
+                  <span className="font-medium text-slate-800">
+                    {tenant.ho6_coverage_e_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_e_min).toLocaleString()}`}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-6">
+                  <span>Wind Coverage</span>
+                  <span className="font-medium text-slate-800">{tenant.ho6_wind_required ? 'Required' : 'Not Required'}</span>
+                </li>
+              </ul>
+            </div>
             </div>
 
             {/* Current policy/policies */}
