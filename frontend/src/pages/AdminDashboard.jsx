@@ -193,19 +193,14 @@ export default function AdminDashboard() {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
             const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required } = selectedHoa
-            if (ho6_coverage_a_min == null && ho6_coverage_e_min == null && !ho6_wind_required) return null
-            const fmt = v => v == null ? null : `$${Number(v).toLocaleString()}`
+            const fmt = v => v == null ? 'Not Selected' : `$${Number(v).toLocaleString()}`
             return (
               <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
                 <p className="font-semibold text-slate-700 mb-1">HO-6 Requirements</p>
                 <ul className="text-slate-600 space-y-0.5">
-                  {ho6_coverage_a_min != null && (
-                    <li>Coverage A (Dwelling): min {fmt(ho6_coverage_a_min)}</li>
-                  )}
-                  {ho6_coverage_e_min != null && (
-                    <li>Coverage E (Liability): min {fmt(ho6_coverage_e_min)}</li>
-                  )}
-                  {ho6_wind_required && <li>Wind coverage required</li>}
+                  <li>Coverage A (Dwelling): min {fmt(ho6_coverage_a_min)}</li>
+                  <li>Coverage E (Liability): min {fmt(ho6_coverage_e_min)}</li>
+                  <li>Wind coverage required: {ho6_wind_required ? 'Yes' : 'Not Selected'}</li>
                 </ul>
               </div>
             )
