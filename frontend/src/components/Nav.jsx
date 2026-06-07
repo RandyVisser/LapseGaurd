@@ -12,7 +12,7 @@ export default function Nav({ role, title }) {
   return (
     <nav className="bg-blue-800 text-white px-6 py-3 flex items-center justify-between relative">
       <span className="font-bold text-lg tracking-tight">condo.insure</span>
-      {title && <span className="font-semibold text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
+      {title && <span className="font-bold text-xl text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
       <div className="flex items-center gap-4 text-sm">
         {role === 'hoa_admin' && (
           <>
