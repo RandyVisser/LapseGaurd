@@ -195,9 +195,9 @@ export default function AdminDashboard() {
                 <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Subdivision (PropRadar)" col="subdivision"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Corp Name (SunBiz)" col="corp_name"            sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -250,13 +250,13 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.corp_name || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3">
                     {u.assoc_title
                       ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.email_primary || u.tenant_email || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
