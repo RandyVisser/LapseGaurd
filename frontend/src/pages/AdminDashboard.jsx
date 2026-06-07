@@ -249,7 +249,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
                   <td className="px-4 py-3">
                     {u.assoc_title
-                      ? <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-300">{u.assoc_title}</span>
+                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
