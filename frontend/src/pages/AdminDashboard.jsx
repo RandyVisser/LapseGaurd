@@ -196,6 +196,11 @@ export default function AdminDashboard() {
             const fmt = v => v == null ? 'Not Selected' : `$${Number(v).toLocaleString()}`
             return (
               <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
+                {selectedHoa.corp_name && (
+                  <p className="text-slate-600 mb-2">
+                    <span className="font-semibold text-slate-700">Corp Name (SunBiz):</span> {selectedHoa.corp_name}
+                  </p>
+                )}
                 <p className="font-semibold text-slate-700 mb-1">HO-6 Requirements</p>
                 <ul className="text-slate-600 space-y-0.5">
                   <li>Coverage A (Dwelling): min {fmt(ho6_coverage_a_min)}</li>
