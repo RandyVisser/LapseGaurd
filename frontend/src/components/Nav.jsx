@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-export default function Nav({ role }) {
+export default function Nav({ role, title }) {
   const navigate = useNavigate()
 
   async function handleLogout() {
@@ -10,8 +10,9 @@ export default function Nav({ role }) {
   }
 
   return (
-    <nav className="bg-blue-800 text-white px-6 py-3 flex items-center justify-between">
+    <nav className="bg-blue-800 text-white px-6 py-3 flex items-center justify-between relative">
       <span className="font-bold text-lg tracking-tight">condo.insure</span>
+      {title && <span className="font-semibold text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
       <div className="flex items-center gap-4 text-sm">
         {role === 'hoa_admin' && (
           <>

@@ -167,7 +167,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Nav role="hoa_admin" />
+      <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -226,7 +226,6 @@ export default function AdminDashboard() {
             )}
           </div>
           <div className="flex items-start gap-3">
-          <h1 className="text-2xl font-bold text-slate-800">Compliance Dashboard</h1>
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
