@@ -536,7 +536,7 @@ export default function AdminTenantDetail() {
 
             {/* Current policy/policies — also surface whichever policy Run AI was last run on, so its freshly-extracted data is visible */}
             {(() => {
-              const reviewPolicy = reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)
+              const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review')
               if (reviewPolicy && !currentPolicies.find(p => p.id === reviewPolicy.id)) {
                 currentPolicies = [reviewPolicy, ...currentPolicies]
               }
