@@ -33,6 +33,7 @@ class PolicyOut(BaseModel):
     parsed_at: Optional[datetime] = None
     coverage_type: Optional[str] = None
     is_current: bool = False
+    review_overrides: dict = {}
 
 
 class TenantDetailOut(BaseModel):

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import json
 import random
 import re
+from datetime import datetime, timezone
 import asyncpg
 
 from models.db import get_conn
@@ -21,6 +22,21 @@ class InviteRequest(BaseModel):
 
 class NotifyRequest(BaseModel):
     message: str | None = None
+
+
+REVIEW_CHECK_KEYS = {
+    "named_insured_match",
+    "property_address_match",
+    "coverage_a_min",
+    "coverage_e_min",
+    "wind_coverage",
+    "association_additional_interest",
+}
+
+
+class PolicyReviewUpdate(BaseModel):
+    check_key: str
+    value: str  # "pass" | "fail" | "override"
 
 router = APIRouter()
 
@@ -102,6 +118,7 @@ async def get_tenant_detail(
             parsed_at=r["parsed_at"],
             coverage_type=r["coverage_type"],
             is_current=r["id"] in current_ids,
+            review_overrides=json.loads(r["review_overrides"]) if isinstance(r["review_overrides"], str) else (r["review_overrides"] or {}),
         )
         for r in policy_rows
     ]
@@ -158,6 +175,51 @@ async def notify_tenant(
         tenant_id,
     )
     return {"sent": True}
+
+
+@router.post("/policy/{policy_id}/review")
+async def set_policy_review(
+    policy_id: str,
+    body: PolicyReviewUpdate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    if body.check_key not in REVIEW_CHECK_KEYS:
+        raise HTTPException(status_code=422, detail="Unknown check_key")
+    if body.value not in ("pass", "fail", "override"):
+        raise HTTPException(status_code=422, detail="value must be pass, fail, or override")
+
+    row = await conn.fetchrow(
+        """
+        SELECT p.id, p.review_overrides, u.hoa_id
+        FROM policies p
+        JOIN tenants t ON t.id = p.tenant_id
+        JOIN units u ON u.id = t.unit_id
+        WHERE p.id = $1
+        """,
+        policy_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    overrides = row["review_overrides"]
+    if isinstance(overrides, str):
+        overrides = json.loads(overrides)
+    overrides = dict(overrides or {})
+    overrides[body.check_key] = {
+        "value": body.value,
+        "by": user.email,
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    updated = await conn.fetchrow(
+        "UPDATE policies SET review_overrides = $1 WHERE id = $2 RETURNING review_overrides",
+        json.dumps(overrides), policy_id,
+    )
+    result = updated["review_overrides"]
+    return {"review_overrides": json.loads(result) if isinstance(result, str) else result}
 
 
 @router.post("/unit/{unit_id}/tenant")

@@ -30,7 +30,53 @@ function coverageLabel(coverageType) {
   }
 }
 
-function PolicyCard({ policy, onApprove, approving }) {
+const REVIEW_CHECKS = [
+  { key: 'named_insured_match', label: 'Named Insured matches Unit' },
+  { key: 'property_address_match', label: 'Property Address matches' },
+  { key: 'coverage_a_min', label: 'Coverage A min' },
+  { key: 'coverage_e_min', label: 'Coverage E (Liability) min' },
+  { key: 'wind_coverage', label: 'Wind Coverage' },
+  { key: 'association_additional_interest', label: 'Association Listed as Additional Interest' },
+]
+
+function ReviewChecklist({ policy, onSetReview, savingKey }) {
+  const overrides = policy.review_overrides || {}
+  return (
+    <div className="mt-5 pt-5 border-t border-slate-100">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Manual Review</p>
+      <div className="space-y-2">
+        {REVIEW_CHECKS.map(({ key, label }) => {
+          const current = overrides[key]?.value
+          const saving = savingKey === `${policy.id}:${key}`
+          return (
+            <div key={key} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-slate-600">{label}</span>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { value: 'pass', label: 'Pass', active: 'bg-green-600 text-white', idle: 'bg-green-50 text-green-700 hover:bg-green-100' },
+                  { value: 'fail', label: 'Fail', active: 'bg-red-600 text-white', idle: 'bg-red-50 text-red-700 hover:bg-red-100' },
+                  { value: 'override', label: 'Override', active: 'bg-amber-600 text-white', idle: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
+                ].map(btn => (
+                  <button
+                    key={btn.value}
+                    type="button"
+                    disabled={saving}
+                    onClick={() => onSetReview(policy.id, key, btn.value)}
+                    className={`text-xs font-medium px-2.5 py-1 rounded-md disabled:opacity-50 ${current === btn.value ? btn.active : btn.idle}`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
@@ -125,6 +171,8 @@ function PolicyCard({ policy, onApprove, approving }) {
       {policy.document_url && !policy.extracted_data && (
         <p className="mt-4 text-xs text-slate-400 italic">AI parsing in progress…</p>
       )}
+
+      <ReviewChecklist policy={policy} onSetReview={onSetReview} savingKey={savingKey} />
     </div>
   )
 }
@@ -137,6 +185,25 @@ export default function AdminTenantDetail() {
   const [notifying, setNotifying] = useState(false)
   const [notifySuccess, setNotifySuccess] = useState(false)
   const [approving, setApproving] = useState(false)
+  const [savingKey, setSavingKey] = useState(null)
+
+  async function handleSetReview(policyId, checkKey, value) {
+    const savingId = `${policyId}:${checkKey}`
+    setSavingKey(savingId)
+    setError('')
+    try {
+      const res = await apiPost(`/policy/${policyId}/review`, { check_key: checkKey, value })
+      setTenant(t => ({
+        ...t,
+        policies: t.policies.map(p => p.id === policyId ? { ...p, review_overrides: res.review_overrides } : p),
+      }))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSavingKey(null)
+    }
+  }
+
   const [showUpload, setShowUpload] = useState(false)
   const [uploadForm, setUploadForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
   const [uploadFile, setUploadFile] = useState(null)
@@ -367,7 +434,7 @@ export default function AdminTenantDetail() {
                 {tenant.needs_wind_policy ? (
                   <div className="grid sm:grid-cols-2 gap-4 items-start">
                     {currentPolicies.map(p => (
-                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
+                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} />
                     ))}
                     <div className="bg-white rounded-xl border border-amber-300 shadow-sm p-5">
                       <h2 className="font-semibold text-slate-700">Wind-Only Policy</h2>
@@ -413,7 +480,7 @@ export default function AdminTenantDetail() {
                   </div>
                 ) : (
                   currentPolicies.map(p => (
-                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
+                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} />
                   ))
                 )}
               </>

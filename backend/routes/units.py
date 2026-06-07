@@ -63,6 +63,7 @@ async def get_policy(
         extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
         parsed_at=row["parsed_at"],
         coverage_type=row["coverage_type"],
+        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
     )
 
 
