@@ -97,6 +97,45 @@ def _validate(extracted: dict, submitted: dict) -> dict:
         if sub_words and ext_words and len(overlap) < 2:
             flags.append(f"Property address mismatch — unit address on file is '{sub_addr}', document shows '{ext_addr}'")
 
+    # Association-specific HO-6 requirements (set per-HOA at onboarding)
+    def _fmt_money(v):
+        try:
+            return f"${float(v):,.0f}"
+        except (TypeError, ValueError):
+            return str(v)
+
+    coverage_type = extracted.get("coverage_type")
+
+    a_min = submitted.get("ho6_coverage_a_min")
+    dwelling = extracted.get("dwelling_coverage")
+    if a_min is not None and dwelling is not None:
+        try:
+            if float(dwelling) < float(a_min):
+                flags.append(
+                    f"Coverage A (Dwelling) below association minimum — "
+                    f"requires at least {_fmt_money(a_min)}, document shows {_fmt_money(dwelling)}"
+                )
+        except (TypeError, ValueError):
+            pass
+
+    e_min = submitted.get("ho6_coverage_e_min")
+    liability = extracted.get("liability_coverage")
+    if e_min is not None and liability is not None:
+        try:
+            if float(liability) < float(e_min):
+                flags.append(
+                    f"Coverage E (Liability) below association minimum — "
+                    f"requires at least {_fmt_money(e_min)}, document shows {_fmt_money(liability)}"
+                )
+        except (TypeError, ValueError):
+            pass
+
+    if submitted.get("ho6_wind_required") and coverage_type == "ho6_wind_excluded":
+        flags.append(
+            "Association requires wind coverage — this HO6 policy excludes wind "
+            "(a separate wind-only policy is required)"
+        )
+
     return {"passed": len(flags) == 0, "flags": flags}
 
 

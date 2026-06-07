@@ -149,9 +149,16 @@ async def upload_policy(
 
     # Look up unit details for AI cross-checking (named insured + address)
     unit_row = await conn.fetchrow(
-        "SELECT owner_primary, owner_secondary, street_address, unit_number, city, state, zip FROM units WHERE id = $1",
+        "SELECT owner_primary, owner_secondary, street_address, unit_number, city, state, zip, hoa_id FROM units WHERE id = $1",
         unit_id,
     )
+
+    hoa_row = None
+    if unit_row:
+        hoa_row = await conn.fetchrow(
+            "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
+            unit_row["hoa_id"],
+        )
 
     # Uploaded proof of insurance always goes to pending review for admin sign-off
     status = PolicyStatus.pending_review if body.document_url else _compute_status(body.expiration_date)
@@ -217,6 +224,9 @@ async def upload_policy(
             "expiration_date": str(body.expiration_date) if body.expiration_date else None,
             "named_insured": (unit_row["owner_primary"] or unit_row["owner_secondary"]) if unit_row else None,
             "address": unit_address,
+            "ho6_coverage_a_min": hoa_row["ho6_coverage_a_min"] if hoa_row else None,
+            "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
+            "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
         }
         background_tasks.add_task(_run_parsing, str(row["id"]), body.document_url, submitted)
 
