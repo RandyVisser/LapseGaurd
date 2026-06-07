@@ -32,6 +32,7 @@ class AssociationSignup(BaseModel):
     ho6_coverage_a_min: float | None = None
     ho6_coverage_e_min: float | None = None
     ho6_wind_required: bool = False
+    ho6_additional_interest_required: bool = False
 
 
 class InviteAccept(BaseModel):
@@ -73,10 +74,10 @@ async def signup_association(
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
-        """INSERT INTO hoas (id, name, address, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required)
-           VALUES ($1, $2, $3, $4, $5, $6)""",
+        """INSERT INTO hoas (id, name, address, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)""",
         hoa_id, body.association_name, body.address,
-        body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
+        body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required, body.ho6_additional_interest_required,
     )
 
     # Create Supabase admin user

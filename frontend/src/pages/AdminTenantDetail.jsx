@@ -414,6 +414,10 @@ export default function AdminTenantDetail() {
                   <span>Wind Coverage</span>
                   <span className="font-medium text-slate-800">{tenant.ho6_wind_required ? 'Required' : 'Not Required'}</span>
                 </li>
+                <li className="flex items-center justify-between gap-6">
+                  <span>Additional Interest</span>
+                  <span className="font-medium text-slate-800">{tenant.ho6_additional_interest_required ? 'Required' : 'Not Required'}</span>
+                </li>
               </ul>
             </div>
             </div>

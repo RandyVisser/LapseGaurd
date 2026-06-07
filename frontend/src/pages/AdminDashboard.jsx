@@ -192,7 +192,7 @@ export default function AdminDashboard() {
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
-            const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required } = selectedHoa
+            const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required } = selectedHoa
             const fmt = v => v == null ? 'Not Selected' : `$${Number(v).toLocaleString()}`
             return (
               <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
@@ -214,6 +214,10 @@ export default function AdminDashboard() {
                   <li className="flex items-center justify-between gap-6">
                     <span>Wind Coverage</span>
                     <span className="font-medium text-slate-800">{ho6_wind_required ? 'Required' : 'Not Required'}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Association Listed as Additional Interest</span>
+                    <span className="font-medium text-slate-800">{ho6_additional_interest_required ? 'Required' : 'Not Required'}</span>
                   </li>
                 </ul>
               </div>

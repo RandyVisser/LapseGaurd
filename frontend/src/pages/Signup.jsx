@@ -7,7 +7,7 @@ export default function Signup() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     association_name: '', address: '', admin_name: '', email: '', password: '',
-    ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: false,
+    ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: false, ho6_additional_interest_required: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -108,6 +108,16 @@ export default function Signup() {
                 className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               Require wind coverage (HO6 with wind, or HO6 + separate wind-only policy)
+            </label>
+
+            <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.ho6_additional_interest_required}
+                onChange={e => setForm(f => ({ ...f, ho6_additional_interest_required: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Require association to be listed as additional interest on the policy
             </label>
           </div>
 

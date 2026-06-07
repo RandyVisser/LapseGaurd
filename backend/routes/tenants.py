@@ -79,7 +79,7 @@ async def get_tenant_detail(
         """
         SELECT t.id, t.unit_id, t.name, t.email, u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
-               h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required
+               h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -138,6 +138,7 @@ async def get_tenant_detail(
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
         ho6_coverage_e_min=row["ho6_coverage_e_min"],
         ho6_wind_required=row["ho6_wind_required"],
+        ho6_additional_interest_required=row["ho6_additional_interest_required"],
     )
 
 
