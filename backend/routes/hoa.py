@@ -110,6 +110,7 @@ async def compliance_summary(
         """
         SELECT
             COUNT(DISTINCT u.id) AS total_units,
+            COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title IS NOT NULL AND u.assoc_title != '') AS board_members,
             COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'active') AS compliant,
             COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'expiring') AS expiring,
             COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'lapsed') AS lapsed,
@@ -132,6 +133,7 @@ async def compliance_summary(
 
     return ComplianceSummary(
         total_units=row["total_units"],
+        board_members=row["board_members"],
         compliant=row["compliant"],
         expiring=row["expiring"],
         lapsed=row["lapsed"],

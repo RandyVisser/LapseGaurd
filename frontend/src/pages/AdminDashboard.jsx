@@ -176,7 +176,8 @@ export default function AdminDashboard() {
         )}
 
         {summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+            <StatCard label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
             <StatCard label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
             <StatCard label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
             <StatCard label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
@@ -212,8 +213,9 @@ export default function AdminDashboard() {
             {(() => {
               const filtered = units.filter(u => {
                 if (activeFilter !== 'all') {
-                  if (activeFilter === 'lapsed' && u.status !== 'lapsed' && u.status !== 'missing') return false
-                  if (activeFilter !== 'lapsed' && u.status !== activeFilter) return false
+                  if (activeFilter === 'board') { if (!u.assoc_title) return false }
+                  else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed' && u.status !== 'missing') return false }
+                  else { if (u.status !== activeFilter) return false }
                 }
                 if (search) {
                   const q = search.toLowerCase()
