@@ -214,7 +214,9 @@ export default function AdminDashboard() {
             </thead>
             {(() => {
               const filtered = units.filter(u => {
-                if (activeFilter !== 'all') {
+                if (activeFilter === 'all') {
+                  if (u.assoc_title === 'Property Manager') return false
+                } else {
                   if (activeFilter === 'board') { if (!u.assoc_title) return false }
                   else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed' && u.status !== 'missing') return false }
                   else { if (u.status !== activeFilter) return false }

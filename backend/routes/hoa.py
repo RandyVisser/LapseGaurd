@@ -111,7 +111,7 @@ async def compliance_summary(
     row = await conn.fetchrow(
         """
         SELECT
-            COUNT(DISTINCT u.id) AS total_units,
+            COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title IS DISTINCT FROM 'Property Manager') AS total_units,
             COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title IS NOT NULL AND u.assoc_title != '' AND u.assoc_title != 'Property Manager') AS board_members,
             COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title = 'Property Manager') AS property_managers,
             COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'active') AS compliant,
