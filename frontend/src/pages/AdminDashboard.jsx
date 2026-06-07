@@ -246,6 +246,18 @@ export default function AdminDashboard() {
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
               <tr>
+                <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Email (Secondary)" col="email_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Purchase Date"     col="purchase_date"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Street Address"    col="street_address"        sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="City"              col="city"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="St"                col="state"                 sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Zip"               col="zip"                   sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="RadarID"           col="radar_id"              sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="APN"               col="assessor_parcel_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -253,18 +265,6 @@ export default function AdminDashboard() {
                 <SortTh label="Corp Name (SunBiz)" col="corp_name"            sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Email (Secondary)" col="email_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Purchase Date"     col="purchase_date"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Street Address"    col="street_address"        sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="City"              col="city"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="St"                col="state"                 sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Zip"               col="zip"                   sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
               </tr>
             </thead>
@@ -303,28 +303,6 @@ export default function AdminDashboard() {
                   onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}
                   className={`hover:bg-slate-50 ${u.tenant_id ? 'cursor-pointer' : ''}`}
                 >
-                  <td className="px-4 py-3 text-slate-600">{u.radar_id || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.corp_name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
-                  <td className="px-4 py-3">
-                    {u.assoc_title
-                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
-                      : <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email_primary || u.tenant_email || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email_secondary || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
-                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3" onClick={e => { if (u.status === 'missing') e.stopPropagation() }}>
                     {u.assoc_title === 'Property Manager'
                       ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
@@ -347,6 +325,28 @@ export default function AdminDashboard() {
                         </button>
                       ) : <StatusBadge status={u.status} />}
                   </td>
+                  <td className="px-4 py-3">
+                    {u.assoc_title
+                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
+                      : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.email_primary || u.tenant_email || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.email_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.radar_id || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.corp_name || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-row gap-1">
                       {inviteSuccess === u.unit_id + '-primary' ? (
