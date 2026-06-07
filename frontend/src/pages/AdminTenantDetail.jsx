@@ -21,6 +21,11 @@ function currency(val) {
 
 const STATUS_PRIORITY = { active: 0, expiring: 1, pending_review: 2, lapsed: 3, missing: 4 }
 
+function hasFailedReview(policy) {
+  const overrides = policy?.review_overrides || {}
+  return Object.values(overrides).some(v => v?.value === 'fail')
+}
+
 function coverageLabel(coverageType) {
   switch (coverageType) {
     case 'ho6_with_wind': return 'HO6 Policy (Wind Included)'
@@ -106,7 +111,7 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRu
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-slate-700">{coverageLabel(policy.coverage_type)}</h2>
-        <StatusBadge status={policy.status} />
+        <StatusBadge status={hasFailedReview(policy) ? 'fail' : policy.status} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Insurer" value={policy.insurer} />
@@ -464,7 +469,10 @@ export default function AdminTenantDetail() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                {tenant.policies?.length > 0 && <StatusBadge status={headerStatus} />}
+                {tenant.policies?.length > 0 && (() => {
+                  const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review') || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
+                  return <StatusBadge status={hasFailedReview(reviewPolicy) ? 'fail' : headerStatus} />
+                })()}
               </div>
             </div>
 

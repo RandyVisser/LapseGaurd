@@ -4,10 +4,12 @@ const colors = {
   lapsed: 'bg-red-100 text-red-800',
   missing: 'bg-yellow-100 text-yellow-800',
   pending_review: 'bg-blue-100 text-blue-800',
+  fail: 'bg-red-100 text-red-800',
 }
 
 const labels = {
   pending_review: 'Pending Review',
+  fail: 'Fail',
 }
 
 export default function StatusBadge({ status }) {
