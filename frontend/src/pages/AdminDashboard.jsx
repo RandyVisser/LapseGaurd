@@ -254,7 +254,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3">
                     {u.assoc_title
-                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
+                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
                   <td className="px-4 py-3">
                     {u.assoc_title === 'Property Manager'
-                      ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">PM</span>
+                      ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
                       : <StatusBadge status={u.status} />}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
