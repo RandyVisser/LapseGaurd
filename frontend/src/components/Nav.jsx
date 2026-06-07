@@ -11,7 +11,7 @@ export default function Nav({ role }) {
 
   return (
     <nav className="bg-blue-800 text-white px-6 py-3 flex items-center justify-between">
-      <span className="font-bold text-lg tracking-tight">LapseGuard</span>
+      <span className="font-bold text-lg tracking-tight">condo.insure</span>
       <div className="flex items-center gap-4 text-sm">
         {role === 'hoa_admin' && (
           <>
