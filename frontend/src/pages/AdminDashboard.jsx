@@ -35,6 +35,10 @@ function StatCard({ label, value, sublabel, color, active, onClick }) {
   )
 }
 
+function displayEmail(email) {
+  return email && !email.toLowerCase().endsWith('@condo.insure') ? email : null
+}
+
 export default function AdminDashboard() {
   const { hoaId, role, availableHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
@@ -328,9 +332,9 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-4 py-3 font-medium">{u.unit_number}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email_primary || u.tenant_email || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{displayEmail(u.email_secondary) || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
