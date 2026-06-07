@@ -204,6 +204,18 @@ export default function AdminDashboard() {
                 <p className="font-semibold text-slate-700 mb-1">HO-6 Requirements</p>
                 <ul className="text-slate-600 space-y-0.5">
                   <li className="flex items-center justify-between gap-6">
+                    <span>Policy In-Force</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Named Insured Matches</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Property Address Matches</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
                     <span>Coverage A (Dwelling) min</span>
                     <span className="font-medium text-slate-800">{fmt(ho6_coverage_a_min)}</span>
                   </li>

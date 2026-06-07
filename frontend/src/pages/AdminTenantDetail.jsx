@@ -435,6 +435,18 @@ export default function AdminTenantDetail() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-72">
               <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
               <ul className="text-slate-600 space-y-1">
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Policy In-Force</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Named Insured Matches</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Property Address Matches</span>
+                    <span className="font-medium text-slate-800">Yes</span>
+                  </li>
                 <li className="flex items-center justify-between gap-6">
                   <span>Coverage A (Dwelling) min</span>
                   <span className="font-medium text-slate-800">
