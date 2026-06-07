@@ -206,8 +206,6 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRu
       {policy.document_url && !policy.extracted_data && (
         <p className="mt-4 text-xs text-slate-400 italic">AI parsing in progress…</p>
       )}
-
-      <ReviewChecklist policy={policy} onSetReview={onSetReview} savingKey={savingKey} />
     </div>
   )
 }
