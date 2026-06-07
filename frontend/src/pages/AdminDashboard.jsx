@@ -192,6 +192,7 @@ export default function AdminDashboard() {
                 <SortTh label="APN"               col="assessor_parcel_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Subdivision"       col="subdivision"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Assoc Title"       col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -244,6 +245,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.assoc_title || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
               ))}
               {filtered.length === 0 && !error && (
                 <tr>
-                  <td colSpan={18} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={19} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>

@@ -60,6 +60,7 @@ class UnitComplianceOut(BaseModel):
     assessor_parcel_number: Optional[str]
     type: Optional[str]
     subdivision: Optional[str]
+    assoc_title: Optional[str]
     sunbiz_doc_number: Optional[str]
     fein: Optional[str]
     owner_primary: Optional[str]
