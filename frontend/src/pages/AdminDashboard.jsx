@@ -203,9 +203,18 @@ export default function AdminDashboard() {
                 )}
                 <p className="font-semibold text-slate-700 mb-1">HO-6 Requirements</p>
                 <ul className="text-slate-600 space-y-0.5">
-                  <li>Coverage A (Dwelling): min {fmt(ho6_coverage_a_min)}</li>
-                  <li>Coverage E (Liability): min {fmt(ho6_coverage_e_min)}</li>
-                  <li>Wind coverage: {ho6_wind_required ? 'Required' : 'Not Required'}</li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Coverage A (Dwelling) min</span>
+                    <span className="font-medium text-slate-800">{fmt(ho6_coverage_a_min)}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Coverage E (Liability) min</span>
+                    <span className="font-medium text-slate-800">{fmt(ho6_coverage_e_min)}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-6">
+                    <span>Wind Coverage</span>
+                    <span className="font-medium text-slate-800">{ho6_wind_required ? 'Required' : 'Not Required'}</span>
+                  </li>
                 </ul>
               </div>
             )
