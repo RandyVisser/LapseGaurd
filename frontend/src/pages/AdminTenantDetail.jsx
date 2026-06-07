@@ -235,7 +235,10 @@ export default function AdminTenantDetail() {
   const [savingKey, setSavingKey] = useState(null)
   const [runningAiId, setRunningAiId] = useState(null)
 
+  const [reviewPolicyId, setReviewPolicyId] = useState(null)
+
   async function handleRunAi(policyId) {
+    setReviewPolicyId(policyId)
     setRunningAiId(policyId)
     setError('')
     try {
@@ -490,7 +493,7 @@ export default function AdminTenantDetail() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-[36rem]">
               <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
               {(() => {
-                const reviewPolicy = tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
+                const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
                 const rows = [
                   { label: 'Policy In-Force', value: tenant.ho6_policy_in_force_required ? 'Required' : 'Not Required', key: 'policy_in_force' },
                   { label: 'Named Insured Matches', value: tenant.ho6_named_insured_match_required ? 'Required' : 'Not Required', key: 'named_insured_match' },
@@ -515,7 +518,7 @@ export default function AdminTenantDetail() {
                 )
               })()}
               {(() => {
-                const reviewPolicy = tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
+                const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
                 const flags = reviewPolicy?.extracted_data?.validation?.flags
                 if (!flags || flags.length === 0) return null
                 return (
