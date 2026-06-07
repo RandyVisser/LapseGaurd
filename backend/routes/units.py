@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import date, timedelta, timezone, datetime
+import json
+import logging
 import asyncpg
 
 from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
@@ -8,6 +10,8 @@ from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _compute_status(expiration_date: date | None) -> PolicyStatus:
@@ -60,16 +64,19 @@ async def get_policy(
 
 
 async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
-    extracted = await parse_dec_page(document_url, submitted)
-    if extracted:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE policies SET extracted_data = $1, parsed_at = $2 WHERE id = $3",
-                extracted,
-                datetime.now(timezone.utc),
-                policy_id,
-            )
+    try:
+        extracted = await parse_dec_page(document_url, submitted)
+        if extracted:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE policies SET extracted_data = $1, parsed_at = $2 WHERE id = $3",
+                    json.dumps(extracted),
+                    datetime.now(timezone.utc),
+                    policy_id,
+                )
+    except Exception as e:
+        logger.error(f"Failed to save parsed dec page for policy {policy_id}: {e}")
 
 
 @router.post("/unit/{unit_id}/policy", response_model=PolicyOut)
