@@ -84,9 +84,27 @@ def _validate(extracted: dict, submitted: dict) -> dict:
         if sub_words and ext_words and not (sub_words & ext_words):
             flags.append(f"Named insured mismatch — unit owner on file is '{sub_name}', document shows '{ext_name}'")
 
-    # Address — fuzzy word-overlap match (street number + street name should overlap)
+    # Address — fuzzy word-overlap match (street number + street name should overlap).
+    # Generic address tokens (unit/street-type words, state abbreviations) are excluded
+    # so two different addresses that happen to share "unit" + a state code don't
+    # falsely register as a match.
+    _ADDR_STOPWORDS = {
+        "unit", "apt", "apartment", "suite", "ste", "fl", "floor",
+        "ave", "avenue", "st", "street", "blvd", "boulevard", "dr", "drive",
+        "rd", "road", "ln", "lane", "ct", "court", "cir", "circle", "way",
+        "pl", "place", "ter", "terrace", "pkwy", "parkway", "hwy", "highway",
+        "n", "s", "e", "w", "ne", "nw", "se", "sw",
+    }
+    _STATE_ABBRS = {
+        "al","ak","az","ar","ca","co","ct","de","fl","ga","hi","id","il","in","ia",
+        "ks","ky","la","me","md","ma","mi","mn","ms","mo","mt","ne","nv","nh","nj",
+        "nm","ny","nc","nd","oh","ok","or","pa","ri","sc","sd","tn","tx","ut","vt",
+        "va","wa","wv","wi","wy",
+    }
+
     def _addr_words(s):
-        return set(w for w in re.split(r'[\s,]+', _norm(s)) if len(w) > 1)
+        words = set(w for w in re.split(r'[\s,]+', _norm(s)) if len(w) > 1)
+        return words - _ADDR_STOPWORDS - _STATE_ABBRS
 
     sub_addr = submitted.get("address")
     ext_addr = extracted.get("property_address")
