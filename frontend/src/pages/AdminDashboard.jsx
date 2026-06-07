@@ -200,7 +200,7 @@ export default function AdminDashboard() {
                 <ul className="text-slate-600 space-y-0.5">
                   <li>Coverage A (Dwelling): min {fmt(ho6_coverage_a_min)}</li>
                   <li>Coverage E (Liability): min {fmt(ho6_coverage_e_min)}</li>
-                  <li>Wind coverage required: {ho6_wind_required ? 'Yes' : 'Not Selected'}</li>
+                  <li>Wind coverage: {ho6_wind_required ? 'Required' : 'Not Selected'}</li>
                 </ul>
               </div>
             )
