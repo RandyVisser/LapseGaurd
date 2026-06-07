@@ -19,7 +19,12 @@ function RequireAuth({ role: requiredRole, children }) {
     </div>
   )
   if (!session) return <Navigate to="/login" replace />
-  if (requiredRole && role !== requiredRole) return <Navigate to="/login" replace />
+  if (requiredRole === 'hoa_admin' && !['hoa_admin', 'super_user', 'property_manager'].includes(role)) {
+    return <Navigate to="/login" replace />
+  }
+  if (requiredRole && requiredRole !== 'hoa_admin' && role !== requiredRole) {
+    return <Navigate to="/login" replace />
+  }
   return children
 }
 

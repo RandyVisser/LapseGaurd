@@ -20,7 +20,8 @@ export default function Login() {
     if (err) { setError(err.message); return }
 
     const role = data.user?.user_metadata?.role || data.user?.app_metadata?.role || 'tenant'
-    navigate(role === 'hoa_admin' ? '/admin/dashboard' : '/tenant/dashboard')
+    const isAdmin = ['hoa_admin', 'super_user', 'property_manager'].includes(role)
+    navigate(isAdmin ? '/admin/dashboard' : '/tenant/dashboard')
   }
 
   return (
