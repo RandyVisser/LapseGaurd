@@ -484,6 +484,23 @@ export default function AdminTenantDetail() {
                   </ul>
                 )
               })()}
+              {(() => {
+                const reviewPolicy = tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
+                const flags = reviewPolicy?.extracted_data?.validation?.flags
+                if (!flags || flags.length === 0) return null
+                return (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <p className="text-red-700 font-semibold text-sm mb-1">Issues Found</p>
+                    <ul className="space-y-1">
+                      {flags.map((f, i) => (
+                        <li key={i} className="text-sm text-red-600 flex gap-2">
+                          <span>•</span><span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })()}
             </div>
             </div>
 
