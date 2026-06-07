@@ -117,7 +117,7 @@ export default function AdminDashboard() {
       <main className="max-w-full mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-slate-800">Compliance Overview</h1>
+            <h1 className="text-xl font-bold text-slate-800">Condo Association</h1>
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <select
                 value={selectedHoaId || ''}
