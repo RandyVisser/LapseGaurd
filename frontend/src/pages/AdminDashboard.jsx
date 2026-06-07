@@ -325,10 +325,19 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => { if (u.status === 'missing' && u.tenant_id) e.stopPropagation() }}>
                     {u.assoc_title === 'Property Manager'
                       ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
-                      : <StatusBadge status={u.status} />}
+                      : u.status === 'missing' && u.tenant_id ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/tenant/${u.tenant_id}`)}
+                          className="cursor-pointer hover:underline decoration-dotted"
+                          title="Add dec page on behalf of this unit-owner"
+                        >
+                          <StatusBadge status={u.status} />
+                        </button>
+                      ) : <StatusBadge status={u.status} />}
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-row gap-1">

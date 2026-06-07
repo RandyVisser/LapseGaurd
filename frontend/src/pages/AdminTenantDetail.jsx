@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost } from '../supabase'
+import { apiGet, apiPost, supabase } from '../supabase'
 
 function Field({ label, value }) {
   if (!value) return null
@@ -27,6 +27,52 @@ export default function AdminTenantDetail() {
   const [notifying, setNotifying] = useState(false)
   const [notifySuccess, setNotifySuccess] = useState(false)
   const [approving, setApproving] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
+  const [uploadForm, setUploadForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadFileKey, setUploadFileKey] = useState(0)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [uploadSuccess, setUploadSuccess] = useState('')
+
+  async function handleUploadSubmit(e) {
+    e.preventDefault()
+    setUploadError(''); setUploadSuccess('')
+
+    if (uploadForm.expiration_date && new Date(uploadForm.expiration_date) < new Date()) {
+      setUploadError('Policy is already expired — please upload a current policy.')
+      return
+    }
+
+    setUploading(true)
+    try {
+      let document_url = null
+      if (uploadFile) {
+        const ext = uploadFile.name.split('.').pop()
+        const path = `${tenant.unit_id}/${Date.now()}.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('policy-documents')
+          .upload(path, uploadFile, { upsert: true })
+        if (uploadErr) throw new Error(uploadErr.message)
+        const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+        document_url = data.publicUrl
+      }
+      const saved = await apiPost(`/unit/${tenant.unit_id}/policy`, {
+        ...uploadForm,
+        expiration_date: uploadForm.expiration_date || null,
+        document_url,
+      })
+      setTenant(t => ({ ...t, policies: [saved, ...(t.policies || [])] }))
+      setUploadSuccess('Dec page uploaded successfully.')
+      setUploadForm({ insurer: '', policy_number: '', expiration_date: '' })
+      setUploadFile(null)
+      setUploadFileKey(k => k + 1)
+    } catch (e) {
+      setUploadError(e.message)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function handleApprove(policyId) {
     setApproving(true)
@@ -205,6 +251,57 @@ export default function AdminTenantDetail() {
                 <p className="text-sm text-red-600 mt-1">This unit-owner has not uploaded proof of insurance.</p>
               </div>
             )}
+
+            {/* Admin upload — for dec pages mailed/faxed in by unit-owners without email */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <button
+                type="button"
+                onClick={() => setShowUpload(s => !s)}
+                className="font-semibold text-slate-700 flex items-center gap-2"
+              >
+                {showUpload ? '▾' : '▸'} Add Dec Page on Behalf of Unit-Owner
+              </button>
+              <p className="text-xs text-slate-400 mt-1">
+                Use this if the unit-owner mailed or faxed in their dec page instead of uploading it themselves.
+              </p>
+              {showUpload && (
+                <form onSubmit={handleUploadSubmit} className="space-y-3 mt-4">
+                  {[
+                    { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
+                    { label: 'Policy Number', key: 'policy_number', placeholder: 'HO-123456' },
+                    { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
+                  ].map(({ label, key, placeholder, type }) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
+                      <input
+                        type={type || 'text'}
+                        value={uploadForm[key]}
+                        onChange={e => setUploadForm(f => ({ ...f, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
+                    <input
+                      key={uploadFileKey}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={e => setUploadFile(e.target.files[0] || null)}
+                      className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {uploadFile && <p className="text-xs text-slate-500 mt-1">{uploadFile.name}</p>}
+                  </div>
+                  {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+                  {uploadSuccess && <p className="text-sm text-green-600">{uploadSuccess}</p>}
+                  <button type="submit" disabled={uploading}
+                    className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+                    {uploading ? 'Uploading…' : 'Submit Dec Page'}
+                  </button>
+                </form>
+              )}
+            </div>
 
             {/* Policy history */}
             {tenant.policies.length > 1 && (
