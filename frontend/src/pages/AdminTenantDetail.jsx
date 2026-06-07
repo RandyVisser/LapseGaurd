@@ -683,6 +683,15 @@ export default function AdminTenantDetail() {
                           <a href={p.document_url} target="_blank" rel="noopener noreferrer"
                             className="text-blue-600 hover:underline text-xs">View</a>
                         )}
+                        {p.document_url && (
+                          <button
+                            onClick={() => handleRunAi(p.id)}
+                            disabled={runningAiId === p.id}
+                            className="text-blue-600 hover:underline text-xs disabled:opacity-50"
+                          >
+                            {runningAiId === p.id ? 'Running AI…' : 'Run AI on Document'}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeletePolicy(p.id)}
                           disabled={deletingId === p.id}
