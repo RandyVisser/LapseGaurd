@@ -174,20 +174,6 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold text-slate-800 mb-3">Compliance Dashboard</h1>
             <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold text-slate-800">Condo Association</h2>
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name or unit…"
-                className="w-56 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">
-                  ✕ Clear
-                </button>
-              )}
-            </div>
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2">
                 <select
@@ -215,6 +201,20 @@ export default function AdminDashboard() {
                 </select>
               </div>
             )}
+            </div>
+            <div className="flex items-center mt-2">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or unit…"
+                className="w-56 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">
+                  ✕ Clear
+                </button>
+              )}
             </div>
           </div>
           <div className="flex items-start gap-3">
