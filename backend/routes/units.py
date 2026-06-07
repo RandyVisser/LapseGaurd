@@ -43,7 +43,7 @@ async def get_policy(
     row = await conn.fetchrow(
         """SELECT * FROM policies WHERE tenant_id = $1
            ORDER BY
-               CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
+               CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'pending_review' THEN 2 WHEN 'lapsed' THEN 3 ELSE 4 END,
                expiration_date DESC NULLS LAST,
                uploaded_at DESC
            LIMIT 1""",
