@@ -31,6 +31,8 @@ class PolicyOut(BaseModel):
     uploaded_at: datetime
     extracted_data: Optional[dict] = None
     parsed_at: Optional[datetime] = None
+    coverage_type: Optional[str] = None
+    is_current: bool = False
 
 
 class TenantDetailOut(BaseModel):
@@ -44,6 +46,7 @@ class TenantDetailOut(BaseModel):
     state: Optional[str] = None
     zip: Optional[str] = None
     policies: list[PolicyOut]
+    needs_wind_policy: bool = False
 
 
 class TenantOut(BaseModel):

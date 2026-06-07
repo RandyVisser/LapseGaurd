@@ -6,6 +6,7 @@ import asyncpg
 from models.db import get_conn
 from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
+from services.compliance import evaluate_compliance
 import os
 from services.email import send_email, admin_notify_html, invite_email_html
 
@@ -80,6 +81,9 @@ async def get_tenant_detail(
         tenant_id,
     )
 
+    evaluation = evaluate_compliance([dict(r) for r in policy_rows])
+    current_ids = evaluation["current_ids"]
+
     policies = [
         PolicyOut(
             id=r["id"],
@@ -92,6 +96,8 @@ async def get_tenant_detail(
             uploaded_at=r["uploaded_at"],
             extracted_data=json.loads(r["extracted_data"]) if r["extracted_data"] else None,
             parsed_at=r["parsed_at"],
+            coverage_type=r["coverage_type"],
+            is_current=r["id"] in current_ids,
         )
         for r in policy_rows
     ]
@@ -107,6 +113,7 @@ async def get_tenant_detail(
         state=row["state"],
         zip=row["zip"],
         policies=policies,
+        needs_wind_policy=evaluation["needs_wind_policy"],
     )
 
 

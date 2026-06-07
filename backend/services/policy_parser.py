@@ -30,6 +30,13 @@ Fields:
 - dwelling_coverage (number in dollars or null)
 - liability_coverage (number in dollars or null)
 - deductible (number in dollars or null)
+- coverage_type (string — one of "ho6_with_wind", "ho6_wind_excluded", "wind_only", or "unknown")
+
+To determine coverage_type:
+- If the dec page is a standalone wind / hurricane / named-storm-only policy (not a full HO6 walls-in policy), use "wind_only".
+- Otherwise, for an HO6 condo/homeowners policy: look for a wind, hurricane, or named-storm EXCLUSION endorsement (e.g. "Windstorm or Hail Exclusion", "Named Storm Exclusion") — if present, use "ho6_wind_excluded".
+- If instead the policy lists a wind or hurricane DEDUCTIBLE (showing wind coverage is included, not excluded), use "ho6_with_wind".
+- If you cannot tell from the document, use "unknown".
 
 Use null for any field not found."""
 

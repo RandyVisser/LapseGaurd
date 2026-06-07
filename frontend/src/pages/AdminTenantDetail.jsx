@@ -19,6 +19,116 @@ function currency(val) {
   return `$${Number(val).toLocaleString()}`
 }
 
+const STATUS_PRIORITY = { active: 0, expiring: 1, pending_review: 2, lapsed: 3, missing: 4 }
+
+function coverageLabel(coverageType) {
+  switch (coverageType) {
+    case 'ho6_with_wind': return 'HO6 Policy (Wind Included)'
+    case 'ho6_wind_excluded': return 'HO6 Policy (Wind Excluded)'
+    case 'wind_only': return 'Wind-Only Policy'
+    default: return 'Current Policy'
+  }
+}
+
+function PolicyCard({ policy, onApprove, approving }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-slate-700">{coverageLabel(policy.coverage_type)}</h2>
+        <StatusBadge status={policy.status} />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Insurer" value={policy.insurer} />
+        <Field label="Policy Number" value={policy.policy_number} />
+        <Field label="Expiration Date" value={policy.expiration_date} />
+        <Field label="Uploaded" value={new Date(policy.uploaded_at).toLocaleDateString()} />
+      </div>
+
+      {policy.document_url && (
+        <a
+          href={policy.document_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block mt-4 text-sm text-blue-600 hover:underline font-medium"
+        >
+          View Dec Page →
+        </a>
+      )}
+
+      {/* Pending review banner + approve action */}
+      {policy.status === 'pending_review' && (
+        <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <div>
+            <p className="text-blue-800 font-semibold text-sm">Pending Review</p>
+            <p className="text-blue-600 text-xs mt-0.5">Confirm named insured, address, and expiration date match before approving.</p>
+          </div>
+          <button
+            onClick={() => onApprove(policy.id)}
+            disabled={approving}
+            className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
+          >
+            {approving ? 'Approving…' : 'Approve'}
+          </button>
+        </div>
+      )}
+
+      {/* AI extracted data + validation */}
+      {policy.extracted_data && (() => {
+        const v = policy.extracted_data.validation
+        return (
+          <div className="mt-5 pt-5 border-t border-slate-100 space-y-4">
+
+            {/* Validation banner */}
+            {v && (
+              v.passed ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+                  <span className="text-green-600 font-semibold text-sm">✓ Verified</span>
+                  <span className="text-green-700 text-sm">Policy matches submitted details and is current.</span>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <p className="text-red-700 font-semibold text-sm mb-1">Issues Found</p>
+                  <ul className="space-y-1">
+                    {v.flags.map((f, i) => (
+                      <li key={i} className="text-sm text-red-600 flex gap-2">
+                        <span>•</span><span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            )}
+
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                AI Extracted Details
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Named Insured" value={policy.extracted_data.named_insured} />
+                <Field label="Property Address" value={policy.extracted_data.property_address} />
+                <Field label="Effective Date" value={policy.extracted_data.effective_date} />
+                <Field label="Expiration Date" value={policy.extracted_data.expiration_date} />
+                <Field label="Dwelling Coverage" value={currency(policy.extracted_data.dwelling_coverage)} />
+                <Field label="Liability Coverage" value={currency(policy.extracted_data.liability_coverage)} />
+                <Field label="Deductible" value={currency(policy.extracted_data.deductible)} />
+              </div>
+              {policy.parsed_at && (
+                <p className="text-xs text-slate-400 mt-3">
+                  Parsed {new Date(policy.parsed_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {policy.document_url && !policy.extracted_data && (
+        <p className="mt-4 text-xs text-slate-400 italic">AI parsing in progress…</p>
+      )}
+    </div>
+  )
+}
+
 export default function AdminTenantDetail() {
   const { tenantId } = useParams()
   const navigate = useNavigate()
@@ -110,7 +220,13 @@ export default function AdminTenantDetail() {
       .catch(e => setError(e.message))
   }, [tenantId])
 
-  const latest = tenant?.policies?.[0] || null
+  const currentPolicies = tenant?.policies?.filter(p => p.is_current) || []
+  const historyPolicies = tenant?.policies?.filter(p => !p.is_current) || []
+  const headerStatus = currentPolicies.length
+    ? currentPolicies.reduce((worst, p) =>
+        STATUS_PRIORITY[p.status] > STATUS_PRIORITY[worst] ? p.status : worst,
+        currentPolicies[0].status)
+    : 'missing'
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -148,7 +264,7 @@ export default function AdminTenantDetail() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-2">
-                {latest && <StatusBadge status={latest.status} />}
+                {tenant.policies?.length > 0 && <StatusBadge status={headerStatus} />}
                 {notifySuccess ? (
                   <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
                 ) : (
@@ -163,99 +279,23 @@ export default function AdminTenantDetail() {
               </div>
             </div>
 
-            {/* Current policy */}
-            {latest ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                <h2 className="font-semibold text-slate-700 mb-4">Current Policy</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Insurer" value={latest.insurer} />
-                  <Field label="Policy Number" value={latest.policy_number} />
-                  <Field label="Expiration Date" value={latest.expiration_date} />
-                  <Field label="Uploaded" value={new Date(latest.uploaded_at).toLocaleDateString()} />
-                </div>
-
-                {latest.document_url && (
-                  <a
-                    href={latest.document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block mt-4 text-sm text-blue-600 hover:underline font-medium"
-                  >
-                    View Dec Page →
-                  </a>
-                )}
-
-                {/* Pending review banner + approve action */}
-                {latest.status === 'pending_review' && (
-                  <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                    <div>
-                      <p className="text-blue-800 font-semibold text-sm">Pending Review</p>
-                      <p className="text-blue-600 text-xs mt-0.5">Confirm named insured, address, and expiration date match before approving.</p>
-                    </div>
-                    <button
-                      onClick={() => handleApprove(latest.id)}
-                      disabled={approving}
-                      className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
-                    >
-                      {approving ? 'Approving…' : 'Approve'}
-                    </button>
+            {/* Current policy/policies */}
+            {currentPolicies.length > 0 ? (
+              <>
+                {tenant.needs_wind_policy && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+                    <p className="font-semibold text-amber-800 text-sm">Wind-Only Policy Needed</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      This unit-owner's HO6 policy excludes wind coverage. A separate, active
+                      wind-only policy is required for them to be considered compliant —
+                      please ask them to upload one.
+                    </p>
                   </div>
                 )}
-
-                {/* AI extracted data + validation */}
-                {latest.extracted_data && (() => {
-                  const v = latest.extracted_data.validation
-                  return (
-                    <div className="mt-5 pt-5 border-t border-slate-100 space-y-4">
-
-                      {/* Validation banner */}
-                      {v && (
-                        v.passed ? (
-                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-                            <span className="text-green-600 font-semibold text-sm">✓ Verified</span>
-                            <span className="text-green-700 text-sm">Policy matches submitted details and is current.</span>
-                          </div>
-                        ) : (
-                          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                            <p className="text-red-700 font-semibold text-sm mb-1">Issues Found</p>
-                            <ul className="space-y-1">
-                              {v.flags.map((f, i) => (
-                                <li key={i} className="text-sm text-red-600 flex gap-2">
-                                  <span>•</span><span>{f}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )
-                      )}
-
-                      <div>
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-                          AI Extracted Details
-                        </p>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Field label="Named Insured" value={latest.extracted_data.named_insured} />
-                          <Field label="Property Address" value={latest.extracted_data.property_address} />
-                          <Field label="Effective Date" value={latest.extracted_data.effective_date} />
-                          <Field label="Expiration Date" value={latest.extracted_data.expiration_date} />
-                          <Field label="Dwelling Coverage" value={currency(latest.extracted_data.dwelling_coverage)} />
-                          <Field label="Liability Coverage" value={currency(latest.extracted_data.liability_coverage)} />
-                          <Field label="Deductible" value={currency(latest.extracted_data.deductible)} />
-                        </div>
-                        {latest.parsed_at && (
-                          <p className="text-xs text-slate-400 mt-3">
-                            Parsed {new Date(latest.parsed_at).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {latest.document_url && !latest.extracted_data && (
-                  <p className="mt-4 text-xs text-slate-400 italic">AI parsing in progress…</p>
-                )}
-              </div>
+                {currentPolicies.map(p => (
+                  <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
+                ))}
+              </>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-xl p-5">
                 <p className="font-semibold text-red-700">No policy on file</p>
@@ -315,13 +355,13 @@ export default function AdminTenantDetail() {
             </div>
 
             {/* Policy history */}
-            {tenant.policies.length > 1 && (
+            {historyPolicies.length > 0 && (
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100">
                   <h2 className="font-semibold text-slate-700">Policy History</h2>
                 </div>
                 <ul className="divide-y divide-slate-100">
-                  {tenant.policies.slice(1).map(p => (
+                  {historyPolicies.map(p => (
                     <li key={p.id} className="px-5 py-3 flex items-center justify-between text-sm">
                       <div>
                         <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import date, timedelta, timezone, datetime
+import hashlib
 import json
 import logging
 import asyncpg
+import httpx
 
 from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
 from models.db import get_conn, get_pool
@@ -60,19 +62,37 @@ async def get_policy(
         uploaded_at=row["uploaded_at"],
         extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
         parsed_at=row["parsed_at"],
+        coverage_type=row["coverage_type"],
     )
+
+
+async def _hash_document(document_url: str) -> str | None:
+    """Fetch the uploaded document and return a SHA-256 hex digest of its bytes,
+    used to detect accidental re-uploads of the same file."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as http:
+            resp = await http.get(document_url)
+            resp.raise_for_status()
+            return hashlib.sha256(resp.content).hexdigest()
+    except Exception as e:
+        logger.error(f"Failed to hash document {document_url}: {e}")
+        return None
 
 
 async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
     try:
         extracted = await parse_dec_page(document_url, submitted)
         if extracted:
+            coverage_type = extracted.get("coverage_type")
+            if coverage_type not in ("ho6_with_wind", "ho6_wind_excluded", "wind_only", "unknown"):
+                coverage_type = "unknown"
             pool = await get_pool()
             async with pool.acquire() as conn:
                 await conn.execute(
-                    "UPDATE policies SET extracted_data = $1, parsed_at = $2 WHERE id = $3",
+                    "UPDATE policies SET extracted_data = $1, parsed_at = $2, coverage_type = $3 WHERE id = $4",
                     json.dumps(extracted),
                     datetime.now(timezone.utc),
+                    coverage_type,
                     policy_id,
                 )
     except Exception as e:
@@ -117,10 +137,25 @@ async def upload_policy(
     # Uploaded proof of insurance always goes to pending review for admin sign-off
     status = PolicyStatus.pending_review if body.document_url else _compute_status(body.expiration_date)
 
+    # Detect accidental re-uploads of the exact same file for this tenant
+    document_hash = None
+    if body.document_url:
+        document_hash = await _hash_document(body.document_url)
+        if document_hash:
+            dupe = await conn.fetchrow(
+                "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
+                tenant["id"], document_hash,
+            )
+            if dupe:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This document has already been uploaded for this unit-owner — no need to upload it again."
+                )
+
     row = await conn.fetchrow(
         """
-        INSERT INTO policies (tenant_id, insurer, policy_number, expiration_date, status, document_url)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO policies (tenant_id, insurer, policy_number, expiration_date, status, document_url, document_hash)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         tenant["id"],
@@ -129,6 +164,7 @@ async def upload_policy(
         body.expiration_date,
         status.value,
         body.document_url,
+        document_hash,
     )
 
     policy = PolicyOut(
@@ -198,4 +234,5 @@ async def approve_policy(
         uploaded_at=updated["uploaded_at"],
         extracted_data=json.loads(updated["extracted_data"]) if updated["extracted_data"] else None,
         parsed_at=updated["parsed_at"],
+        coverage_type=updated["coverage_type"],
     )

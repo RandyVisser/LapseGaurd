@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from models.schemas import UnitComplianceOut, ComplianceSummary, PolicyStatus
 from models.db import get_conn
 from auth.jwt import AuthUser, require_hoa_admin
+from services.compliance import evaluate_compliance
 
 
 class UnitCreate(BaseModel):
@@ -27,6 +28,22 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
         return
     if user.hoa_id and user.hoa_id != hoa_id:
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
+
+
+async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: list) -> dict:
+    """Evaluate each tenant's overall compliance status, accounting for the
+    HO6-with-wind vs (HO6-wind-excluded + standalone wind) coverage combo."""
+    if not tenant_ids:
+        return {}
+    rows = await conn.fetch(
+        """SELECT id, tenant_id, status, coverage_type, expiration_date, uploaded_at
+           FROM policies WHERE tenant_id = ANY($1::uuid[])""",
+        tenant_ids,
+    )
+    by_tenant: dict = {}
+    for r in rows:
+        by_tenant.setdefault(r["tenant_id"], []).append(dict(r))
+    return {tid: evaluate_compliance(policies)["status"] for tid, policies in by_tenant.items()}
 
 
 class HoaOut(BaseModel):
@@ -108,24 +125,17 @@ async def list_units(
             u.purchase_date,
             t.name AS tenant_name,
             t.email AS tenant_email,
-            t.id AS tenant_id,
-            COALESCE(p.status, 'missing') AS status
+            t.id AS tenant_id
         FROM units u
         LEFT JOIN tenants t ON t.unit_id = u.id
-        LEFT JOIN LATERAL (
-            SELECT status FROM policies
-            WHERE tenant_id = t.id
-            ORDER BY
-                CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
-                expiration_date DESC NULLS LAST,
-                uploaded_at DESC
-            LIMIT 1
-        ) p ON true
         WHERE u.hoa_id = $1
         ORDER BY u.unit_number
         """,
         hoa_id,
     )
+
+    tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
+    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
 
     return [
         UnitComplianceOut(
@@ -151,7 +161,7 @@ async def list_units(
             email_secondary=r["email_secondary"],
             purchase_date=r["purchase_date"],
             tenant_id=r["tenant_id"],
-            status=r["status"] or PolicyStatus.missing,
+            status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
         )
         for r in rows
     ]
@@ -165,40 +175,45 @@ async def compliance_summary(
 ):
     await _assert_hoa_access(user, hoa_id, conn)
 
-    row = await conn.fetchrow(
-        """
-        SELECT
-            COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title IS DISTINCT FROM 'Property Manager') AS total_units,
-            COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title IS NOT NULL AND u.assoc_title != '' AND u.assoc_title != 'Property Manager') AS board_members,
-            COUNT(DISTINCT u.id) FILTER (WHERE u.assoc_title = 'Property Manager') AS property_managers,
-            COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'active') AS compliant,
-            COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'expiring') AS expiring,
-            COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'lapsed') AS lapsed,
-            COUNT(DISTINCT u.id) FILTER (WHERE COALESCE(p.status, 'missing') = 'missing') AS missing
-        FROM units u
-        LEFT JOIN tenants t ON t.unit_id = u.id
-        LEFT JOIN LATERAL (
-            SELECT status FROM policies
-            WHERE tenant_id = t.id
-            ORDER BY
-                CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'lapsed' THEN 2 ELSE 3 END,
-                expiration_date DESC NULLS LAST,
-                uploaded_at DESC
-            LIMIT 1
-        ) p ON true
-        WHERE u.hoa_id = $1
-        """,
+    rows = await conn.fetch(
+        """SELECT u.id AS unit_id, u.assoc_title, t.id AS tenant_id
+           FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
+           WHERE u.hoa_id = $1""",
         hoa_id,
     )
 
+    tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
+    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
+
+    total_units = board_members = property_managers = 0
+    compliant = expiring = lapsed = missing = 0
+    for r in rows:
+        is_pm = r["assoc_title"] == "Property Manager"
+        if not is_pm:
+            total_units += 1
+        if is_pm:
+            property_managers += 1
+        elif r["assoc_title"]:
+            board_members += 1
+
+        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
+        if status == PolicyStatus.active.value:
+            compliant += 1
+        elif status == PolicyStatus.expiring.value:
+            expiring += 1
+        elif status == PolicyStatus.lapsed.value:
+            lapsed += 1
+        elif status == PolicyStatus.missing.value:
+            missing += 1
+
     return ComplianceSummary(
-        total_units=row["total_units"],
-        board_members=row["board_members"],
-        property_managers=row["property_managers"],
-        compliant=row["compliant"],
-        expiring=row["expiring"],
-        lapsed=row["lapsed"],
-        missing=row["missing"],
+        total_units=total_units,
+        board_members=board_members,
+        property_managers=property_managers,
+        compliant=compliant,
+        expiring=expiring,
+        lapsed=lapsed,
+        missing=missing,
     )
 
 
