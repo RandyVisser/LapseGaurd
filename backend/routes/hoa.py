@@ -56,6 +56,9 @@ class HoaOut(BaseModel):
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
     ho6_additional_interest_required: bool = False
+    ho6_policy_in_force_required: bool = True
+    ho6_named_insured_match_required: bool = True
+    ho6_property_address_match_required: bool = True
 
 
 _HOA_SEARCH_FIELDS = """
@@ -65,6 +68,9 @@ _HOA_SEARCH_FIELDS = """
     h.ho6_coverage_e_min,
     h.ho6_wind_required,
     h.ho6_additional_interest_required,
+    h.ho6_policy_in_force_required,
+    h.ho6_named_insured_match_required,
+    h.ho6_property_address_match_required,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1) AS corp_name,
     (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1) AS sunbiz_doc_number
@@ -100,6 +106,9 @@ async def list_hoas(
             ho6_coverage_e_min=r["ho6_coverage_e_min"],
             ho6_wind_required=r["ho6_wind_required"],
             ho6_additional_interest_required=r["ho6_additional_interest_required"],
+            ho6_policy_in_force_required=r["ho6_policy_in_force_required"],
+            ho6_named_insured_match_required=r["ho6_named_insured_match_required"],
+            ho6_property_address_match_required=r["ho6_property_address_match_required"],
         )
         for r in rows
     ]

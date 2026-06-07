@@ -229,8 +229,9 @@ export default function AdminDashboard() {
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
-            const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required } = selectedHoa
+            const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required, ho6_named_insured_match_required, ho6_property_address_match_required } = selectedHoa
             const fmt = v => v == null ? 'Not Selected' : `$${Number(v).toLocaleString()}`
+            const req = v => v ? 'Required' : 'Not Required'
             return (
               <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
                 {selectedHoa.corp_name && (
@@ -242,15 +243,15 @@ export default function AdminDashboard() {
                 <ul className="text-slate-600 space-y-0.5">
                   <li className="flex items-center justify-between gap-6">
                     <span>Policy In-Force</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{req(ho6_policy_in_force_required)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-6">
                     <span>Named Insured Matches</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{req(ho6_named_insured_match_required)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-6">
                     <span>Property Address Matches</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{req(ho6_property_address_match_required)}</span>
                   </li>
                   <li className="flex items-center justify-between gap-6">
                     <span>Coverage A (Dwelling) min</span>

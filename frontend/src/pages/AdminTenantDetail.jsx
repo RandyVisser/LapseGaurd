@@ -437,15 +437,15 @@ export default function AdminTenantDetail() {
               <ul className="text-slate-600 space-y-1">
                   <li className="flex items-center justify-between gap-6">
                     <span>Policy In-Force</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{tenant.ho6_policy_in_force_required ? 'Required' : 'Not Required'}</span>
                   </li>
                   <li className="flex items-center justify-between gap-6">
                     <span>Named Insured Matches</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{tenant.ho6_named_insured_match_required ? 'Required' : 'Not Required'}</span>
                   </li>
                   <li className="flex items-center justify-between gap-6">
                     <span>Property Address Matches</span>
-                    <span className="font-medium text-slate-800">Yes</span>
+                    <span className="font-medium text-slate-800">{tenant.ho6_property_address_match_required ? 'Required' : 'Not Required'}</span>
                   </li>
                 <li className="flex items-center justify-between gap-6">
                   <span>Coverage A (Dwelling) min</span>

@@ -8,6 +8,7 @@ export default function Signup() {
   const [form, setForm] = useState({
     association_name: '', address: '', admin_name: '', email: '', password: '',
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: false, ho6_additional_interest_required: false,
+    ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -99,6 +100,36 @@ export default function Signup() {
                 />
               </div>
             </div>
+
+            <label className="flex items-center gap-2 mt-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.ho6_policy_in_force_required}
+                onChange={e => setForm(f => ({ ...f, ho6_policy_in_force_required: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Require an in-force policy on file
+            </label>
+
+            <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.ho6_named_insured_match_required}
+                onChange={e => setForm(f => ({ ...f, ho6_named_insured_match_required: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Require named insured to match unit-owner
+            </label>
+
+            <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.ho6_property_address_match_required}
+                onChange={e => setForm(f => ({ ...f, ho6_property_address_match_required: e.target.checked }))}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Require property address to match unit
+            </label>
 
             <label className="flex items-center gap-2 mt-3 text-sm text-slate-700">
               <input

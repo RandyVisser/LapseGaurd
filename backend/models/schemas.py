@@ -52,6 +52,9 @@ class TenantDetailOut(BaseModel):
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
     ho6_additional_interest_required: bool = False
+    ho6_policy_in_force_required: bool = True
+    ho6_named_insured_match_required: bool = True
+    ho6_property_address_match_required: bool = True
 
 
 class TenantOut(BaseModel):
