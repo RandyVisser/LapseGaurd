@@ -687,7 +687,7 @@ export default function AdminTenantDetail() {
                           <button
                             onClick={() => handleRunAi(p.id)}
                             disabled={runningAiId === p.id}
-                            className="text-blue-600 hover:underline text-xs disabled:opacity-50"
+                            className="text-xs font-medium px-2.5 py-1 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
                           >
                             {runningAiId === p.id ? 'Running AI…' : 'Run AI on Document'}
                           </button>
