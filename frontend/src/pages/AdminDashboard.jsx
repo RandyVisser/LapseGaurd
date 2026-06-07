@@ -273,6 +273,7 @@ export default function AdminDashboard() {
               </div>
             )
           })()}
+          </div>
         </div>
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
