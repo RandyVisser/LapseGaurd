@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, supabase } from '../supabase'
+import { apiGet, apiPost, apiDelete, supabase } from '../supabase'
 
 function Field({ label, value }) {
   if (!value) return null
@@ -261,6 +261,22 @@ export default function AdminTenantDetail() {
       setError(e.message)
     } finally {
       setSavingKey(null)
+    }
+  }
+
+  const [deletingId, setDeletingId] = useState(null)
+
+  async function handleDeletePolicy(policyId) {
+    if (!window.confirm('Delete this policy record? This cannot be undone.')) return
+    setDeletingId(policyId)
+    setError('')
+    try {
+      await apiDelete(`/policy/${policyId}`)
+      setTenant(t => ({ ...t, policies: t.policies.filter(p => p.id !== policyId) }))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -650,6 +666,13 @@ export default function AdminTenantDetail() {
                           <a href={p.document_url} target="_blank" rel="noopener noreferrer"
                             className="text-blue-600 hover:underline text-xs">View</a>
                         )}
+                        <button
+                          onClick={() => handleDeletePolicy(p.id)}
+                          disabled={deletingId === p.id}
+                          className="text-red-600 hover:underline text-xs disabled:opacity-50"
+                        >
+                          {deletingId === p.id ? 'Deleting…' : 'Delete'}
+                        </button>
                       </div>
                     </li>
                   ))}

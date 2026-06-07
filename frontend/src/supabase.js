@@ -30,6 +30,16 @@ export async function apiGet(path) {
   return _handleResponse(res)
 }
 
+export async function apiDelete(path) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  return _handleResponse(res)
+}
+
 export async function apiPost(path, body) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token

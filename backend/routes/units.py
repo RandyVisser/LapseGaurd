@@ -310,6 +310,30 @@ async def upload_policy(
     return policy
 
 
+@router.delete("/policy/{policy_id}")
+async def delete_policy(
+    policy_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Admin deletes a policy record (e.g. accidental upload, duplicate, bad entry)."""
+    row = await conn.fetchrow(
+        """SELECT p.id, u.hoa_id
+           FROM policies p
+           JOIN tenants t ON t.id = p.tenant_id
+           JOIN units u ON u.id = t.unit_id
+           WHERE p.id = $1""",
+        policy_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    await conn.execute("DELETE FROM policies WHERE id = $1", policy_id)
+    return {"deleted": True}
+
+
 @router.post("/policy/{policy_id}/approve", response_model=PolicyOut)
 async def approve_policy(
     policy_id: str,
