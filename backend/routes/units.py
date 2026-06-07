@@ -28,7 +28,7 @@ async def get_policy(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     tenant = await conn.fetchrow(
-        "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR $3 = 'hoa_admin')",
+        "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR $3 IN ('hoa_admin','super_user','property_manager'))",
         unit_id, user.sub, user.role,
     )
     if tenant is None:
@@ -86,7 +86,7 @@ async def upload_policy(
         unit_id,
         user.sub,
     )
-    if tenant is None and user.role != "hoa_admin":
+    if tenant is None and user.role not in ("hoa_admin", "super_user", "property_manager"):
         raise HTTPException(status_code=403, detail="Not your unit")
 
     # For admin posting on behalf of tenant, find tenant for unit

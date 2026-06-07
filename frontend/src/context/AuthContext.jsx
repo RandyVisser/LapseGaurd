@@ -8,6 +8,8 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [tenantProfile, setTenantProfile] = useState(null)
   const [profileError, setProfileError] = useState(null)
+  const [availableHoas, setAvailableHoas] = useState([])
+  const [selectedHoaId, setSelectedHoaId] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -35,13 +37,29 @@ export function AuthProvider({ children }) {
     }
   }, [session?.user?.id, role])
 
+  useEffect(() => {
+    if (session && (role === 'super_user' || role === 'property_manager')) {
+      apiGet('/hoas').then(list => {
+        setAvailableHoas(list)
+        setSelectedHoaId(prev => prev || list[0]?.id || null)
+      }).catch(() => {})
+    }
+  }, [session?.user?.id, role])
+
+  const effectiveHoaId = (role === 'super_user' || role === 'property_manager')
+    ? selectedHoaId
+    : (hoaId || tenantProfile?.hoa_id || null)
+
   return (
     <AuthContext.Provider value={{
       loading,
       session,
       user: session?.user || null,
       role,
-      hoaId: hoaId || tenantProfile?.hoa_id || null,
+      hoaId: effectiveHoaId,
+      availableHoas,
+      selectedHoaId,
+      setSelectedHoaId,
       unitId: tenantProfile?.unit_id || null,
       tenantProfile,
       profileError,

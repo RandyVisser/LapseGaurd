@@ -36,7 +36,7 @@ function StatCard({ label, value, sublabel, color, active, onClick }) {
 }
 
 export default function AdminDashboard() {
-  const { hoaId } = useAuth()
+  const { hoaId, role, availableHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
@@ -116,7 +116,20 @@ export default function AdminDashboard() {
       <Nav role="hoa_admin" />
       <main className="max-w-full mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Compliance Overview</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-slate-800">Compliance Overview</h1>
+            {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
+              <select
+                value={selectedHoaId || ''}
+                onChange={e => setSelectedHoaId(e.target.value)}
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {availableHoas.map(h => (
+                  <option key={h.id} value={h.id}>{h.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <form onSubmit={handleAddUnit} className="flex gap-2">
             <input
               value={newUnit}

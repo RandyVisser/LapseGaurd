@@ -14,9 +14,45 @@ class UnitCreate(BaseModel):
 router = APIRouter()
 
 
-def _assert_hoa_access(user: AuthUser, hoa_id: str):
+async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connection):
+    if user.role == "super_user":
+        return
+    if user.role == "property_manager":
+        row = await conn.fetchrow(
+            "SELECT 1 FROM property_manager_hoas WHERE supabase_user_id = $1 AND hoa_id = $2",
+            user.sub, hoa_id,
+        )
+        if row is None:
+            raise HTTPException(status_code=403, detail="Access denied to this HOA")
+        return
     if user.hoa_id and user.hoa_id != hoa_id:
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
+
+
+class HoaOut(BaseModel):
+    id: str
+    name: str
+
+
+@router.get("/hoas", response_model=List[HoaOut])
+async def list_hoas(
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """List HOAs the current user can access (for the HOA switcher)."""
+    if user.role == "super_user":
+        rows = await conn.fetch("SELECT id, name FROM hoas ORDER BY name")
+    elif user.role == "property_manager":
+        rows = await conn.fetch(
+            """SELECT h.id, h.name FROM hoas h
+               JOIN property_manager_hoas pmh ON pmh.hoa_id = h.id
+               WHERE pmh.supabase_user_id = $1
+               ORDER BY h.name""",
+            user.sub,
+        )
+    else:
+        rows = await conn.fetch("SELECT id, name FROM hoas WHERE id = $1", user.hoa_id)
+    return [HoaOut(id=str(r["id"]), name=r["name"]) for r in rows]
 
 
 @router.get("/hoa/{hoa_id}/units", response_model=List[UnitComplianceOut])
@@ -25,7 +61,7 @@ async def list_units(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    _assert_hoa_access(user, hoa_id)
+    await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
         """
@@ -106,7 +142,7 @@ async def compliance_summary(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    _assert_hoa_access(user, hoa_id)
+    await _assert_hoa_access(user, hoa_id, conn)
 
     row = await conn.fetchrow(
         """
@@ -152,7 +188,7 @@ async def add_unit(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    _assert_hoa_access(user, hoa_id)
+    await _assert_hoa_access(user, hoa_id, conn)
     row = await conn.fetchrow(
         "INSERT INTO units (hoa_id, unit_number) VALUES ($1, $2) RETURNING id, unit_number",
         hoa_id, body.unit_number,

@@ -69,8 +69,14 @@ async def get_current_user(
 
 
 async def require_hoa_admin(user: AuthUser = Security(get_current_user)) -> AuthUser:
-    if user.role != "hoa_admin":
+    if user.role not in ("hoa_admin", "super_user", "property_manager"):
         raise HTTPException(status_code=403, detail="HOA admin access required")
+    return user
+
+
+async def require_super_user(user: AuthUser = Security(get_current_user)) -> AuthUser:
+    if user.role != "super_user":
+        raise HTTPException(status_code=403, detail="Super user access required")
     return user
 
 

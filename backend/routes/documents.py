@@ -4,7 +4,8 @@ import asyncpg
 
 from models.schemas import DocumentCreate, DocumentOut
 from models.db import get_conn
-from auth.jwt import AuthUser, get_current_user
+from auth.jwt import AuthUser, get_current_user, require_hoa_admin
+from routes.hoa import _assert_hoa_access
 
 router = APIRouter()
 
@@ -40,13 +41,10 @@ async def list_unit_documents(
 @router.get("/hoa/{hoa_id}/documents", response_model=List[DocumentOut])
 async def list_hoa_documents(
     hoa_id: str,
-    user: AuthUser = Depends(get_current_user),
+    user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    if user.role != "hoa_admin":
-        raise HTTPException(status_code=403, detail="HOA admin access required")
-    if user.hoa_id and user.hoa_id != hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied to this HOA")
+    await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
         "SELECT * FROM documents WHERE hoa_id = $1 ORDER BY created_at DESC",
@@ -59,13 +57,10 @@ async def list_hoa_documents(
 async def upload_hoa_document(
     hoa_id: str,
     body: DocumentCreate,
-    user: AuthUser = Depends(get_current_user),
+    user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    if user.role != "hoa_admin":
-        raise HTTPException(status_code=403, detail="HOA admin access required")
-    if user.hoa_id and user.hoa_id != hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied to this HOA")
+    await _assert_hoa_access(user, hoa_id, conn)
 
     row = await conn.fetchrow(
         """
