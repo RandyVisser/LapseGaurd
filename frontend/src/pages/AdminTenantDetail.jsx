@@ -159,6 +159,26 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRu
         return (
           <div className="mt-5 pt-5 border-t border-slate-100 space-y-4">
 
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                AI Extracted Details
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Named Insured" value={policy.extracted_data.named_insured} />
+                <Field label="Property Address" value={policy.extracted_data.property_address} />
+                <Field label="Effective Date" value={policy.extracted_data.effective_date} />
+                <Field label="Expiration Date" value={policy.extracted_data.expiration_date} />
+                <Field label="Dwelling Coverage" value={currency(policy.extracted_data.dwelling_coverage)} />
+                <Field label="Liability Coverage" value={currency(policy.extracted_data.liability_coverage)} />
+                <Field label="Deductible" value={currency(policy.extracted_data.deductible)} />
+              </div>
+              {policy.parsed_at && (
+                <p className="text-xs text-slate-400 mt-3">
+                  Parsed {new Date(policy.parsed_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+
             {/* Validation banner */}
             {v && (
               v.passed ? (
@@ -179,26 +199,6 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRu
                 </div>
               )
             )}
-
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-                AI Extracted Details
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Named Insured" value={policy.extracted_data.named_insured} />
-                <Field label="Property Address" value={policy.extracted_data.property_address} />
-                <Field label="Effective Date" value={policy.extracted_data.effective_date} />
-                <Field label="Expiration Date" value={policy.extracted_data.expiration_date} />
-                <Field label="Dwelling Coverage" value={currency(policy.extracted_data.dwelling_coverage)} />
-                <Field label="Liability Coverage" value={currency(policy.extracted_data.liability_coverage)} />
-                <Field label="Deductible" value={currency(policy.extracted_data.deductible)} />
-              </div>
-              {policy.parsed_at && (
-                <p className="text-xs text-slate-400 mt-3">
-                  Parsed {new Date(policy.parsed_at).toLocaleString()}
-                </p>
-              )}
-            </div>
           </div>
         )
       })()}
