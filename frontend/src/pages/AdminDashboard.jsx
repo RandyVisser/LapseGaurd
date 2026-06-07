@@ -193,7 +193,7 @@ export default function AdminDashboard() {
                 <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Subdivision"       col="subdivision"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="FEIN"              col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
