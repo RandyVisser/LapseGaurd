@@ -22,7 +22,7 @@ function SortTh({ label, col, sortCol, sortDir, onSort }) {
   )
 }
 
-function StatCard({ label, value, color, active, onClick }) {
+function StatCard({ label, value, sublabel, color, active, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -30,6 +30,7 @@ function StatCard({ label, value, color, active, onClick }) {
     >
       <span className="text-3xl font-bold">{value ?? '—'}</span>
       <span className="text-sm text-slate-500">{label}</span>
+      {sublabel && <span className="text-xs text-slate-400">{sublabel}</span>}
     </button>
   )
 }
@@ -177,7 +178,7 @@ export default function AdminDashboard() {
 
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-            <StatCard label="Board + Property Manager" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+            <StatCard label="Board + Property Manager" value={summary.board_members + summary.property_managers} sublabel={`${summary.board_members} Board · ${summary.property_managers} PM`} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
             <StatCard label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
             <StatCard label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
             <StatCard label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />

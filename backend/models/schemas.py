@@ -78,6 +78,7 @@ class UnitComplianceOut(BaseModel):
 class ComplianceSummary(BaseModel):
     total_units: int
     board_members: int
+    property_managers: int
     compliant: int
     expiring: int
     lapsed: int
