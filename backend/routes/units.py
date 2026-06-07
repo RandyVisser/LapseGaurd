@@ -86,8 +86,27 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
             coverage_type = extracted.get("coverage_type")
             if coverage_type not in ("ho6_with_wind", "ho6_wind_excluded", "wind_only", "unknown"):
                 coverage_type = "unknown"
+
             pool = await get_pool()
             async with pool.acquire() as conn:
+                if coverage_type == "ho6_wind_excluded":
+                    policy_row = await conn.fetchrow(
+                        "SELECT tenant_id FROM policies WHERE id = $1", policy_id
+                    )
+                    if policy_row:
+                        wind_policy = await conn.fetchrow(
+                            "SELECT id FROM policies WHERE tenant_id = $1 AND coverage_type = 'wind_only' AND id != $2",
+                            policy_row["tenant_id"], policy_id,
+                        )
+                        if not wind_policy:
+                            validation = extracted.get("validation") or {"passed": True, "flags": []}
+                            validation.setdefault("flags", [])
+                            validation["flags"].append(
+                                "Wind coverage excluded — no separate Wind-Only policy on file for this unit-owner"
+                            )
+                            validation["passed"] = False
+                            extracted["validation"] = validation
+
                 await conn.execute(
                     "UPDATE policies SET extracted_data = $1, parsed_at = $2, coverage_type = $3 WHERE id = $4",
                     json.dumps(extracted),
