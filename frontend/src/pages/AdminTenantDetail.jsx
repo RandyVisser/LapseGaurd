@@ -134,7 +134,9 @@ export default function AdminTenantDetail() {
               <div>
                 <h1 className="text-xl font-bold text-slate-800">{tenant.name}</h1>
                 <p className="text-sm text-slate-500 mt-1">{tenant.email}</p>
-                <p className="text-xs text-slate-400 mt-1">Unit {tenant.unit_number}</p>
+                {!(tenant.street_address || tenant.city || tenant.state || tenant.zip) && (
+                  <p className="text-xs text-slate-400 mt-1">Unit {tenant.unit_number}</p>
+                )}
                 {(tenant.street_address || tenant.city || tenant.state || tenant.zip) && (
                   <p className="text-xs text-slate-400 mt-1">
                     {[
