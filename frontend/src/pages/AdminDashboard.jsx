@@ -46,23 +46,31 @@ export default function AdminDashboard() {
   const [newUnit, setNewUnit] = useState('')
   const [addingUnit, setAddingUnit] = useState(false)
   const [inviteUnit, setInviteUnit] = useState(null)
-  const [hoaSearch, setHoaSearch] = useState('')
+  const HOA_FIELD_OPTIONS = {
+    subdivision: { label: 'Subdivision', key: 'subdivision' },
+    corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
+    sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
+  }
+  const [hoaFieldType, setHoaFieldType] = useState('subdivision')
+  const [hoaFieldValue, setHoaFieldValue] = useState('')
 
-  const filteredHoas = (() => {
-    const q = hoaSearch.trim().toLowerCase()
-    if (!q) return availableHoas
-    return availableHoas.filter(h =>
-      (h.subdivision || h.name || '').toLowerCase().includes(q) ||
-      (h.corp_name || '').toLowerCase().includes(q) ||
-      (h.sunbiz_doc_number || '').toLowerCase().includes(q)
-    )
+  const hoaFieldValues = (() => {
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const seen = new Set()
+    const vals = []
+    for (const h of availableHoas) {
+      const v = h[key]
+      if (v && !seen.has(v)) { seen.add(v); vals.push(v) }
+    }
+    return vals
   })()
 
-  useEffect(() => {
-    if (hoaSearch.trim() && filteredHoas.length > 0 && !filteredHoas.some(h => h.id === selectedHoaId)) {
-      setSelectedHoaId(filteredHoas[0].id)
-    }
-  }, [hoaSearch])
+  function handleHoaFieldValueChange(value) {
+    setHoaFieldValue(value)
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const match = availableHoas.find(h => h[key] === value)
+    if (match) setSelectedHoaId(match.id)
+  }
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteType, setInviteType] = useState('primary')
   const [inviting, setInviting] = useState(false)
@@ -137,39 +145,26 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-bold text-slate-800">Condo Association</h1>
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  list="hoa-picklist"
-                  value={hoaSearch}
-                  onChange={e => {
-                    const val = e.target.value
-                    setHoaSearch(val)
-                    const match = availableHoas.find(h =>
-                      [h.subdivision, h.corp_name, h.sunbiz_doc_number].includes(val)
-                    )
-                    if (match) setSelectedHoaId(match.id)
-                  }}
-                  placeholder="Pick by subdivision, corp name, or Sunbiz Doc #…"
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
-                />
-                <datalist id="hoa-picklist">
-                  {availableHoas.filter(h => h.subdivision).map(h => (
-                    <option key={`sub-${h.id}`} value={h.subdivision} />
-                  ))}
-                  {availableHoas.filter(h => h.corp_name).map(h => (
-                    <option key={`corp-${h.id}`} value={h.corp_name} />
-                  ))}
-                  {availableHoas.filter(h => h.sunbiz_doc_number).map(h => (
-                    <option key={`doc-${h.id}`} value={h.sunbiz_doc_number} />
-                  ))}
-                </datalist>
                 <select
-                  value={selectedHoaId || ''}
-                  onChange={e => setSelectedHoaId(e.target.value)}
+                  value={hoaFieldType}
+                  onChange={e => {
+                    setHoaFieldType(e.target.value)
+                    setHoaFieldValue('')
+                  }}
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {filteredHoas.map(h => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
+                  {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
+                    <option key={key} value={key}>{opt.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={hoaFieldValue}
+                  onChange={e => handleHoaFieldValueChange(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
+                  {hoaFieldValues.map(v => (
+                    <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
               </div>
