@@ -309,17 +309,20 @@ export default function AdminDashboard() {
                       : u.status === 'missing' ? (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             if (u.tenant_id) {
                               navigate(`/admin/tenant/${u.tenant_id}`)
-                            } else {
-                              setInviteUnit(u.unit_id)
-                              setInviteEmail(u.email_primary || u.tenant_email || '')
-                              setInviteType('primary')
+                              return
+                            }
+                            try {
+                              const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
+                              navigate(`/admin/tenant/${res.id}`)
+                            } catch (err) {
+                              setError(err.message)
                             }
                           }}
                           className="cursor-pointer hover:underline decoration-dotted"
-                          title={u.tenant_id ? 'Add dec page on behalf of this unit-owner' : 'No unit-owner on file yet — invite them first to add a dec page'}
+                          title="Add dec page on behalf of this unit-owner"
                         >
                           <StatusBadge status={u.status} />
                         </button>

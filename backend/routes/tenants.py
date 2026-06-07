@@ -140,6 +140,41 @@ async def notify_tenant(
     return {"sent": True}
 
 
+@router.post("/unit/{unit_id}/tenant")
+async def create_tenant_record(
+    unit_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Create a bare unit-owner record (no Supabase login) so an admin can
+    attach a dec page mailed/faxed in by an owner who has no email on file."""
+    unit = await conn.fetchrow(
+        "SELECT id, hoa_id, unit_number, owner_primary, email_primary FROM units WHERE id = $1",
+        unit_id,
+    )
+    if not unit:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    if user.hoa_id and str(unit["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    existing = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
+    if existing:
+        return {"id": str(existing["id"])}
+
+    name = unit["owner_primary"] or f"Unit {unit['unit_number']} Owner"
+    email = unit["email_primary"] or f"no-email+{unit_id}@condo.insure"
+
+    row = await conn.fetchrow(
+        """
+        INSERT INTO tenants (unit_id, supabase_user_id, name, email)
+        VALUES ($1, NULL, $2, $3)
+        RETURNING id
+        """,
+        unit_id, name, email,
+    )
+    return {"id": str(row["id"])}
+
+
 @router.post("/unit/{unit_id}/invite")
 async def invite_tenant(
     unit_id: str,
