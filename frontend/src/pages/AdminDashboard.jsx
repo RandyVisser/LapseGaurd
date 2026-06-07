@@ -48,21 +48,10 @@ export default function AdminDashboard() {
   const [inviteUnit, setInviteUnit] = useState(null)
   const [hoaSearch, setHoaSearch] = useState('')
 
-  const filteredHoas = (() => {
-    const q = hoaSearch.trim().toLowerCase()
-    if (!q) return availableHoas
-    return availableHoas.filter(h =>
-      (h.subdivision || h.name || '').toLowerCase().includes(q) ||
-      (h.corp_name || '').toLowerCase().includes(q) ||
-      (h.sunbiz_doc_number || '').toLowerCase().includes(q)
-    )
-  })()
-
   useEffect(() => {
-    if (hoaSearch.trim() && filteredHoas.length > 0 && !filteredHoas.some(h => h.id === selectedHoaId)) {
-      setSelectedHoaId(filteredHoas[0].id)
-    }
-  }, [hoaSearch])
+    const current = availableHoas.find(h => h.id === selectedHoaId)
+    if (current) setHoaSearch(current.subdivision || current.name)
+  }, [selectedHoaId, availableHoas])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteType, setInviteType] = useState('primary')
   const [inviting, setInviting] = useState(false)
@@ -139,20 +128,32 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  list="hoa-picklist"
                   value={hoaSearch}
-                  onChange={e => setHoaSearch(e.target.value)}
-                  placeholder="Search subdivision, corp name, or Sunbiz Doc #…"
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
+                  onChange={e => {
+                    const val = e.target.value
+                    setHoaSearch(val)
+                    const match = availableHoas.find(h =>
+                      [h.name, h.subdivision, h.corp_name, h.sunbiz_doc_number].includes(val)
+                    )
+                    if (match) setSelectedHoaId(match.id)
+                  }}
+                  placeholder="Pick by subdivision, corp name, or Sunbiz Doc #…"
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
                 />
-                <select
-                  value={selectedHoaId || ''}
-                  onChange={e => setSelectedHoaId(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {filteredHoas.map(h => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
+                <datalist id="hoa-picklist">
+                  {availableHoas.map(h => (
+                    <option key={h.id} value={h.subdivision || h.name}>
+                      {[h.corp_name, h.sunbiz_doc_number && `Doc# ${h.sunbiz_doc_number}`].filter(Boolean).join(' · ')}
+                    </option>
                   ))}
-                </select>
+                  {availableHoas.filter(h => h.corp_name).map(h => (
+                    <option key={`corp-${h.id}`} value={h.corp_name} />
+                  ))}
+                  {availableHoas.filter(h => h.sunbiz_doc_number).map(h => (
+                    <option key={`doc-${h.id}`} value={h.sunbiz_doc_number} />
+                  ))}
+                </datalist>
               </div>
             )}
           </div>
