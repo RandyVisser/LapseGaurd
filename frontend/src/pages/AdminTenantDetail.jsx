@@ -404,7 +404,7 @@ export default function AdminTenantDetail() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8">
 
         <button
           onClick={() => navigate('/admin/dashboard')}
@@ -457,7 +457,7 @@ export default function AdminTenantDetail() {
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-96">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-[36rem]">
               <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
               {(() => {
                 const reviewPolicy = tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
