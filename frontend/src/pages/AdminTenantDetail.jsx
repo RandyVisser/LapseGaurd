@@ -135,6 +135,15 @@ export default function AdminTenantDetail() {
                 <h1 className="text-xl font-bold text-slate-800">{tenant.name}</h1>
                 <p className="text-sm text-slate-500 mt-1">{tenant.email}</p>
                 <p className="text-xs text-slate-400 mt-1">Unit {tenant.unit_number}</p>
+                {(tenant.street_address || tenant.city || tenant.state || tenant.zip) && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    {[
+                      tenant.street_address && `${tenant.street_address}${tenant.unit_number ? ` Unit ${tenant.unit_number}` : ''}`,
+                      [tenant.city, tenant.state].filter(Boolean).join(', '),
+                      tenant.zip,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2">
                 {latest && <StatusBadge status={latest.status} />}

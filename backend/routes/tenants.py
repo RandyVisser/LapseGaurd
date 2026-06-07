@@ -57,7 +57,8 @@ async def get_tenant_detail(
 ):
     row = await conn.fetchrow(
         """
-        SELECT t.id, t.unit_id, t.name, t.email, u.unit_number, u.hoa_id
+        SELECT t.id, t.unit_id, t.name, t.email, u.unit_number, u.hoa_id,
+               u.street_address, u.city, u.state, u.zip
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         WHERE t.id = $1
@@ -100,6 +101,10 @@ async def get_tenant_detail(
         unit_number=row["unit_number"],
         name=row["name"],
         email=row["email"],
+        street_address=row["street_address"],
+        city=row["city"],
+        state=row["state"],
+        zip=row["zip"],
         policies=policies,
     )
 

@@ -39,6 +39,10 @@ class TenantDetailOut(BaseModel):
     unit_number: str
     name: str
     email: str
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
     policies: list[PolicyOut]
 
 
