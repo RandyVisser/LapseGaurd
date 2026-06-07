@@ -58,7 +58,7 @@ async def get_policy(
         status=row["status"],
         document_url=row["document_url"],
         uploaded_at=row["uploaded_at"],
-        extracted_data=dict(row["extracted_data"]) if row["extracted_data"] else None,
+        extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
         parsed_at=row["parsed_at"],
     )
 
@@ -196,6 +196,6 @@ async def approve_policy(
         status=updated["status"],
         document_url=updated["document_url"],
         uploaded_at=updated["uploaded_at"],
-        extracted_data=dict(updated["extracted_data"]) if updated["extracted_data"] else None,
+        extracted_data=json.loads(updated["extracted_data"]) if updated["extracted_data"] else None,
         parsed_at=updated["parsed_at"],
     )

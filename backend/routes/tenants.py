@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+import json
 import asyncpg
 
 from models.db import get_conn
@@ -89,7 +90,7 @@ async def get_tenant_detail(
             status=r["status"],
             document_url=r["document_url"],
             uploaded_at=r["uploaded_at"],
-            extracted_data=dict(r["extracted_data"]) if r["extracted_data"] else None,
+            extracted_data=json.loads(r["extracted_data"]) if r["extracted_data"] else None,
             parsed_at=r["parsed_at"],
         )
         for r in policy_rows
