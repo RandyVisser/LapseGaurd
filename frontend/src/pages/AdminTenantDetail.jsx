@@ -39,6 +39,31 @@ const REVIEW_CHECKS = [
   { key: 'association_additional_interest', label: 'Association Listed as Additional Interest' },
 ]
 
+function InlinePassFail({ policy, checkKey, onSetReview, savingKey }) {
+  if (!policy) return null
+  const overrides = policy.review_overrides || {}
+  const current = overrides[checkKey]?.value
+  const saving = savingKey === `${policy.id}:${checkKey}`
+  return (
+    <div className="flex items-center gap-1">
+      {[
+        { value: 'pass', label: 'Pass', active: 'bg-green-600 text-white', idle: 'bg-green-50 text-green-700 hover:bg-green-100' },
+        { value: 'fail', label: 'Fail', active: 'bg-red-600 text-white', idle: 'bg-red-50 text-red-700 hover:bg-red-100' },
+      ].map(btn => (
+        <button
+          key={btn.value}
+          type="button"
+          disabled={saving}
+          onClick={() => onSetReview(policy.id, checkKey, btn.value)}
+          className={`text-[11px] font-medium px-2 py-0.5 rounded disabled:opacity-50 ${current === btn.value ? btn.active : btn.idle}`}
+        >
+          {btn.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ReviewChecklist({ policy, onSetReview, savingKey }) {
   const overrides = policy.review_overrides || {}
   return (
@@ -432,42 +457,33 @@ export default function AdminTenantDetail() {
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-72">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-96">
               <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
-              <ul className="text-slate-600 space-y-1">
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Policy In-Force</span>
-                    <span className="font-medium text-slate-800">{tenant.ho6_policy_in_force_required ? 'Required' : 'Not Required'}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Named Insured Matches</span>
-                    <span className="font-medium text-slate-800">{tenant.ho6_named_insured_match_required ? 'Required' : 'Not Required'}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Property Address Matches</span>
-                    <span className="font-medium text-slate-800">{tenant.ho6_property_address_match_required ? 'Required' : 'Not Required'}</span>
-                  </li>
-                <li className="flex items-center justify-between gap-6">
-                  <span>Coverage A (Dwelling) min</span>
-                  <span className="font-medium text-slate-800">
-                    {tenant.ho6_coverage_a_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_a_min).toLocaleString()}`}
-                  </span>
-                </li>
-                <li className="flex items-center justify-between gap-6">
-                  <span>Coverage E (Liability) min</span>
-                  <span className="font-medium text-slate-800">
-                    {tenant.ho6_coverage_e_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_e_min).toLocaleString()}`}
-                  </span>
-                </li>
-                <li className="flex items-center justify-between gap-6">
-                  <span>Wind Coverage</span>
-                  <span className="font-medium text-slate-800">{tenant.ho6_wind_required ? 'Required' : 'Not Required'}</span>
-                </li>
-                <li className="flex items-center justify-between gap-6">
-                  <span>Additional Interest</span>
-                  <span className="font-medium text-slate-800">{tenant.ho6_additional_interest_required ? 'Required' : 'Not Required'}</span>
-                </li>
-              </ul>
+              {(() => {
+                const reviewPolicy = tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
+                const rows = [
+                  { label: 'Policy In-Force', value: tenant.ho6_policy_in_force_required ? 'Required' : 'Not Required', key: 'policy_in_force' },
+                  { label: 'Named Insured Matches', value: tenant.ho6_named_insured_match_required ? 'Required' : 'Not Required', key: 'named_insured_match' },
+                  { label: 'Property Address Matches', value: tenant.ho6_property_address_match_required ? 'Required' : 'Not Required', key: 'property_address_match' },
+                  { label: 'Coverage A (Dwelling) min', value: tenant.ho6_coverage_a_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_a_min).toLocaleString()}`, key: 'coverage_a_min' },
+                  { label: 'Coverage E (Liability) min', value: tenant.ho6_coverage_e_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_e_min).toLocaleString()}`, key: 'coverage_e_min' },
+                  { label: 'Wind Coverage', value: tenant.ho6_wind_required ? 'Required' : 'Not Required', key: 'wind_coverage' },
+                  { label: 'Additional Interest', value: tenant.ho6_additional_interest_required ? 'Required' : 'Not Required', key: 'association_additional_interest' },
+                ]
+                return (
+                  <ul className="text-slate-600 space-y-1.5">
+                    {rows.map(r => (
+                      <li key={r.key} className="flex items-center justify-between gap-3">
+                        <span>{r.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-800">{r.value}</span>
+                          <InlinePassFail policy={reviewPolicy} checkKey={r.key} onSetReview={handleSetReview} savingKey={savingKey} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              })()}
             </div>
             </div>
 

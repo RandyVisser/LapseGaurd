@@ -25,6 +25,7 @@ class NotifyRequest(BaseModel):
 
 
 REVIEW_CHECK_KEYS = {
+    "policy_in_force",
     "named_insured_match",
     "property_address_match",
     "coverage_a_min",
