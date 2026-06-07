@@ -52,11 +52,17 @@ class HoaOut(BaseModel):
     subdivision: Optional[str] = None
     corp_name: Optional[str] = None
     sunbiz_doc_number: Optional[str] = None
+    ho6_coverage_a_min: Optional[float] = None
+    ho6_coverage_e_min: Optional[float] = None
+    ho6_wind_required: bool = False
 
 
 _HOA_SEARCH_FIELDS = """
     h.id,
     h.name,
+    h.ho6_coverage_a_min,
+    h.ho6_coverage_e_min,
+    h.ho6_wind_required,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1) AS corp_name,
     (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1) AS sunbiz_doc_number
@@ -88,6 +94,9 @@ async def list_hoas(
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             sunbiz_doc_number=r["sunbiz_doc_number"],
+            ho6_coverage_a_min=r["ho6_coverage_a_min"],
+            ho6_coverage_e_min=r["ho6_coverage_e_min"],
+            ho6_wind_required=r["ho6_wind_required"],
         )
         for r in rows
     ]
