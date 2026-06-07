@@ -76,7 +76,7 @@ function ReviewChecklist({ policy, onSetReview, savingKey }) {
   )
 }
 
-function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey }) {
+function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRunAi, runningAiId }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
@@ -91,14 +91,24 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey }) {
       </div>
 
       {policy.document_url && (
-        <a
-          href={policy.document_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block mt-4 text-sm text-blue-600 hover:underline font-medium"
-        >
-          View Dec Page →
-        </a>
+        <div className="mt-4 flex items-center gap-4">
+          <a
+            href={policy.document_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-600 hover:underline font-medium"
+          >
+            View Dec Page →
+          </a>
+          <button
+            type="button"
+            onClick={() => onRunAi(policy.id)}
+            disabled={runningAiId === policy.id}
+            className="text-sm font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+          >
+            {runningAiId === policy.id ? 'Running AI…' : 'Run AI on Document'}
+          </button>
+        </div>
       )}
 
       {/* Pending review banner + approve action */}
@@ -186,6 +196,33 @@ export default function AdminTenantDetail() {
   const [notifySuccess, setNotifySuccess] = useState(false)
   const [approving, setApproving] = useState(false)
   const [savingKey, setSavingKey] = useState(null)
+  const [runningAiId, setRunningAiId] = useState(null)
+
+  async function handleRunAi(policyId) {
+    setRunningAiId(policyId)
+    setError('')
+    try {
+      const before = tenant.policies.find(p => p.id === policyId)
+      const beforeParsedAt = before?.parsed_at
+      await apiPost(`/policy/${policyId}/run-ai`, {})
+
+      // Poll for the background parse to complete (parsed_at changes)
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 3000))
+        const fresh = await apiGet(`/tenant/${tenantId}`)
+        const updated = fresh.policies.find(p => p.id === policyId)
+        if (updated && updated.parsed_at !== beforeParsedAt) {
+          setTenant(fresh)
+          break
+        }
+        if (i === 19) setTenant(fresh)
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setRunningAiId(null)
+    }
+  }
 
   async function handleSetReview(policyId, checkKey, value) {
     const savingId = `${policyId}:${checkKey}`
@@ -438,7 +475,7 @@ export default function AdminTenantDetail() {
                 {tenant.needs_wind_policy ? (
                   <div className="grid sm:grid-cols-2 gap-4 items-start">
                     {currentPolicies.map(p => (
-                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} />
+                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} onRunAi={handleRunAi} runningAiId={runningAiId} />
                     ))}
                     <div className="bg-white rounded-xl border border-amber-300 shadow-sm p-5">
                       <h2 className="font-semibold text-slate-700">Wind-Only Policy</h2>
@@ -484,7 +521,7 @@ export default function AdminTenantDetail() {
                   </div>
                 ) : (
                   currentPolicies.map(p => (
-                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} />
+                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} onRunAi={handleRunAi} runningAiId={runningAiId} />
                   ))
                 )}
               </>

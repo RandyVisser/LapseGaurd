@@ -266,3 +266,76 @@ async def approve_policy(
         parsed_at=updated["parsed_at"],
         coverage_type=updated["coverage_type"],
     )
+
+
+@router.post("/policy/{policy_id}/run-ai", response_model=PolicyOut)
+async def run_ai_on_policy(
+    policy_id: str,
+    background_tasks: BackgroundTasks,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Manually (re-)run AI dec page parsing on a policy's attached document."""
+    row = await conn.fetchrow(
+        """
+        SELECT p.*, u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
+               u.city, u.state, u.zip, u.hoa_id
+        FROM policies p
+        JOIN tenants t ON t.id = p.tenant_id
+        JOIN units u ON u.id = t.unit_id
+        WHERE p.id = $1
+        """,
+        policy_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not row["document_url"]:
+        raise HTTPException(status_code=422, detail="This policy has no attached document to parse")
+
+    hoa_row = await conn.fetchrow(
+        "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
+        row["hoa_id"],
+    )
+
+    unit_address = None
+    if row["street_address"]:
+        parts = [row["street_address"]]
+        if row["unit_number"]:
+            parts.append(f"Unit {row['unit_number']}")
+        addr = ", ".join(parts)
+        cs = " ".join(filter(None, [row["city"], row["state"]]))
+        if cs:
+            addr += f", {cs}"
+        if row["zip"]:
+            addr += f" {row['zip']}"
+        unit_address = addr
+
+    submitted = {
+        "insurer": row["insurer"],
+        "policy_number": row["policy_number"],
+        "expiration_date": str(row["expiration_date"]) if row["expiration_date"] else None,
+        "named_insured": row["owner_primary"] or row["owner_secondary"],
+        "address": unit_address,
+        "ho6_coverage_a_min": hoa_row["ho6_coverage_a_min"] if hoa_row else None,
+        "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
+        "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
+    }
+
+    background_tasks.add_task(_run_parsing, str(row["id"]), row["document_url"], submitted)
+
+    return PolicyOut(
+        id=row["id"],
+        tenant_id=row["tenant_id"],
+        insurer=row["insurer"],
+        policy_number=row["policy_number"],
+        expiration_date=row["expiration_date"],
+        status=row["status"],
+        document_url=row["document_url"],
+        uploaded_at=row["uploaded_at"],
+        extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
+        parsed_at=row["parsed_at"],
+        coverage_type=row["coverage_type"],
+        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
+    )
