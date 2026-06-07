@@ -22,7 +22,18 @@ function SortTh({ label, col, sortCol, sortDir, onSort }) {
   )
 }
 
-function StatCard({ label, value, sublabel, color, active, onClick }) {
+function StatCard({ label, value, sublabel, color, active, onClick, compact }) {
+  if (compact) {
+    return (
+      <button
+        onClick={onClick}
+        className={`bg-white rounded-lg border shadow-sm px-3 py-2 flex flex-col text-left transition-all min-w-[88px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+      >
+        <span className="text-lg font-bold leading-tight">{value ?? '—'}</span>
+        <span className="text-[11px] text-slate-500 leading-tight whitespace-nowrap">{label}</span>
+      </button>
+    )
+  }
   return (
     <button
       onClick={onClick}
@@ -206,6 +217,16 @@ export default function AdminDashboard() {
             )}
             </div>
           </div>
+          <div className="flex items-start gap-3">
+          {summary && (
+            <div className="flex flex-wrap gap-2">
+              <StatCard compact label="Board + PM" value={summary.board_members + summary.property_managers} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+              <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+              <StatCard compact label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+              <StatCard compact label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
+              <StatCard compact label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+            </div>
+          )}
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
@@ -284,15 +305,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-            <StatCard label="Board + Property Manager" value={summary.board_members + summary.property_managers} sublabel={`${summary.board_members} Board · ${summary.property_managers} PM`} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-            <StatCard label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-            <StatCard label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-            <StatCard label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
-            <StatCard label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
-          </div>
-        )}
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
