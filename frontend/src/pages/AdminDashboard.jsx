@@ -27,10 +27,10 @@ function StatCard({ label, value, sublabel, color, active, onClick, compact }) {
     return (
       <button
         onClick={onClick}
-        className={`bg-white rounded-lg border shadow-sm px-3 py-2 flex flex-col text-left transition-all min-w-[88px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+        className={`bg-white rounded-lg border shadow-sm px-5 py-3.5 flex flex-col text-left transition-all min-w-[154px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
       >
-        <span className="text-lg font-bold leading-tight">{value ?? '—'}</span>
-        <span className="text-[11px] text-slate-500 leading-tight whitespace-nowrap">{label}</span>
+        <span className="text-3xl font-bold leading-tight">{value ?? '—'}</span>
+        <span className="text-sm text-slate-500 leading-tight whitespace-nowrap">{label}</span>
       </button>
     )
   }
