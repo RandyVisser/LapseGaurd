@@ -43,8 +43,6 @@ export default function AdminDashboard() {
   const [error, setError] = useState('')
   const [notifying, setNotifying] = useState(null)
   const [notifySuccess, setNotifySuccess] = useState(null)
-  const [newUnit, setNewUnit] = useState('')
-  const [addingUnit, setAddingUnit] = useState(false)
   const [inviteUnit, setInviteUnit] = useState(null)
   const HOA_FIELD_OPTIONS = {
     subdivision: { label: 'Subdivision', key: 'subdivision' },
@@ -83,19 +81,6 @@ export default function AdminDashboard() {
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
-  }
-
-  async function handleAddUnit(e) {
-    e.preventDefault()
-    if (!newUnit.trim()) return
-    setAddingUnit(true)
-    try {
-      await apiPost(`/hoa/${hoaId}/units`, { unit_number: newUnit.trim() })
-      setNewUnit('')
-      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-      setSummary(s); setUnits(u)
-    } catch (err) { setError(err.message) }
-    finally { setAddingUnit(false) }
   }
 
   async function handleInvite(e) {
@@ -170,18 +155,6 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-          <form onSubmit={handleAddUnit} className="flex gap-2">
-            <input
-              value={newUnit}
-              onChange={e => setNewUnit(e.target.value)}
-              placeholder="Unit number"
-              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
-            />
-            <button type="submit" disabled={addingUnit}
-              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
-              {addingUnit ? '…' : '+ Add Unit'}
-            </button>
-          </form>
         </div>
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
