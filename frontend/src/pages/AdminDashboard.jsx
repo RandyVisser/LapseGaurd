@@ -157,7 +157,7 @@ export default function AdminDashboard() {
                   required
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
-                  placeholder="tenant@email.com"
+                  placeholder="unit-owner@email.com"
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="flex gap-2">
