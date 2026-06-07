@@ -63,8 +63,14 @@ export default function AdminDashboard() {
     return vals
   })()
 
+  const ALL_HOAS = '__all__'
+
   function handleHoaFieldValueChange(value) {
     setHoaFieldValue(value)
+    if (value === ALL_HOAS) {
+      setSelectedHoaId(ALL_HOAS)
+      return
+    }
     const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
     const match = availableHoas.find(h => h[key] === value)
     if (match) setSelectedHoaId(match.id)
@@ -113,13 +119,36 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!hoaId) return
+
+    if (hoaId === ALL_HOAS) {
+      Promise.all(
+        availableHoas.map(h =>
+          Promise.all([apiGet(`/hoa/${h.id}/compliance`), apiGet(`/hoa/${h.id}/units`)])
+        )
+      )
+        .then(results => {
+          const allUnits = results.flatMap(([, u]) => u)
+          const summaries = results.map(([s]) => s)
+          const merged = summaries.reduce((acc, s) => {
+            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'missing']) {
+              acc[key] = (acc[key] || 0) + (s[key] || 0)
+            }
+            return acc
+          }, {})
+          setSummary(merged)
+          setUnits(allUnits)
+        })
+        .catch(e => setError(e.message))
+      return
+    }
+
     Promise.all([
       apiGet(`/hoa/${hoaId}/compliance`),
       apiGet(`/hoa/${hoaId}/units`),
     ])
       .then(([s, u]) => { setSummary(s); setUnits(u) })
       .catch(e => setError(e.message))
-  }, [hoaId])
+  }, [hoaId, availableHoas])
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -148,6 +177,7 @@ export default function AdminDashboard() {
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
+                  <option value={ALL_HOAS}>All</option>
                   {hoaFieldValues.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
