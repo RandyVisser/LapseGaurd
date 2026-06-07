@@ -4,7 +4,7 @@ import asyncpg
 
 from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
 from models.db import get_conn, get_pool
-from auth.jwt import AuthUser, get_current_user
+from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
 
 router = APIRouter()
@@ -101,7 +101,14 @@ async def upload_policy(
             detail=f"Policy is already expired — expiration date {body.expiration_date} is in the past. Please upload a current policy."
         )
 
-    status = _compute_status(body.expiration_date)
+    # Look up unit details for AI cross-checking (named insured + address)
+    unit_row = await conn.fetchrow(
+        "SELECT owner_primary, owner_secondary, street_address, unit_number, city, state, zip FROM units WHERE id = $1",
+        unit_id,
+    )
+
+    # Uploaded proof of insurance always goes to pending review for admin sign-off
+    status = PolicyStatus.pending_review if body.document_url else _compute_status(body.expiration_date)
 
     row = await conn.fetchrow(
         """
@@ -129,11 +136,59 @@ async def upload_policy(
     )
 
     if body.document_url:
+        unit_address = None
+        if unit_row and unit_row["street_address"]:
+            parts = [unit_row["street_address"]]
+            if unit_row["unit_number"]:
+                parts.append(f"Unit {unit_row['unit_number']}")
+            addr = ", ".join(parts)
+            cs = " ".join(filter(None, [unit_row["city"], unit_row["state"]]))
+            if cs:
+                addr += f", {cs}"
+            if unit_row["zip"]:
+                addr += f" {unit_row['zip']}"
+            unit_address = addr
+
         submitted = {
             "insurer": body.insurer,
             "policy_number": body.policy_number,
             "expiration_date": str(body.expiration_date) if body.expiration_date else None,
+            "named_insured": (unit_row["owner_primary"] or unit_row["owner_secondary"]) if unit_row else None,
+            "address": unit_address,
         }
         background_tasks.add_task(_run_parsing, str(row["id"]), body.document_url, submitted)
 
     return policy
+
+
+@router.post("/policy/{policy_id}/approve", response_model=PolicyOut)
+async def approve_policy(
+    policy_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Admin marks a pending-review policy as reviewed; status is recomputed from expiration date."""
+    row = await conn.fetchrow("SELECT * FROM policies WHERE id = $1", policy_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+
+    new_status = _compute_status(row["expiration_date"])
+
+    updated = await conn.fetchrow(
+        "UPDATE policies SET status = $1 WHERE id = $2 RETURNING *",
+        new_status.value,
+        policy_id,
+    )
+
+    return PolicyOut(
+        id=updated["id"],
+        tenant_id=updated["tenant_id"],
+        insurer=updated["insurer"],
+        policy_number=updated["policy_number"],
+        expiration_date=updated["expiration_date"],
+        status=updated["status"],
+        document_url=updated["document_url"],
+        uploaded_at=updated["uploaded_at"],
+        extracted_data=dict(updated["extracted_data"]) if updated["extracted_data"] else None,
+        parsed_at=updated["parsed_at"],
+    )

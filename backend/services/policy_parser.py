@@ -6,6 +6,7 @@ fields back on the policy row.
 import io
 import json
 import os
+import re
 import logging
 
 import httpx
@@ -22,6 +23,8 @@ Return a JSON object only — no explanation, no markdown, just the JSON.
 Fields:
 - insurer (string)
 - policy_number (string)
+- named_insured (string — the name(s) of the insured person(s) on the policy)
+- property_address (string — the insured property's address as shown on the dec page)
 - effective_date (YYYY-MM-DD or null)
 - expiration_date (YYYY-MM-DD or null)
 - dwelling_coverage (number in dollars or null)
@@ -61,6 +64,31 @@ def _validate(extracted: dict, submitted: dict) -> dict:
     ext_exp = _norm(extracted.get("expiration_date"))
     if sub_exp and ext_exp and sub_exp != ext_exp:
         flags.append(f"Expiration date mismatch — entered '{submitted['expiration_date']}', document shows '{extracted['expiration_date']}'")
+
+    # Named insured — fuzzy word-overlap match (names are often formatted differently)
+    def _name_words(s):
+        return set(w for w in re.split(r'[\s,&]+', _norm(s)) if len(w) > 1)
+
+    sub_name = submitted.get("named_insured")
+    ext_name = extracted.get("named_insured")
+    if sub_name and ext_name:
+        sub_words = _name_words(sub_name)
+        ext_words = _name_words(ext_name)
+        if sub_words and ext_words and not (sub_words & ext_words):
+            flags.append(f"Named insured mismatch — unit owner on file is '{sub_name}', document shows '{ext_name}'")
+
+    # Address — fuzzy word-overlap match (street number + street name should overlap)
+    def _addr_words(s):
+        return set(w for w in re.split(r'[\s,]+', _norm(s)) if len(w) > 1)
+
+    sub_addr = submitted.get("address")
+    ext_addr = extracted.get("property_address")
+    if sub_addr and ext_addr:
+        sub_words = _addr_words(sub_addr)
+        ext_words = _addr_words(ext_addr)
+        overlap = sub_words & ext_words
+        if sub_words and ext_words and len(overlap) < 2:
+            flags.append(f"Property address mismatch — unit address on file is '{sub_addr}', document shows '{ext_addr}'")
 
     return {"passed": len(flags) == 0, "flags": flags}
 

@@ -10,6 +10,7 @@ class PolicyStatus(str, Enum):
     expiring = "expiring"
     lapsed = "lapsed"
     missing = "missing"
+    pending_review = "pending_review"
 
 
 class PolicyCreate(BaseModel):

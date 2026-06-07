@@ -26,6 +26,23 @@ export default function AdminTenantDetail() {
   const [error, setError] = useState('')
   const [notifying, setNotifying] = useState(false)
   const [notifySuccess, setNotifySuccess] = useState(false)
+  const [approving, setApproving] = useState(false)
+
+  async function handleApprove(policyId) {
+    setApproving(true)
+    setError('')
+    try {
+      const updated = await apiPost(`/policy/${policyId}/approve`, {})
+      setTenant(t => ({
+        ...t,
+        policies: t.policies.map(p => p.id === updated.id ? { ...p, status: updated.status } : p),
+      }))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setApproving(false)
+    }
+  }
 
   async function handleNotify() {
     setNotifying(true)
@@ -111,6 +128,23 @@ export default function AdminTenantDetail() {
                   </a>
                 )}
 
+                {/* Pending review banner + approve action */}
+                {latest.status === 'pending_review' && (
+                  <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <div>
+                      <p className="text-blue-800 font-semibold text-sm">Pending Review</p>
+                      <p className="text-blue-600 text-xs mt-0.5">Confirm named insured, address, and expiration date match before approving.</p>
+                    </div>
+                    <button
+                      onClick={() => handleApprove(latest.id)}
+                      disabled={approving}
+                      className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
+                    >
+                      {approving ? 'Approving…' : 'Approve'}
+                    </button>
+                  </div>
+                )}
+
                 {/* AI extracted data + validation */}
                 {latest.extracted_data && (() => {
                   const v = latest.extracted_data.validation
@@ -143,6 +177,8 @@ export default function AdminTenantDetail() {
                           AI Extracted Details
                         </p>
                         <div className="grid grid-cols-2 gap-4">
+                          <Field label="Named Insured" value={latest.extracted_data.named_insured} />
+                          <Field label="Property Address" value={latest.extracted_data.property_address} />
                           <Field label="Effective Date" value={latest.extracted_data.effective_date} />
                           <Field label="Expiration Date" value={latest.extracted_data.expiration_date} />
                           <Field label="Dwelling Coverage" value={currency(latest.extracted_data.dwelling_coverage)} />
