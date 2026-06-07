@@ -139,11 +139,30 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  list="hoa-picklist"
                   value={hoaSearch}
-                  onChange={e => setHoaSearch(e.target.value)}
-                  placeholder="Search subdivision, corp name, or Sunbiz Doc #…"
+                  onChange={e => {
+                    const val = e.target.value
+                    setHoaSearch(val)
+                    const match = availableHoas.find(h =>
+                      [h.subdivision, h.corp_name, h.sunbiz_doc_number].includes(val)
+                    )
+                    if (match) setSelectedHoaId(match.id)
+                  }}
+                  placeholder="Pick by subdivision, corp name, or Sunbiz Doc #…"
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
                 />
+                <datalist id="hoa-picklist">
+                  {availableHoas.filter(h => h.subdivision).map(h => (
+                    <option key={`sub-${h.id}`} value={h.subdivision} />
+                  ))}
+                  {availableHoas.filter(h => h.corp_name).map(h => (
+                    <option key={`corp-${h.id}`} value={h.corp_name} />
+                  ))}
+                  {availableHoas.filter(h => h.sunbiz_doc_number).map(h => (
+                    <option key={`doc-${h.id}`} value={h.sunbiz_doc_number} />
+                  ))}
+                </datalist>
                 <select
                   value={selectedHoaId || ''}
                   onChange={e => setSelectedHoaId(e.target.value)}
