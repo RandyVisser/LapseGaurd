@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
   }, [session?.user?.id, role])
 
   useEffect(() => {
-    if (session && (role === 'super_user' || role === 'property_manager')) {
+    if (session && (role === 'super_user' || role === 'property_manager' || role === 'hoa_admin')) {
       apiGet('/hoas').then(list => {
         setAvailableHoas(list)
         setSelectedHoaId(prev => prev || list[0]?.id || null)
