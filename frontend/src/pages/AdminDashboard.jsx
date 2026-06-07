@@ -46,6 +46,23 @@ export default function AdminDashboard() {
   const [newUnit, setNewUnit] = useState('')
   const [addingUnit, setAddingUnit] = useState(false)
   const [inviteUnit, setInviteUnit] = useState(null)
+  const [hoaSearch, setHoaSearch] = useState('')
+
+  const filteredHoas = (() => {
+    const q = hoaSearch.trim().toLowerCase()
+    if (!q) return availableHoas
+    return availableHoas.filter(h =>
+      (h.subdivision || h.name || '').toLowerCase().includes(q) ||
+      (h.corp_name || '').toLowerCase().includes(q) ||
+      (h.sunbiz_doc_number || '').toLowerCase().includes(q)
+    )
+  })()
+
+  useEffect(() => {
+    if (hoaSearch.trim() && filteredHoas.length > 0 && !filteredHoas.some(h => h.id === selectedHoaId)) {
+      setSelectedHoaId(filteredHoas[0].id)
+    }
+  }, [hoaSearch])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteType, setInviteType] = useState('primary')
   const [inviting, setInviting] = useState(false)
@@ -119,15 +136,24 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-slate-800">Condo Association</h1>
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
-              <select
-                value={selectedHoaId || ''}
-                onChange={e => setSelectedHoaId(e.target.value)}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {availableHoas.map(h => (
-                  <option key={h.id} value={h.id}>{h.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={hoaSearch}
+                  onChange={e => setHoaSearch(e.target.value)}
+                  placeholder="Search subdivision, corp name, or Sunbiz Doc #…"
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
+                />
+                <select
+                  value={selectedHoaId || ''}
+                  onChange={e => setSelectedHoaId(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {filteredHoas.map(h => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
           <form onSubmit={handleAddUnit} className="flex gap-2">

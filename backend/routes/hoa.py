@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from typing import List, Optional
 import asyncpg
 from pydantic import BaseModel
 
@@ -32,6 +32,18 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
 class HoaOut(BaseModel):
     id: str
     name: str
+    subdivision: Optional[str] = None
+    corp_name: Optional[str] = None
+    sunbiz_doc_number: Optional[str] = None
+
+
+_HOA_SEARCH_FIELDS = """
+    h.id,
+    h.name,
+    (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
+    (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1) AS corp_name,
+    (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1) AS sunbiz_doc_number
+"""
 
 
 @router.get("/hoas", response_model=List[HoaOut])
@@ -41,18 +53,27 @@ async def list_hoas(
 ):
     """List HOAs the current user can access (for the HOA switcher)."""
     if user.role == "super_user":
-        rows = await conn.fetch("SELECT id, name FROM hoas ORDER BY name")
+        rows = await conn.fetch(f"SELECT {_HOA_SEARCH_FIELDS} FROM hoas h ORDER BY h.name")
     elif user.role == "property_manager":
         rows = await conn.fetch(
-            """SELECT h.id, h.name FROM hoas h
+            f"""SELECT {_HOA_SEARCH_FIELDS} FROM hoas h
                JOIN property_manager_hoas pmh ON pmh.hoa_id = h.id
                WHERE pmh.supabase_user_id = $1
                ORDER BY h.name""",
             user.sub,
         )
     else:
-        rows = await conn.fetch("SELECT id, name FROM hoas WHERE id = $1", user.hoa_id)
-    return [HoaOut(id=str(r["id"]), name=r["name"]) for r in rows]
+        rows = await conn.fetch(f"SELECT {_HOA_SEARCH_FIELDS} FROM hoas h WHERE h.id = $1", user.hoa_id)
+    return [
+        HoaOut(
+            id=str(r["id"]),
+            name=r["name"],
+            subdivision=r["subdivision"],
+            corp_name=r["corp_name"],
+            sunbiz_doc_number=r["sunbiz_doc_number"],
+        )
+        for r in rows
+    ]
 
 
 @router.get("/hoa/{hoa_id}/units", response_model=List[UnitComplianceOut])
