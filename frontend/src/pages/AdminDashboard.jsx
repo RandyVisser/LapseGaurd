@@ -245,7 +245,11 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.assoc_title || '—'}</td>
+                  <td className="px-4 py-3">
+                    {u.assoc_title
+                      ? <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-300">{u.assoc_title}</span>
+                      : <span className="text-slate-400">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
