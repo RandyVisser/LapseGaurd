@@ -438,20 +438,22 @@ export default function AdminTenantDetail() {
                     ].filter(Boolean).join(' · ')}
                   </p>
                 )}
+                <div className="mt-2">
+                  {notifySuccess ? (
+                    <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
+                  ) : (
+                    <button
+                      onClick={handleNotify}
+                      disabled={notifying}
+                      className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
+                    >
+                      {notifying ? 'Sending…' : 'Notify Unit-Owner'}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {tenant.policies?.length > 0 && <StatusBadge status={headerStatus} />}
-                {notifySuccess ? (
-                  <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
-                ) : (
-                  <button
-                    onClick={handleNotify}
-                    disabled={notifying}
-                    className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
-                  >
-                    {notifying ? 'Sending…' : 'Notify Unit-Owner'}
-                  </button>
-                )}
               </div>
             </div>
 
