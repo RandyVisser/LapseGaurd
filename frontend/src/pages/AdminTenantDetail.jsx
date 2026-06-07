@@ -125,22 +125,36 @@ function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRu
           >
             View Dec Page →
           </a>
-          <button
-            type="button"
-            onClick={() => onRunAi(policy.id)}
-            disabled={runningAiId === policy.id}
-            className="text-sm font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
-          >
-            {runningAiId === policy.id ? 'Running AI…' : 'Run AI on Document'}
-          </button>
+          {policy.status !== 'pending_review' && (
+            <button
+              type="button"
+              onClick={() => onRunAi(policy.id)}
+              disabled={runningAiId === policy.id}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+            >
+              {runningAiId === policy.id ? 'Running AI…' : 'Run AI on Document'}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Pending review banner + approve action */}
+      {/* Pending review banner + run AI + approve actions */}
       {policy.status === 'pending_review' && (
         <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
           <div>
-            <p className="text-blue-800 font-semibold text-sm">Pending Review</p>
+            <p className="text-blue-800 font-semibold text-sm">
+              Pending Review
+              {policy.document_url && (
+                <button
+                  type="button"
+                  onClick={() => onRunAi(policy.id)}
+                  disabled={runningAiId === policy.id}
+                  className="ml-2 align-middle text-xs font-medium px-2.5 py-1 rounded-lg border border-blue-300 text-blue-700 bg-white hover:bg-blue-100 disabled:opacity-50"
+                >
+                  {runningAiId === policy.id ? 'Running AI…' : 'Run AI on Document'}
+                </button>
+              )}
+            </p>
             <p className="text-blue-600 text-xs mt-0.5">Confirm named insured, address, and expiration date match before approving.</p>
           </div>
           <button
