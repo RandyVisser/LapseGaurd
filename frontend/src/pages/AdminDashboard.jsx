@@ -216,17 +216,17 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
+            {summary && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <StatCard compact label="Board + PM" value={summary.board_members + summary.property_managers} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                <StatCard compact label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                <StatCard compact label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
+                <StatCard compact label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+              </div>
+            )}
           </div>
           <div className="flex items-start gap-3">
-          {summary && (
-            <div className="flex flex-wrap gap-2">
-              <StatCard compact label="Board + PM" value={summary.board_members + summary.property_managers} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-              <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-              <StatCard compact label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-              <StatCard compact label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
-              <StatCard compact label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
-            </div>
-          )}
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
