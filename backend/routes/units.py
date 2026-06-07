@@ -80,6 +80,68 @@ async def _hash_document(document_url: str) -> str | None:
         return None
 
 
+def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str, has_wind_only_companion: bool) -> dict:
+    """Automatically evaluate each HO-6 requirement against the parsed dec page
+    and association settings, returning a dict of {check_key: 'pass'|'fail'}.
+    Only includes keys that can be confidently determined from extracted data."""
+    flags = (extracted.get("validation") or {}).get("flags") or []
+    flags_text = " | ".join(flags)
+    result = {}
+
+    # Policy In-Force — based on expiration date
+    exp = extracted.get("expiration_date") or submitted.get("expiration_date")
+    if exp:
+        try:
+            exp_date = date.fromisoformat(str(exp)[:10])
+            result["policy_in_force"] = "pass" if exp_date >= date.today() else "fail"
+        except (TypeError, ValueError):
+            pass
+
+    # Named Insured Matches
+    if submitted.get("named_insured") and extracted.get("named_insured"):
+        result["named_insured_match"] = "fail" if "Named insured mismatch" in flags_text else "pass"
+
+    # Property Address Matches
+    if submitted.get("address") and extracted.get("property_address"):
+        result["property_address_match"] = "fail" if "Property address mismatch" in flags_text else "pass"
+
+    # Coverage A (Dwelling) min
+    a_min = submitted.get("ho6_coverage_a_min")
+    dwelling = extracted.get("dwelling_coverage")
+    if a_min is not None:
+        if dwelling is not None:
+            try:
+                result["coverage_a_min"] = "pass" if float(dwelling) >= float(a_min) else "fail"
+            except (TypeError, ValueError):
+                pass
+        else:
+            result["coverage_a_min"] = "fail"
+    elif dwelling is not None:
+        result["coverage_a_min"] = "pass"
+
+    # Coverage E (Liability) min
+    e_min = submitted.get("ho6_coverage_e_min")
+    liability = extracted.get("liability_coverage")
+    if e_min is not None:
+        if liability is not None:
+            try:
+                result["coverage_e_min"] = "pass" if float(liability) >= float(e_min) else "fail"
+            except (TypeError, ValueError):
+                pass
+        else:
+            result["coverage_e_min"] = "fail"
+    elif liability is not None:
+        result["coverage_e_min"] = "pass"
+
+    # Wind Coverage
+    if coverage_type in ("ho6_with_wind", "wind_only"):
+        result["wind_coverage"] = "pass"
+    elif coverage_type == "ho6_wind_excluded":
+        result["wind_coverage"] = "pass" if has_wind_only_companion else "fail"
+
+    return result
+
+
 async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
     try:
         extracted = await parse_dec_page(document_url, submitted)
@@ -90,6 +152,7 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
 
             pool = await get_pool()
             async with pool.acquire() as conn:
+                has_wind_only_companion = True
                 if coverage_type == "ho6_wind_excluded":
                     policy_row = await conn.fetchrow(
                         "SELECT tenant_id FROM policies WHERE id = $1", policy_id
@@ -99,6 +162,7 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                             "SELECT id FROM policies WHERE tenant_id = $1 AND coverage_type = 'wind_only' AND id != $2",
                             policy_row["tenant_id"], policy_id,
                         )
+                        has_wind_only_companion = wind_policy is not None
                         if not wind_policy:
                             validation = extracted.get("validation") or {"passed": True, "flags": []}
                             validation.setdefault("flags", [])
@@ -108,11 +172,23 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                             validation["passed"] = False
                             extracted["validation"] = validation
 
+                auto_results = _auto_review_overrides(extracted, submitted, coverage_type, has_wind_only_companion)
+                now_iso = datetime.now(timezone.utc).isoformat()
+
+                existing_row = await conn.fetchrow("SELECT review_overrides FROM policies WHERE id = $1", policy_id)
+                overrides = existing_row["review_overrides"] if existing_row else None
+                if isinstance(overrides, str):
+                    overrides = json.loads(overrides)
+                overrides = dict(overrides or {})
+                for key, value in auto_results.items():
+                    overrides[key] = {"value": value, "by": "AI (Run AI on Document)", "at": now_iso}
+
                 await conn.execute(
-                    "UPDATE policies SET extracted_data = $1, parsed_at = $2, coverage_type = $3 WHERE id = $4",
+                    "UPDATE policies SET extracted_data = $1, parsed_at = $2, coverage_type = $3, review_overrides = $4 WHERE id = $5",
                     json.dumps(extracted),
                     datetime.now(timezone.utc),
                     coverage_type,
+                    json.dumps(overrides),
                     policy_id,
                 )
     except Exception as e:
