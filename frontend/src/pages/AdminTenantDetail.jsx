@@ -145,6 +145,13 @@ export default function AdminTenantDetail() {
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState('')
 
+  const [windForm, setWindForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
+  const [windFile, setWindFile] = useState(null)
+  const [windFileKey, setWindFileKey] = useState(0)
+  const [windUploading, setWindUploading] = useState(false)
+  const [windError, setWindError] = useState('')
+  const [windSuccess, setWindSuccess] = useState('')
+
   async function handleUploadSubmit(e) {
     e.preventDefault()
     setUploadError(''); setUploadSuccess('')
@@ -181,6 +188,45 @@ export default function AdminTenantDetail() {
       setUploadError(e.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleWindUploadSubmit(e) {
+    e.preventDefault()
+    setWindError(''); setWindSuccess('')
+
+    if (windForm.expiration_date && new Date(windForm.expiration_date) < new Date()) {
+      setWindError('Policy is already expired — please upload a current policy.')
+      return
+    }
+
+    setWindUploading(true)
+    try {
+      let document_url = null
+      if (windFile) {
+        const ext = windFile.name.split('.').pop()
+        const path = `${tenant.unit_id}/${Date.now()}.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('policy-documents')
+          .upload(path, windFile, { upsert: true })
+        if (uploadErr) throw new Error(uploadErr.message)
+        const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+        document_url = data.publicUrl
+      }
+      const saved = await apiPost(`/unit/${tenant.unit_id}/policy`, {
+        ...windForm,
+        expiration_date: windForm.expiration_date || null,
+        document_url,
+      })
+      setTenant(t => ({ ...t, policies: [saved, ...(t.policies || [])] }))
+      setWindSuccess('Wind-only dec page uploaded successfully.')
+      setWindForm({ insurer: '', policy_number: '', expiration_date: '' })
+      setWindFile(null)
+      setWindFileKey(k => k + 1)
+    } catch (e) {
+      setWindError(e.message)
+    } finally {
+      setWindUploading(false)
     }
   }
 
@@ -294,9 +340,58 @@ export default function AdminTenantDetail() {
                     </p>
                   </div>
                 )}
-                {currentPolicies.map(p => (
-                  <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
-                ))}
+                {tenant.needs_wind_policy ? (
+                  <div className="grid sm:grid-cols-2 gap-4 items-start">
+                    {currentPolicies.map(p => (
+                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
+                    ))}
+                    <div className="bg-white rounded-xl border border-amber-300 shadow-sm p-5">
+                      <h2 className="font-semibold text-slate-700">Wind-Only Policy</h2>
+                      <p className="text-xs text-slate-400 mt-1 mb-3">
+                        Upload the unit-owner's separate wind-only dec page here.
+                      </p>
+                      <form onSubmit={handleWindUploadSubmit} className="space-y-3">
+                        {[
+                          { label: 'Insurer', key: 'insurer', placeholder: 'Citizens' },
+                          { label: 'Policy Number', key: 'policy_number', placeholder: 'WO-123456' },
+                          { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
+                        ].map(({ label, key, placeholder, type }) => (
+                          <div key={key}>
+                            <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
+                            <input
+                              type={type || 'text'}
+                              value={windForm[key]}
+                              onChange={e => setWindForm(f => ({ ...f, [key]: e.target.value }))}
+                              placeholder={placeholder}
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        ))}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
+                          <input
+                            key={windFileKey}
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            onChange={e => setWindFile(e.target.files[0] || null)}
+                            className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {windFile && <p className="text-xs text-slate-500 mt-1">{windFile.name}</p>}
+                        </div>
+                        {windError && <p className="text-sm text-red-600">{windError}</p>}
+                        {windSuccess && <p className="text-sm text-green-600">{windSuccess}</p>}
+                        <button type="submit" disabled={windUploading}
+                          className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+                          {windUploading ? 'Uploading…' : 'Submit Wind-Only Dec Page'}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ) : (
+                  currentPolicies.map(p => (
+                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} />
+                  ))
+                )}
               </>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-xl p-5">
