@@ -1,3 +1,4 @@
+import html as _html
 import os
 import httpx
 
@@ -100,7 +101,8 @@ def admin_notify_html(
 
     custom_block = ""
     if admin_message:
-        custom_block = f'<p style="color:#374151;background:#f8fafc;border-left:3px solid #1d4ed8;padding:12px 16px;border-radius:4px">{admin_message}</p>'
+        safe_msg = _html.escape(admin_message)
+        custom_block = f'<p style="color:#374151;background:#f8fafc;border-left:3px solid #1d4ed8;padding:12px 16px;border-radius:4px">{safe_msg}</p>'
 
     html = f"""
     <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">

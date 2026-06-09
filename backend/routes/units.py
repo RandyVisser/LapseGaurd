@@ -3,6 +3,7 @@ from datetime import date, timedelta, timezone, datetime
 import hashlib
 import json
 import logging
+import os
 import asyncpg
 import httpx
 
@@ -10,6 +11,8 @@ from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
 from models.db import get_conn, get_pool
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 
 router = APIRouter()
 
@@ -70,6 +73,10 @@ async def get_policy(
 async def _hash_document(document_url: str) -> str | None:
     """Fetch the uploaded document and return a SHA-256 hex digest of its bytes,
     used to detect accidental re-uploads of the same file."""
+    storage_base = f"{SUPABASE_URL}/storage/v1/object"
+    if not SUPABASE_URL or not document_url.startswith(storage_base):
+        logger.warning("Rejected document URL outside Supabase storage: %s", document_url)
+        return None
     try:
         async with httpx.AsyncClient(timeout=30) as http:
             resp = await http.get(document_url)

@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
 export default function Signup() {
-  const navigate = useNavigate()
   const [form, setForm] = useState({
     association_name: '', address: '', admin_name: '', email: '', password: '',
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: false, ho6_additional_interest_required: false,
@@ -12,6 +11,7 @@ export default function Signup() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
   function set(key) {
     return e => setForm(f => ({ ...f, [key]: e.target.value }))
@@ -35,7 +35,7 @@ export default function Signup() {
         const data = await res.json()
         throw new Error(data.detail || 'Signup failed')
       }
-      navigate('/login?welcome=1')
+      setSuccess(true)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -43,10 +43,25 @@ export default function Signup() {
     }
   }
 
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md text-center">
+          <div className="text-4xl mb-4">📬</div>
+          <h1 className="text-2xl font-bold text-blue-800 mb-2">Check your email</h1>
+          <p className="text-slate-600 mb-6">
+            We sent a verification link to <strong>{form.email}</strong>. Click it to activate your account, then sign in.
+          </p>
+          <Link to="/login" className="text-blue-600 hover:underline text-sm">Go to sign in →</Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
-        <a href="/" className="text-sm text-blue-600 hover:underline mb-6 block">← Back</a>
+        <Link to="/" className="text-sm text-blue-600 hover:underline mb-6 block">← Back</Link>
         <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your association</h1>
         <p className="text-sm text-slate-500 mb-6">Create your LapseGuard account</p>
 
@@ -56,8 +71,8 @@ export default function Signup() {
             { label: 'Address', key: 'address', placeholder: '123 Palm Ave, Miami, FL 33101' },
             { label: 'Your Name', key: 'admin_name', placeholder: 'Jane Smith' },
             { label: 'Email', key: 'email', placeholder: 'jane@example.com', type: 'email' },
-            { label: 'Password', key: 'password', placeholder: '••••••••', type: 'password' },
-          ].map(({ label, key, placeholder, type }) => (
+            { label: 'Password', key: 'password', placeholder: '••••••••', type: 'password', hint: 'Minimum 8 characters' },
+          ].map(({ label, key, placeholder, type, hint }) => (
             <div key={key}>
               <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
               <input
@@ -68,6 +83,7 @@ export default function Signup() {
                 placeholder={placeholder}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
             </div>
           ))}
 
@@ -162,7 +178,7 @@ export default function Signup() {
 
         <p className="text-center text-sm text-slate-500 mt-4">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">Sign in</a>
+          <Link to="/login" className="text-blue-600 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

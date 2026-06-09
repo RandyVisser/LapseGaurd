@@ -6,10 +6,12 @@ Public onboarding routes — no auth required.
 """
 import os
 import uuid
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 import asyncpg
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
 from models.db import get_conn
@@ -19,6 +21,22 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 router = APIRouter()
+
+# ── Rate limiting (in-memory, per IP, 5 signups / hour) ───────────────────────
+_signup_attempts: dict[str, list[datetime]] = defaultdict(list)
+_SIGNUP_LIMIT = 5
+_SIGNUP_WINDOW = timedelta(hours=1)
+
+
+def _check_signup_rate_limit(request: Request) -> None:
+    ip = (request.headers.get("X-Forwarded-For") or request.client.host or "unknown").split(",")[0].strip()
+    now = datetime.utcnow()
+    cutoff = now - _SIGNUP_WINDOW
+    attempts = [t for t in _signup_attempts[ip] if t > cutoff]
+    if len(attempts) >= _SIGNUP_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many signup attempts. Please try again in an hour.")
+    attempts.append(now)
+    _signup_attempts[ip] = attempts
 
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
@@ -45,7 +63,7 @@ class InviteAccept(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-async def _create_supabase_user(email: str, password: str, app_metadata: dict) -> str:
+async def _create_supabase_user(email: str, password: str, app_metadata: dict, *, email_confirm: bool = False) -> str:
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{SUPABASE_URL}/auth/v1/admin/users",
@@ -56,7 +74,7 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict) -
             json={
                 "email": email,
                 "password": password,
-                "email_confirm": True,
+                "email_confirm": email_confirm,
                 "app_metadata": app_metadata,
             },
         )
@@ -71,9 +89,11 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict) -
 
 @router.post("/onboard/association", status_code=201)
 async def signup_association(
+    request: Request,
     body: AssociationSignup,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
+    _check_signup_rate_limit(request)
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
@@ -84,12 +104,13 @@ async def signup_association(
         body.ho6_policy_in_force_required, body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
     )
 
-    # Create Supabase admin user
+    # Create Supabase admin user — email_confirm=False so they must verify their address
     try:
         user_id = await _create_supabase_user(
             body.email,
             body.password,
             {"role": "hoa_admin", "hoa_id": hoa_id},
+            email_confirm=False,
         )
     except HTTPException:
         # Roll back HOA if user creation fails
@@ -130,53 +151,56 @@ async def accept_invite(
     body: InviteAccept,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    row = await conn.fetchrow(
-        """
-        SELECT i.id, i.email, i.unit_id, i.accepted_at,
-               u.unit_number, u.hoa_id,
-               h.name AS hoa_name
-        FROM unit_invites i
-        JOIN units u ON u.id = i.unit_id
-        JOIN hoas h ON h.id = u.hoa_id
-        WHERE i.token = $1
-        """,
-        token,
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="Invite not found")
-    if row["accepted_at"]:
-        raise HTTPException(status_code=410, detail="Invite already used")
-
-    # Create Supabase user
-    user_id = await _create_supabase_user(
-        row["email"],
-        body.password,
-        {"role": "tenant", "hoa_id": str(row["hoa_id"])},
-    )
-
-    # Upsert: update existing tenant by email for this unit (handles pre-seeded tenants),
-    # or insert a new row if none exists.
-    updated = await conn.fetchrow(
-        """
-        UPDATE tenants SET supabase_user_id = $1, name = $2
-        WHERE unit_id = $3 AND email = $4
-        RETURNING id
-        """,
-        user_id, body.name, row["unit_id"], row["email"],
-    )
-    if not updated:
-        await conn.execute(
+    async with conn.transaction():
+        row = await conn.fetchrow(
             """
-            INSERT INTO tenants (unit_id, supabase_user_id, name, email)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (supabase_user_id) DO NOTHING
+            SELECT i.id, i.email, i.unit_id, i.accepted_at,
+                   u.unit_number, u.hoa_id,
+                   h.name AS hoa_name
+            FROM unit_invites i
+            JOIN units u ON u.id = i.unit_id
+            JOIN hoas h ON h.id = u.hoa_id
+            WHERE i.token = $1
+            FOR UPDATE OF i
             """,
-            row["unit_id"], user_id, body.name, row["email"],
+            token,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Invite not found")
+        if row["accepted_at"]:
+            raise HTTPException(status_code=410, detail="Invite already used")
+
+        # Tenant invite: email was supplied by the admin, so pre-confirm it
+        user_id = await _create_supabase_user(
+            row["email"],
+            body.password,
+            {"role": "tenant", "hoa_id": str(row["hoa_id"])},
+            email_confirm=True,
         )
 
-    # Mark invite accepted
-    await conn.execute(
-        "UPDATE unit_invites SET accepted_at = NOW() WHERE token = $1", token
-    )
+        # Upsert: update existing tenant by email for this unit (handles pre-seeded tenants),
+        # or insert a new row if none exists.
+        updated = await conn.fetchrow(
+            """
+            UPDATE tenants SET supabase_user_id = $1, name = $2
+            WHERE unit_id = $3 AND email = $4
+            RETURNING id
+            """,
+            user_id, body.name, row["unit_id"], row["email"],
+        )
+        if not updated:
+            await conn.execute(
+                """
+                INSERT INTO tenants (unit_id, supabase_user_id, name, email)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (supabase_user_id) DO NOTHING
+                """,
+                row["unit_id"], user_id, body.name, row["email"],
+            )
+
+        # Mark invite accepted — inside the transaction so it only commits if everything above succeeded
+        await conn.execute(
+            "UPDATE unit_invites SET accepted_at = NOW() WHERE token = $1", token
+        )
 
     return {"ok": True}
