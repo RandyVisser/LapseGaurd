@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost } from '../supabase'
+import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+
+const API = import.meta.env.VITE_API_URL || '/api'
 
 function SortTh({ label, col, sortCol, sortDir, onSort }) {
   const active = sortCol === col
@@ -98,10 +100,89 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('')
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
+  const [exporting, setExporting] = useState(false)
+  const importFileRef = useRef(null)
+  const [deleteUnitId, setDeleteUnitId] = useState(null)
+  const [deletingUnit, setDeletingUnit] = useState(false)
 
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
+  }
+
+  async function handleImport(e) {
+    const file = e.target.files?.[0]
+    if (!file || !hoaId || hoaId === '__all__') return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`${API}/hoa/${hoaId}/units/import`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Import failed')
+      setImportResult(`Imported ${data.inserted} units${data.skipped ? `, skipped ${data.skipped}` : ''}.`)
+      // Refresh units list
+      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+      setSummary(s); setUnits(u)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setImporting(false)
+      if (importFileRef.current) importFileRef.current.value = ''
+    }
+  }
+
+  async function handleExport() {
+    if (!hoaId || hoaId === '__all__') return
+    setExporting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch(`${API}/hoa/${hoaId}/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `compliance-export.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleDeleteUnit(unitId) {
+    if (!window.confirm('Delete this unit and all its data? This cannot be undone.')) return
+    setDeletingUnit(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const res = await fetch(`${API}/unit/${unitId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed') }
+      setUnits(prev => prev.filter(u => u.unit_id !== unitId))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeletingUnit(false)
+      setDeleteUnitId(null)
+    }
   }
 
   async function handleInvite(e) {
@@ -225,7 +306,23 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={handleExport}
+                disabled={exporting || !hoaId || hoaId === '__all__'}
+                className="text-sm bg-slate-700 hover:bg-slate-800 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+              >
+                {exporting ? 'Exporting…' : 'Export CSV'}
+              </button>
+              <label className={`text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-3 py-1.5 rounded-lg cursor-pointer ${importing || !hoaId || hoaId === '__all__' ? 'opacity-50 pointer-events-none' : ''}`}>
+                {importing ? 'Importing…' : 'Import CSV'}
+                <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+              </label>
+            </div>
+            {importResult && <p className="text-xs text-green-600">{importResult}</p>}
+          </div>
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
             if (!selectedHoa) return null
@@ -409,7 +506,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex flex-row gap-1">
+                    <div className="flex flex-row gap-1 flex-wrap items-center">
                       {inviteSuccess === u.unit_id + '-primary' ? (
                         <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
                       ) : (
@@ -430,6 +527,13 @@ export default function AdminDashboard() {
                           Invite Secondary
                         </button>
                       )}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteUnit(u.unit_id) }}
+                        disabled={deletingUnit && deleteUnitId === u.unit_id}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline px-1 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </td>
                 </tr>

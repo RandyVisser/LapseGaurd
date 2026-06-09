@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+import csv
+import io
+import re
+from datetime import date
 from typing import List, Optional
+
 import asyncpg
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from models.schemas import UnitComplianceOut, ComplianceSummary, PolicyStatus
-from models.db import get_conn
 from auth.jwt import AuthUser, require_hoa_admin
+from models.db import get_conn
+from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
+from services.compliance import evaluate_compliance
 from services.compliance import evaluate_compliance
 
 
@@ -49,6 +56,7 @@ async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: lis
 class HoaOut(BaseModel):
     id: str
     name: str
+    address: Optional[str] = None
     subdivision: Optional[str] = None
     corp_name: Optional[str] = None
     sunbiz_doc_number: Optional[str] = None
@@ -61,9 +69,21 @@ class HoaOut(BaseModel):
     ho6_property_address_match_required: bool = True
 
 
+class HoaUpdate(BaseModel):
+    name: str
+    ho6_coverage_a_min: Optional[float] = None
+    ho6_coverage_e_min: Optional[float] = None
+    ho6_wind_required: bool = False
+    ho6_additional_interest_required: bool = False
+    ho6_policy_in_force_required: bool = True
+    ho6_named_insured_match_required: bool = True
+    ho6_property_address_match_required: bool = True
+
+
 _HOA_SEARCH_FIELDS = """
     h.id,
     h.name,
+    h.address,
     h.ho6_coverage_a_min,
     h.ho6_coverage_e_min,
     h.ho6_wind_required,
@@ -99,6 +119,7 @@ async def list_hoas(
         HoaOut(
             id=str(r["id"]),
             name=r["name"],
+            address=r["address"],
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             sunbiz_doc_number=r["sunbiz_doc_number"],
@@ -251,3 +272,238 @@ async def add_unit(
         hoa_id, body.unit_number,
     )
     return {"unit_id": str(row["id"]), "unit_number": row["unit_number"]}
+
+
+@router.put("/hoa/{hoa_id}", response_model=HoaOut)
+async def update_hoa(
+    hoa_id: str,
+    body: HoaUpdate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+    updated = await conn.fetchrow(
+        """UPDATE hoas SET
+            name = $1,
+            ho6_coverage_a_min = $2,
+            ho6_coverage_e_min = $3,
+            ho6_wind_required = $4,
+            ho6_additional_interest_required = $5,
+            ho6_policy_in_force_required = $6,
+            ho6_named_insured_match_required = $7,
+            ho6_property_address_match_required = $8
+           WHERE id = $9
+           RETURNING id, name, address, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
+                     ho6_additional_interest_required, ho6_policy_in_force_required,
+                     ho6_named_insured_match_required, ho6_property_address_match_required""",
+        body.name,
+        body.ho6_coverage_a_min,
+        body.ho6_coverage_e_min,
+        body.ho6_wind_required,
+        body.ho6_additional_interest_required,
+        body.ho6_policy_in_force_required,
+        body.ho6_named_insured_match_required,
+        body.ho6_property_address_match_required,
+        hoa_id,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="HOA not found")
+    return HoaOut(
+        id=str(updated["id"]),
+        name=updated["name"],
+        address=updated["address"],
+        ho6_coverage_a_min=updated["ho6_coverage_a_min"],
+        ho6_coverage_e_min=updated["ho6_coverage_e_min"],
+        ho6_wind_required=updated["ho6_wind_required"],
+        ho6_additional_interest_required=updated["ho6_additional_interest_required"],
+        ho6_policy_in_force_required=updated["ho6_policy_in_force_required"],
+        ho6_named_insured_match_required=updated["ho6_named_insured_match_required"],
+        ho6_property_address_match_required=updated["ho6_property_address_match_required"],
+    )
+
+
+@router.delete("/unit/{unit_id}")
+async def delete_unit(
+    unit_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    row = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
+
+    tenant_ids = [r["id"] for r in await conn.fetch("SELECT id FROM tenants WHERE unit_id = $1", unit_id)]
+    if tenant_ids:
+        await conn.execute("DELETE FROM alert_log WHERE tenant_id = ANY($1::uuid[])", tenant_ids)
+        await conn.execute("DELETE FROM policies WHERE tenant_id = ANY($1::uuid[])", tenant_ids)
+    await conn.execute("DELETE FROM unit_invites WHERE unit_id = $1", unit_id)
+    await conn.execute("DELETE FROM tenants WHERE unit_id = $1", unit_id)
+    await conn.execute("DELETE FROM units WHERE id = $1", unit_id)
+    return {"deleted": True}
+
+
+@router.get("/hoa/{hoa_id}/export")
+async def export_compliance_csv(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    unit_rows = await conn.fetch(
+        """SELECT u.id AS unit_id, u.unit_number, u.street_address, u.city, u.state, u.zip,
+                  u.owner_primary, u.email_primary, u.owner_secondary, u.email_secondary,
+                  u.purchase_date, u.type, u.subdivision, u.corp_name, u.sunbiz_doc_number, u.fein,
+                  u.radar_id, u.assessor_parcel_number,
+                  t.id AS tenant_id, t.name AS tenant_name, t.email AS tenant_email
+           FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
+           WHERE u.hoa_id = $1 ORDER BY u.unit_number""",
+        hoa_id,
+    )
+
+    tenant_ids = [r["tenant_id"] for r in unit_rows if r["tenant_id"]]
+    policy_rows = await conn.fetch(
+        "SELECT * FROM policies WHERE tenant_id = ANY($1::uuid[])", tenant_ids
+    ) if tenant_ids else []
+
+    by_tenant: dict = {}
+    for r in policy_rows:
+        by_tenant.setdefault(r["tenant_id"], []).append(dict(r))
+    best_policy: dict = {}
+    for tid, policies in by_tenant.items():
+        evaluation = evaluate_compliance(policies)
+        for p in policies:
+            if p["id"] in evaluation["current_ids"]:
+                best_policy[tid] = p
+                break
+
+    statuses = {tid: evaluate_compliance(ps)["status"] for tid, ps in by_tenant.items()}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Unit", "Street Address", "City", "State", "Zip",
+        "Primary Owner", "Primary Email", "Secondary Owner", "Secondary Email",
+        "Purchase Date", "Type", "Subdivision", "Corp Name", "SunBiz DOC #", "FEIN",
+        "Radar ID", "APN",
+        "Tenant Name", "Tenant Email",
+        "Compliance Status", "Policy Expiration", "Insurer", "Policy Number", "Last Uploaded",
+    ])
+    for r in unit_rows:
+        tid = r["tenant_id"]
+        status = statuses.get(tid, "missing") if tid else "missing"
+        bp = best_policy.get(tid) if tid else None
+        writer.writerow([
+            r["unit_number"], r["street_address"] or "", r["city"] or "",
+            r["state"] or "", r["zip"] or "",
+            r["owner_primary"] or "", r["email_primary"] or "",
+            r["owner_secondary"] or "", r["email_secondary"] or "",
+            r["purchase_date"].isoformat() if r["purchase_date"] else "",
+            r["type"] or "", r["subdivision"] or "", r["corp_name"] or "",
+            r["sunbiz_doc_number"] or "", r["fein"] or "",
+            r["radar_id"] or "", r["assessor_parcel_number"] or "",
+            r["tenant_name"] or "", r["tenant_email"] or "",
+            status,
+            bp["expiration_date"].isoformat() if bp and bp["expiration_date"] else "",
+            bp["insurer"] or "" if bp else "",
+            bp["policy_number"] or "" if bp else "",
+            bp["uploaded_at"].isoformat() if bp else "",
+        ])
+
+    hoa_row = await conn.fetchrow("SELECT name FROM hoas WHERE id = $1", hoa_id)
+    hoa_slug = re.sub(r"[^a-z0-9]+", "-", (hoa_row["name"] if hoa_row else "hoa").lower()).strip("-")
+    filename = f"{hoa_slug}-compliance.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _parse_csv_address(raw: str):
+    raw = (raw or "").strip()
+    match = re.search(r"\b(APT|UNIT|STE|PH)\s*(\S+)", raw, re.IGNORECASE)
+    if match:
+        prefix = match.group(1).upper()
+        identifier = match.group(2)
+        unit = identifier if prefix != "PH" else f"PH{identifier}"
+        street = raw[: match.start()].strip().rstrip(",")
+    else:
+        unit, street = "", raw
+    return street or None, unit or None
+
+
+@router.post("/hoa/{hoa_id}/units/import", status_code=201)
+async def import_units_csv(
+    hoa_id: str,
+    file: UploadFile = File(...),
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    rows = list(reader)
+    if not rows:
+        raise HTTPException(status_code=422, detail="CSV is empty or has no data rows")
+
+    headers = {h.strip() for h in (reader.fieldnames or [])}
+    propradar_format = "Radar ID" in headers
+
+    inserted = skipped = 0
+    for row in rows:
+        def v(key): return (row.get(key) or "").strip() or None
+
+        if propradar_format:
+            radar = v("Radar ID")
+            if not radar or not re.match(r"^P[A-Z0-9]+$", radar):
+                skipped += 1
+                continue
+            street, unit_number = _parse_csv_address(v("Address") or "")
+            pd_str = v("Purchase Date")
+            purchase_date = date.fromisoformat(pd_str) if pd_str else None
+            await conn.execute(
+                """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                       radar_id, assessor_parcel_number, type, subdivision,
+                       owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                   ON CONFLICT DO NOTHING""",
+                hoa_id, unit_number or v("Address"), street, v("City"), "FL", v("ZIP"),
+                radar, v("APN"), v("Type"), v("Subdivision"),
+                v("Primary Name"), v("Primary Email1"),
+                v("Secondary Name"), v("Secondary Email1"), purchase_date,
+            )
+        else:
+            unit_number = v("unit_number") or v("Unit") or v("Unit Number")
+            if not unit_number:
+                skipped += 1
+                continue
+            pd_str = v("purchase_date") or v("Purchase Date")
+            purchase_date = date.fromisoformat(pd_str) if pd_str else None
+            await conn.execute(
+                """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                       owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                   ON CONFLICT DO NOTHING""",
+                hoa_id, unit_number,
+                v("street_address") or v("Street Address"),
+                v("city") or v("City"),
+                v("state") or v("State"),
+                v("zip") or v("Zip") or v("ZIP"),
+                v("owner_primary") or v("Primary Name"),
+                v("email_primary") or v("Primary Email") or v("Primary Email1"),
+                v("owner_secondary") or v("Secondary Name"),
+                v("email_secondary") or v("Secondary Email") or v("Secondary Email1"),
+                purchase_date,
+            )
+        inserted += 1
+
+    return {"inserted": inserted, "skipped": skipped}

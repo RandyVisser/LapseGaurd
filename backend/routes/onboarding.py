@@ -15,7 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
 from models.db import get_conn
-from services.email import send_email, invite_email_html
+from fastapi import BackgroundTasks
+from services.email import send_email, invite_email_html, welcome_admin_html
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -91,17 +92,21 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict, *
 async def signup_association(
     request: Request,
     body: AssociationSignup,
+    background_tasks: BackgroundTasks,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _check_signup_rate_limit(request)
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
-        """INSERT INTO hoas (id, name, address, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required, ho6_named_insured_match_required, ho6_property_address_match_required)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)""",
-        hoa_id, body.association_name, body.address,
-        body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required, body.ho6_additional_interest_required,
-        body.ho6_policy_in_force_required, body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
+        """INSERT INTO hoas (id, name, address, admin_email, ho6_coverage_a_min, ho6_coverage_e_min,
+               ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required,
+               ho6_named_insured_match_required, ho6_property_address_match_required)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+        hoa_id, body.association_name, body.address, body.email,
+        body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
+        body.ho6_additional_interest_required, body.ho6_policy_in_force_required,
+        body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
     )
 
     # Create Supabase admin user — email_confirm=False so they must verify their address
@@ -116,6 +121,9 @@ async def signup_association(
         # Roll back HOA if user creation fails
         await conn.execute("DELETE FROM hoas WHERE id = $1", hoa_id)
         raise
+
+    subject, html = welcome_admin_html(body.admin_name, body.association_name)
+    background_tasks.add_task(send_email, body.email, subject, html)
 
     return {"hoa_id": hoa_id, "user_id": user_id}
 

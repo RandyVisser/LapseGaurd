@@ -275,6 +275,20 @@ export default function AdminTenantDetail() {
     }
   }
 
+  const [deletingTenant, setDeletingTenant] = useState(false)
+
+  async function handleDeleteTenant() {
+    if (!window.confirm(`Remove ${tenant?.name} from this unit? Their policy history will be deleted. This cannot be undone.`)) return
+    setDeletingTenant(true)
+    try {
+      await apiDelete(`/tenant/${tenantId}`)
+      navigate('/admin/dashboard')
+    } catch (e) {
+      setError(e.message)
+      setDeletingTenant(false)
+    }
+  }
+
   const [deletingId, setDeletingId] = useState(null)
 
   async function handleDeletePolicy(policyId) {
@@ -484,6 +498,13 @@ export default function AdminTenantDetail() {
                   const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review') || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
                   return <StatusBadge status={reviewStatus(reviewPolicy, headerStatus)} />
                 })()}
+                <button
+                  onClick={handleDeleteTenant}
+                  disabled={deletingTenant}
+                  className="text-xs text-red-500 hover:text-red-700 hover:underline disabled:opacity-50 mt-1"
+                >
+                  {deletingTenant ? 'Removing…' : 'Remove tenant'}
+                </button>
               </div>
             </div>
 

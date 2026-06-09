@@ -10,6 +10,7 @@ export default function TenantDashboard() {
   const { unitId, hoaId, user, profileError } = useAuth()
   const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
+  const [allPolicies, setAllPolicies] = useState([])
   const [policyLoading, setPolicyLoading] = useState(true)
   const [docs, setDocs] = useState([])
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
@@ -21,8 +22,14 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!unitId) return
-    apiGet(`/unit/${unitId}/policy`)
-      .then(setPolicy)
+    Promise.all([
+      apiGet(`/unit/${unitId}/policy`),
+      apiGet('/tenant/me/policies'),
+    ])
+      .then(([current, all]) => {
+        setPolicy(current)
+        setAllPolicies(all || [])
+      })
       .catch(e => setError(e.message))
       .finally(() => setPolicyLoading(false))
     apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
@@ -57,6 +64,7 @@ export default function TenantDashboard() {
         document_url,
       })
       setPolicy(saved)
+      setAllPolicies(prev => [saved, ...prev.filter(p => p.id !== saved.id)])
       setSuccess('Policy uploaded successfully.')
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
@@ -227,6 +235,34 @@ export default function TenantDashboard() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+        {tab === 'policy' && allPolicies.length > 1 && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-700 text-sm">Previous Submissions</h2>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {allPolicies.slice(1).map(p => (
+                <li key={p.id} className="px-5 py-3 flex items-center justify-between text-sm">
+                  <div>
+                    <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>
+                    {p.policy_number && <span className="text-slate-400 ml-2">#{p.policy_number}</span>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-400">
+                      {p.expiration_date ? `Exp ${p.expiration_date}` : 'No expiration'}
+                    </span>
+                    <StatusBadge status={p.status} />
+                    {p.document_url && (
+                      <a href={p.document_url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline">View</a>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

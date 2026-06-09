@@ -18,6 +18,7 @@ export default function Nav({ role, title }) {
           <>
             <Link to="/admin/dashboard" className="hover:underline">Dashboard</Link>
             <Link to="/admin/documents" className="hover:underline">Documents</Link>
+            <Link to="/admin/settings" className="hover:underline">Settings</Link>
           </>
         )}
         {role === 'tenant' && (

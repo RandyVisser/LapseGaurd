@@ -8,6 +8,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminDocuments from './pages/AdminDocuments'
+import AdminSettings from './pages/AdminSettings'
 import AdminTenantDetail from './pages/AdminTenantDetail'
 import TenantDashboard from './pages/TenantDashboard'
 
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin/dashboard" element={<RequireAuth role="hoa_admin"><AdminDashboard /></RequireAuth>} />
           <Route path="/admin/documents" element={<RequireAuth role="hoa_admin"><AdminDocuments /></RequireAuth>} />
+          <Route path="/admin/settings" element={<RequireAuth role="hoa_admin"><AdminSettings /></RequireAuth>} />
           <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />
           <Route path="/tenant/dashboard" element={<RequireAuth role="tenant"><TenantDashboard /></RequireAuth>} />
           <Route path="*" element={<Navigate to="/" replace />} />

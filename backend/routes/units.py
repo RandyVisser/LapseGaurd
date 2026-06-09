@@ -11,8 +11,10 @@ from models.schemas import PolicyCreate, PolicyOut, PolicyStatus
 from models.db import get_conn, get_pool
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
+from services.email import send_email, policy_upload_notification_html
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+APP_URL = os.environ.get("APP_URL", "https://condo.insure")
 
 router = APIRouter()
 
@@ -313,6 +315,23 @@ async def upload_policy(
             "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
         }
         background_tasks.add_task(_run_parsing, str(row["id"]), body.document_url, submitted)
+
+        # Notify admin when a tenant uploads (not when admin uploads on behalf of tenant)
+        if user.role == "tenant" and unit_row:
+            hoa_row_full = await conn.fetchrow(
+                "SELECT admin_email, name FROM hoas WHERE id = $1", unit_row["hoa_id"]
+            )
+            if hoa_row_full and hoa_row_full["admin_email"]:
+                tenant_row = await conn.fetchrow("SELECT name FROM tenants WHERE id = $1", tenant["id"])
+                tenant_name = tenant_row["name"] if tenant_row else user.email
+                tenant_url = f"{APP_URL}/admin/tenant/{tenant['id']}"
+                subject, html = policy_upload_notification_html(
+                    tenant_name,
+                    unit_row["unit_number"] or unit_id,
+                    hoa_row_full["name"],
+                    tenant_url,
+                )
+                background_tasks.add_task(send_email, hoa_row_full["admin_email"], subject, html)
 
     return policy
 

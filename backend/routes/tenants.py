@@ -275,6 +275,57 @@ async def create_tenant_record(
     return {"id": str(row["id"])}
 
 
+@router.get("/tenant/me/policies")
+async def get_my_policies(
+    user: AuthUser = Depends(get_current_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    tenant = await conn.fetchrow(
+        "SELECT id FROM tenants WHERE supabase_user_id = $1 OR email = $2 ORDER BY supabase_user_id NULLS LAST LIMIT 1",
+        user.sub, user.email,
+    )
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant profile not found")
+    rows = await conn.fetch(
+        "SELECT * FROM policies WHERE tenant_id = $1 ORDER BY uploaded_at DESC",
+        tenant["id"],
+    )
+    return [
+        {
+            "id": str(r["id"]),
+            "insurer": r["insurer"],
+            "policy_number": r["policy_number"],
+            "expiration_date": r["expiration_date"].isoformat() if r["expiration_date"] else None,
+            "status": r["status"],
+            "document_url": r["document_url"],
+            "uploaded_at": r["uploaded_at"].isoformat(),
+            "coverage_type": r["coverage_type"],
+        }
+        for r in rows
+    ]
+
+
+@router.delete("/tenant/{tenant_id}")
+async def delete_tenant(
+    tenant_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    row = await conn.fetchrow(
+        """SELECT t.id, u.hoa_id FROM tenants t JOIN units u ON u.id = t.unit_id WHERE t.id = $1""",
+        tenant_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    await conn.execute("DELETE FROM alert_log WHERE tenant_id = $1", tenant_id)
+    await conn.execute("DELETE FROM policies WHERE tenant_id = $1", tenant_id)
+    await conn.execute("DELETE FROM tenants WHERE id = $1", tenant_id)
+    return {"deleted": True}
+
+
 @router.post("/unit/{unit_id}/invite")
 async def invite_tenant(
     unit_id: str,

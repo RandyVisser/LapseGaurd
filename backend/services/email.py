@@ -157,6 +157,48 @@ def invite_email_html(
     return subject, html
 
 
+def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
+    subject = f"Welcome to LapseGuard — let's get {hoa_name} set up"
+    dashboard_url = f"{APP_URL}/admin/dashboard"
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Hi {admin_name},</p>
+      <p style="color:#374151">
+        Your <strong>{hoa_name}</strong> account is ready on LapseGuard. Here's how to get started:
+      </p>
+      <ol style="color:#374151;padding-left:20px;line-height:2">
+        <li>Log in to your dashboard</li>
+        <li>Add your units (or import them from a CSV)</li>
+        <li>Invite unit-owners to upload their proof of insurance</li>
+        <li>Review uploaded policies and track compliance</li>
+      </ol>
+      {_btn(dashboard_url, "Go to Dashboard")}
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
+def policy_upload_notification_html(
+    tenant_name: str,
+    unit_number: str,
+    hoa_name: str,
+    tenant_url: str,
+) -> tuple[str, str]:
+    subject = f"New policy uploaded — Unit {unit_number} needs review"
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">
+        <strong>{tenant_name}</strong> (Unit {unit_number}) just uploaded a new policy for
+        <strong>{hoa_name}</strong> and it's waiting for your review.
+      </p>
+      {_btn(tenant_url, "Review Policy")}
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def _build_quote_url(tenant_name: str, unit_number: str) -> str:
     if not QUOTE_FORM_URL:
         return APP_URL
