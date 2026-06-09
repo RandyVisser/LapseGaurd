@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
@@ -17,8 +17,11 @@ export default function TenantDashboard() {
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [parsing, setParsing] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+  const pollRef = useRef(null)
 
   useEffect(() => {
     if (!unitId) return
@@ -35,11 +38,35 @@ export default function TenantDashboard() {
     apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
   }, [unitId])
 
+  // Clean up polling on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+
+  function startParsingPoll(policyId) {
+    setParsing(true)
+    let attempts = 0
+    pollRef.current = setInterval(async () => {
+      attempts++
+      try {
+        const current = await apiGet(`/unit/${unitId}/policy`)
+        if (current && (current.parsed_at || attempts >= 15)) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+          setParsing(false)
+          setPolicy(current)
+          setAllPolicies(prev => [current, ...prev.filter(p => p.id !== current.id)])
+        }
+      } catch {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+        setParsing(false)
+      }
+    }, 2000)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError(''); setSuccess('')
 
-    // Catch expired date before hitting the server
     if (form.expiration_date && new Date(form.expiration_date) < new Date()) {
       setError('Policy is already expired — please upload a current policy.')
       return
@@ -65,15 +92,23 @@ export default function TenantDashboard() {
       })
       setPolicy(saved)
       setAllPolicies(prev => [saved, ...prev.filter(p => p.id !== saved.id)])
-      setSuccess('Policy uploaded successfully.')
+      setSuccess(file ? 'Policy uploaded — analyzing your document…' : 'Policy saved.')
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
+      if (file) startParsingPoll(saved.id)
     } catch (e) {
       setError(e.message)
     } finally {
       setUploading(false)
     }
+  }
+
+  function handleFileDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const dropped = e.dataTransfer.files?.[0]
+    if (dropped) setFile(dropped)
   }
 
   const needsQuote = !policy || policy.status === 'lapsed' || policy.status === 'missing'
@@ -128,7 +163,12 @@ export default function TenantDashboard() {
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-500">Current status</p>
-                  <div className="mt-1"><StatusBadge status={policy.status} /></div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <StatusBadge status={policy.status} />
+                    {parsing && (
+                      <span className="text-xs text-blue-600 animate-pulse">Analyzing document…</span>
+                    )}
+                  </div>
                   {policy.expiration_date && (
                     <p className="text-xs text-slate-500 mt-2">Expires {policy.expiration_date}</p>
                   )}
@@ -164,19 +204,35 @@ export default function TenantDashboard() {
               </div>
             )}
 
+            {/* AI parsing result */}
+            {policy?.parsed_at && policy?.extracted_data?.validation && (
+              policy.extracted_data.validation.passed === false ? (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
+                  <p className="font-semibold text-yellow-800 text-sm mb-2">Action Required — Issues found with your uploaded policy</p>
+                  <ul className="space-y-1">
+                    {policy.extracted_data.validation.flags.map((f, i) => (
+                      <li key={i} className="text-sm text-yellow-700 flex gap-2">
+                        <span>•</span><span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-yellow-600 mt-2">Please upload a corrected policy using the form below.</p>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <p className="text-sm text-green-800 font-medium">Your policy was reviewed and meets all requirements.</p>
+                </div>
+              )
+            )}
 
-            {/* AI validation warnings */}
-            {policy?.extracted_data?.validation?.passed === false && (
-              <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
-                <p className="font-semibold text-yellow-800 text-sm mb-2">Action Required — Issues found with your uploaded policy</p>
-                <ul className="space-y-1">
-                  {policy.extracted_data.validation.flags.map((f, i) => (
-                    <li key={i} className="text-sm text-yellow-700 flex gap-2">
-                      <span>•</span><span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-xs text-yellow-600 mt-2">Please upload a corrected policy using the form below.</p>
+            {parsing && !policy?.parsed_at && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                <svg className="animate-spin h-4 w-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <p className="text-sm text-blue-800">Your document is being analyzed. This usually takes under 30 seconds.</p>
               </div>
             )}
 
@@ -216,17 +272,54 @@ export default function TenantDashboard() {
                     />
                   </div>
                 ))}
+
+                {/* Drag-and-drop upload zone */}
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
-                  <input
-                    key={fileInputKey}
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    onChange={e => setFile(e.target.files[0] || null)}
-                    className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                  {file && <p className="text-xs text-slate-500 mt-1">{file.name}</p>}
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleFileDrop}
+                    onClick={() => document.getElementById('file-input-hidden').click()}
+                    className={`relative border-2 border-dashed rounded-xl px-4 py-6 text-center cursor-pointer transition-colors ${
+                      dragOver
+                        ? 'border-blue-400 bg-blue-50'
+                        : file
+                        ? 'border-green-400 bg-green-50'
+                        : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
+                    }`}
+                  >
+                    {file ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-green-600 text-lg">✓</span>
+                        <span className="text-sm text-green-700 font-medium">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); setFile(null); setFileInputKey(k => k + 1) }}
+                          className="text-xs text-slate-400 hover:text-slate-600 ml-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-slate-500">
+                          {dragOver ? 'Drop to upload' : 'Drag & drop your dec page here'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">or click to browse · PDF, PNG, JPG</p>
+                      </div>
+                    )}
+                    <input
+                      id="file-input-hidden"
+                      key={fileInputKey}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={e => setFile(e.target.files[0] || null)}
+                      className="hidden"
+                    />
+                  </div>
                 </div>
+
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 {success && <p className="text-sm text-green-600">{success}</p>}
                 <button type="submit" disabled={uploading}
@@ -239,7 +332,7 @@ export default function TenantDashboard() {
         )}
 
         {tab === 'policy' && allPolicies.length > 1 && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
             <div className="px-5 py-3 border-b border-slate-100">
               <h2 className="font-semibold text-slate-700 text-sm">Previous Submissions</h2>
             </div>

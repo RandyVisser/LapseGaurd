@@ -18,6 +18,7 @@ export default function AdminSettings() {
         const hoa = hoas.find(h => h.id === hoaId) || hoas[0]
         if (hoa) setForm({
           name: hoa.name || '',
+          alert_lead_days: hoa.alert_lead_days ?? 30,
           ho6_coverage_a_min: hoa.ho6_coverage_a_min ?? '',
           ho6_coverage_e_min: hoa.ho6_coverage_e_min ?? '',
           ho6_wind_required: hoa.ho6_wind_required ?? false,
@@ -39,6 +40,7 @@ export default function AdminSettings() {
     try {
       await apiPut(`/hoa/${hoaId}`, {
         ...form,
+        alert_lead_days: Number(form.alert_lead_days) || 30,
         ho6_coverage_a_min: form.ho6_coverage_a_min !== '' ? Number(form.ho6_coverage_a_min) : null,
         ho6_coverage_e_min: form.ho6_coverage_e_min !== '' ? Number(form.ho6_coverage_e_min) : null,
       })
@@ -72,6 +74,25 @@ export default function AdminSettings() {
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <p className="font-semibold text-slate-700">Alert Settings</p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Send renewal alerts how many days before expiration?
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number" min="7" max="180" step="1"
+                    value={form.alert_lead_days}
+                    onChange={e => setForm(f => ({ ...f, alert_lead_days: e.target.value }))}
+                    className="w-28 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-500">days</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Default is 30. Tenants receive one email per 7-day window.</p>
               </div>
             </div>
 

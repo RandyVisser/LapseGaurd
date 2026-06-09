@@ -1,5 +1,5 @@
 """
-Alert job: checks policies expiring within 30 days or already lapsed,
+Alert job: checks policies expiring within each HOA's configured lead window or already lapsed,
 updates their status, and sends email via Resend.
 Run standalone:  python scripts/run_alerts.py
 Called by route: POST /alerts/run
@@ -11,7 +11,6 @@ from datetime import date, timedelta
 
 import asyncpg
 
-# Allow running as a standalone script from the backend/ directory
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from services.email import send_email, renewal_notice_html
@@ -21,7 +20,6 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db
 
 async def process_alerts(conn: asyncpg.Connection) -> int:
     today = date.today()
-    threshold = today + timedelta(days=30)
 
     rows = await conn.fetch(
         """
@@ -33,22 +31,25 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             t.name AS tenant_name,
             t.email AS tenant_email,
             u.unit_number,
-            h.name AS hoa_name
+            h.name AS hoa_name,
+            COALESCE(h.alert_lead_days, 30) AS alert_lead_days
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
-        WHERE p.expiration_date <= $1
+        WHERE p.expiration_date IS NOT NULL
+          AND p.expiration_date <= CURRENT_DATE + (COALESCE(h.alert_lead_days, 30) * INTERVAL '1 day')
         """,
-        threshold,
     )
 
     count = 0
     for row in rows:
         exp = row["expiration_date"]
-        if exp is not None and exp < today:
+        threshold = today + timedelta(days=row["alert_lead_days"])
+
+        if exp < today:
             new_status = "lapsed"
-        elif exp is not None and exp <= threshold:
+        elif exp <= threshold:
             new_status = "expiring"
         else:
             new_status = row["status"]
@@ -62,7 +63,6 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         if new_status not in ("lapsed", "expiring"):
             continue
 
-        # Only send one alert per tenant per alert type per 7-day window
         already_sent = await conn.fetchval(
             """
             SELECT 1 FROM alert_log

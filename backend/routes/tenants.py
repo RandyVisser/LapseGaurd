@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 import json
 import random
 import re
 from datetime import datetime, timezone
+from typing import List, Optional
 import asyncpg
 
 from models.db import get_conn
 from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
+from services.audit import log_audit
 from services.compliance import evaluate_compliance
 import os
 from services.email import send_email, admin_notify_html, invite_email_html
@@ -180,7 +182,64 @@ async def notify_tenant(
         "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
         tenant_id,
     )
+    await log_audit(conn, str(row["hoa_id"]), user.sub, user.email, "notify_tenant", {
+        "tenant_id": tenant_id,
+        "unit_number": row["unit_number"],
+    })
     return {"sent": True}
+
+
+class BulkNotifyRequest(BaseModel):
+    tenant_ids: List[str]
+    message: Optional[str] = None
+
+
+@router.post("/hoa/{hoa_id}/notify-bulk")
+async def bulk_notify_tenants(
+    hoa_id: str,
+    body: BulkNotifyRequest,
+    background_tasks: BackgroundTasks,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    if not body.tenant_ids:
+        return {"queued": 0}
+
+    if len(body.tenant_ids) > 200:
+        raise HTTPException(status_code=422, detail="Maximum 200 tenants per bulk notify")
+
+    rows = await conn.fetch(
+        """
+        SELECT t.id, t.name, t.email, u.unit_number, u.hoa_id, h.name AS hoa_name
+        FROM tenants t
+        JOIN units u ON u.id = t.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
+        WHERE t.id = ANY($1::uuid[]) AND u.hoa_id = $2
+        """,
+        body.tenant_ids, hoa_id,
+    )
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="No matching tenants found in this HOA")
+
+    async def _send_all():
+        for row in rows:
+            subject, html = admin_notify_html(
+                row["name"], row["unit_number"], row["hoa_name"], body.message
+            )
+            sent = await send_email(row["email"], subject, html)
+            if sent:
+                await conn.execute(
+                    "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
+                    row["id"],
+                )
+        await log_audit(conn, hoa_id, user.sub, user.email, "notify_bulk", {
+            "count": len(rows),
+            "tenant_ids": [str(r["id"]) for r in rows],
+        })
+
+    background_tasks.add_task(_send_all)
+    return {"queued": len(rows)}
 
 
 @router.post("/policy/{policy_id}/review")

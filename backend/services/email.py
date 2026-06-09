@@ -199,6 +199,62 @@ def policy_upload_notification_html(
     return subject, html
 
 
+def board_report_html(
+    hoa_name: str,
+    total_units: int,
+    compliant: int,
+    expiring: int,
+    lapsed: int,
+    missing: int,
+    lapsed_unit_list: list,
+) -> tuple[str, str]:
+    pct = round(100 * compliant / total_units) if total_units > 0 else 0
+    subject = f"Monthly compliance report — {hoa_name}"
+    dashboard_url = f"{APP_URL}/admin/dashboard"
+
+    lapsed_block = ""
+    if lapsed_unit_list:
+        items = "".join(
+            f'<li style="color:#374151">{_html.escape(u.get("unit_number", ""))} — {_html.escape(u.get("tenant_name") or "No owner on file")}</li>'
+            for u in lapsed_unit_list[:8]
+        )
+        more = f'<li style="color:#6b7280;font-style:italic">…and {len(lapsed_unit_list) - 8} more</li>' if len(lapsed_unit_list) > 8 else ""
+        lapsed_block = f'<p style="color:#374151;font-weight:600;margin-top:16px">Units requiring attention:</p><ul style="color:#374151;padding-left:20px;line-height:2">{items}{more}</ul>'
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Here's the compliance summary for <strong>{_html.escape(hoa_name)}</strong>:</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #e5e7eb;border-radius:8px">
+        <tr style="background:#f8fafc">
+          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Total Units</td>
+          <td style="padding:10px 16px;color:#374151;border-bottom:1px solid #e5e7eb">{total_units}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Compliant</td>
+          <td style="padding:10px 16px;color:#16a34a;font-weight:700;border-bottom:1px solid #e5e7eb">{compliant} ({pct}%)</td>
+        </tr>
+        <tr style="background:#f8fafc">
+          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Expiring Soon</td>
+          <td style="padding:10px 16px;color:#ca8a04;font-weight:700;border-bottom:1px solid #e5e7eb">{expiring}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Lapsed</td>
+          <td style="padding:10px 16px;color:#dc2626;font-weight:700;border-bottom:1px solid #e5e7eb">{lapsed}</td>
+        </tr>
+        <tr style="background:#f8fafc">
+          <td style="padding:10px 16px;color:#374151;font-weight:600">Missing</td>
+          <td style="padding:10px 16px;color:#dc2626;font-weight:700">{missing}</td>
+        </tr>
+      </table>
+      {lapsed_block}
+      {_btn(dashboard_url, "View Full Dashboard")}
+      {_footer()}
+    </div></body></html>"""
+
+    return subject, html
+
+
 def _build_quote_url(tenant_name: str, unit_number: str) -> str:
     if not QUOTE_FORM_URL:
         return APP_URL

@@ -5,15 +5,16 @@ from datetime import date
 from typing import List, Optional
 
 import asyncpg
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from auth.jwt import AuthUser, require_hoa_admin
 from models.db import get_conn
 from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
+from services.audit import log_audit
 from services.compliance import evaluate_compliance
-from services.compliance import evaluate_compliance
+from services.email import board_report_html, send_email
 
 
 class UnitCreate(BaseModel):
@@ -60,6 +61,7 @@ class HoaOut(BaseModel):
     subdivision: Optional[str] = None
     corp_name: Optional[str] = None
     sunbiz_doc_number: Optional[str] = None
+    alert_lead_days: int = 30
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
@@ -71,6 +73,7 @@ class HoaOut(BaseModel):
 
 class HoaUpdate(BaseModel):
     name: str
+    alert_lead_days: int = 30
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
@@ -84,6 +87,7 @@ _HOA_SEARCH_FIELDS = """
     h.id,
     h.name,
     h.address,
+    h.alert_lead_days,
     h.ho6_coverage_a_min,
     h.ho6_coverage_e_min,
     h.ho6_wind_required,
@@ -123,6 +127,7 @@ async def list_hoas(
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             sunbiz_doc_number=r["sunbiz_doc_number"],
+            alert_lead_days=r["alert_lead_days"] if r["alert_lead_days"] is not None else 30,
             ho6_coverage_a_min=r["ho6_coverage_a_min"],
             ho6_coverage_e_min=r["ho6_coverage_e_min"],
             ho6_wind_required=r["ho6_wind_required"],
@@ -259,6 +264,77 @@ async def compliance_summary(
     )
 
 
+@router.get("/hoa/{hoa_id}/compliance/trend")
+async def compliance_trend(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Return monthly compliance counts for the last 6 months."""
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    rows = await conn.fetch(
+        """
+        WITH months AS (
+          SELECT
+            to_char(gs, 'Mon ''YY') AS label,
+            gs AS month_start,
+            (gs + interval '1 month' - interval '1 second') AS month_end
+          FROM generate_series(
+            date_trunc('month', CURRENT_DATE - interval '5 months'),
+            date_trunc('month', CURRENT_DATE),
+            '1 month'::interval
+          ) gs
+        ),
+        hoa_tenants AS (
+          SELECT t.id AS tenant_id
+          FROM tenants t
+          JOIN units u ON u.id = t.unit_id
+          WHERE u.hoa_id = $1
+        )
+        SELECT
+          m.label,
+          m.month_start::date AS month,
+          COUNT(DISTINCT ht.tenant_id) AS total,
+          COUNT(DISTINCT CASE
+            WHEN best.expiration_date IS NOT NULL
+              AND best.expiration_date > m.month_end::date
+            THEN ht.tenant_id
+          END) AS compliant,
+          COUNT(DISTINCT CASE
+            WHEN best.expiration_date IS NOT NULL
+              AND best.expiration_date > m.month_end::date - interval '30 days'
+              AND best.expiration_date <= m.month_end::date
+            THEN ht.tenant_id
+          END) AS expiring
+        FROM months m
+        CROSS JOIN hoa_tenants ht
+        LEFT JOIN LATERAL (
+          SELECT p.expiration_date
+          FROM policies p
+          WHERE p.tenant_id = ht.tenant_id
+            AND p.uploaded_at <= m.month_end
+          ORDER BY p.uploaded_at DESC
+          LIMIT 1
+        ) best ON true
+        GROUP BY m.label, m.month_start, m.month_end
+        ORDER BY m.month_start
+        """,
+        hoa_id,
+    )
+
+    return [
+        {
+            "label": r["label"],
+            "total": r["total"],
+            "compliant": r["compliant"],
+            "expiring": r["expiring"],
+            "lapsed": max(0, r["total"] - r["compliant"] - r["expiring"]),
+        }
+        for r in rows
+    ]
+
+
 @router.post("/hoa/{hoa_id}/units", status_code=201)
 async def add_unit(
     hoa_id: str,
@@ -285,18 +361,20 @@ async def update_hoa(
     updated = await conn.fetchrow(
         """UPDATE hoas SET
             name = $1,
-            ho6_coverage_a_min = $2,
-            ho6_coverage_e_min = $3,
-            ho6_wind_required = $4,
-            ho6_additional_interest_required = $5,
-            ho6_policy_in_force_required = $6,
-            ho6_named_insured_match_required = $7,
-            ho6_property_address_match_required = $8
-           WHERE id = $9
-           RETURNING id, name, address, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
+            alert_lead_days = $2,
+            ho6_coverage_a_min = $3,
+            ho6_coverage_e_min = $4,
+            ho6_wind_required = $5,
+            ho6_additional_interest_required = $6,
+            ho6_policy_in_force_required = $7,
+            ho6_named_insured_match_required = $8,
+            ho6_property_address_match_required = $9
+           WHERE id = $10
+           RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required""",
         body.name,
+        body.alert_lead_days,
         body.ho6_coverage_a_min,
         body.ho6_coverage_e_min,
         body.ho6_wind_required,
@@ -308,10 +386,15 @@ async def update_hoa(
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
+    await log_audit(conn, hoa_id, user.sub, user.email, "settings_updated", {
+        "name": body.name,
+        "alert_lead_days": body.alert_lead_days,
+    })
     return HoaOut(
         id=str(updated["id"]),
         name=updated["name"],
         address=updated["address"],
+        alert_lead_days=updated["alert_lead_days"] if updated["alert_lead_days"] is not None else 30,
         ho6_coverage_a_min=updated["ho6_coverage_a_min"],
         ho6_coverage_e_min=updated["ho6_coverage_e_min"],
         ho6_wind_required=updated["ho6_wind_required"],
@@ -320,6 +403,74 @@ async def update_hoa(
         ho6_named_insured_match_required=updated["ho6_named_insured_match_required"],
         ho6_property_address_match_required=updated["ho6_property_address_match_required"],
     )
+
+
+@router.post("/hoa/{hoa_id}/report/send")
+async def send_board_report(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+    background_tasks: BackgroundTasks = None,
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    hoa_row = await conn.fetchrow("SELECT name, admin_email FROM hoas WHERE id = $1", hoa_id)
+    if not hoa_row:
+        raise HTTPException(status_code=404, detail="HOA not found")
+
+    to_email = hoa_row["admin_email"] or user.email
+    if not to_email:
+        raise HTTPException(status_code=422, detail="No admin email on file for this HOA")
+
+    rows = await conn.fetch(
+        """SELECT u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
+                  u.unit_number, COALESCE(t.name, u.owner_primary, 'No owner') AS display_name
+           FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
+           WHERE u.hoa_id = $1""",
+        hoa_id,
+    )
+
+    tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
+    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
+
+    total_units = compliant = expiring = lapsed = missing = 0
+    lapsed_units = []
+    for r in rows:
+        if r["assoc_title"] == "Property Manager":
+            continue
+        total_units += 1
+        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
+        if status == PolicyStatus.active.value:
+            compliant += 1
+        elif status == PolicyStatus.expiring.value:
+            expiring += 1
+        elif status == PolicyStatus.lapsed.value:
+            lapsed += 1
+            lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
+        elif status == PolicyStatus.missing.value:
+            missing += 1
+            lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
+
+    subject, html = board_report_html(
+        hoa_name=hoa_row["name"],
+        total_units=total_units,
+        compliant=compliant,
+        expiring=expiring,
+        lapsed=lapsed,
+        missing=missing,
+        lapsed_unit_list=lapsed_units,
+    )
+
+    async def _send():
+        await send_email(to_email, subject, html)
+        await log_audit(conn, hoa_id, user.sub, user.email, "board_report_sent", {"to": to_email})
+
+    if background_tasks:
+        background_tasks.add_task(_send)
+    else:
+        await _send()
+
+    return {"sent": True, "to": to_email}
 
 
 @router.delete("/unit/{unit_id}")

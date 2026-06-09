@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
@@ -52,11 +53,34 @@ function displayEmail(email) {
   return email && !email.toLowerCase().endsWith('@condo.insure') ? email : null
 }
 
+function TrendChart({ data }) {
+  if (!data || data.length === 0) return null
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Compliance Trend (6 months)</p>
+      <ResponsiveContainer width="100%" height={110}>
+        <LineChart data={data} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+            formatter={(val, name) => [val, name === 'compliant' ? 'Compliant' : name === 'expiring' ? 'Expiring' : 'Lapsed']}
+          />
+          <Line type="monotone" dataKey="compliant" stroke="#16a34a" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="expiring" stroke="#ca8a04" strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="lapsed" stroke="#dc2626" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { hoaId, role, availableHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
+  const [trendData, setTrendData] = useState([])
   const [error, setError] = useState('')
   const [notifying, setNotifying] = useState(null)
   const [notifySuccess, setNotifySuccess] = useState(null)
@@ -107,6 +131,15 @@ export default function AdminDashboard() {
   const [deleteUnitId, setDeleteUnitId] = useState(null)
   const [deletingUnit, setDeletingUnit] = useState(false)
 
+  // Bulk select state
+  const [selectedTenantIds, setSelectedTenantIds] = useState(new Set())
+  const [bulkNotifying, setBulkNotifying] = useState(false)
+  const [bulkSuccess, setBulkSuccess] = useState('')
+
+  // Board report state
+  const [sendingReport, setSendingReport] = useState(false)
+  const [reportSent, setReportSent] = useState(false)
+
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
@@ -130,7 +163,6 @@ export default function AdminDashboard() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Import failed')
       setImportResult(`Imported ${data.inserted} units${data.skipped ? `, skipped ${data.skipped}` : ''}.`)
-      // Refresh units list
       const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
       setSummary(s); setUnits(u)
     } catch (err) {
@@ -213,8 +245,58 @@ export default function AdminDashboard() {
     }
   }
 
+  function toggleTenantSelect(tenantId) {
+    setSelectedTenantIds(prev => {
+      const next = new Set(prev)
+      if (next.has(tenantId)) next.delete(tenantId)
+      else next.add(tenantId)
+      return next
+    })
+  }
+
+  function selectAllVisible(visibleUnits) {
+    const ids = visibleUnits.filter(u => u.tenant_id).map(u => String(u.tenant_id))
+    setSelectedTenantIds(prev => {
+      const allSelected = ids.every(id => prev.has(id))
+      if (allSelected) return new Set()
+      return new Set([...prev, ...ids])
+    })
+  }
+
+  async function handleBulkNotify(tenantIds) {
+    if (!hoaId || hoaId === '__all__' || tenantIds.length === 0) return
+    setBulkNotifying(true)
+    setBulkSuccess('')
+    try {
+      const result = await apiPost(`/hoa/${hoaId}/notify-bulk`, { tenant_ids: tenantIds })
+      setBulkSuccess(`Notified ${result.queued} owner${result.queued !== 1 ? 's' : ''}.`)
+      setSelectedTenantIds(new Set())
+      setTimeout(() => setBulkSuccess(''), 4000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBulkNotifying(false)
+    }
+  }
+
+  async function handleSendBoardReport() {
+    if (!hoaId || hoaId === '__all__') return
+    setSendingReport(true)
+    setReportSent(false)
+    try {
+      await apiPost(`/hoa/${hoaId}/report/send`, {})
+      setReportSent(true)
+      setTimeout(() => setReportSent(false), 4000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSendingReport(false)
+    }
+  }
+
   useEffect(() => {
     if (!hoaId) return
+    setSelectedTenantIds(new Set())
 
     if (hoaId === ALL_HOAS) {
       Promise.all(
@@ -233,6 +315,7 @@ export default function AdminDashboard() {
           }, {})
           setSummary(merged)
           setUnits(allUnits)
+          setTrendData([])
         })
         .catch(e => setError(e.message))
       return
@@ -241,8 +324,9 @@ export default function AdminDashboard() {
     Promise.all([
       apiGet(`/hoa/${hoaId}/compliance`),
       apiGet(`/hoa/${hoaId}/units`),
+      apiGet(`/hoa/${hoaId}/compliance/trend`),
     ])
-      .then(([s, u]) => { setSummary(s); setUnits(u) })
+      .then(([s, u, trend]) => { setSummary(s); setUnits(u); setTrendData(trend || []) })
       .catch(e => setError(e.message))
   }, [hoaId, availableHoas])
 
@@ -250,7 +334,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 pt-3 pb-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold text-slate-800">Condo Association</h2>
@@ -308,7 +392,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-start gap-3 flex-wrap">
           <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleExport}
                 disabled={exporting || !hoaId || hoaId === '__all__'}
@@ -320,8 +404,16 @@ export default function AdminDashboard() {
                 {importing ? 'Importing…' : 'Import CSV'}
                 <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
               </label>
+              <button
+                onClick={handleSendBoardReport}
+                disabled={sendingReport || !hoaId || hoaId === '__all__'}
+                className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+              >
+                {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
+              </button>
             </div>
             {importResult && <p className="text-xs text-green-600">{importResult}</p>}
+            {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
           </div>
           {(() => {
             const selectedHoa = availableHoas.find(h => h.id === hoaId)
@@ -372,7 +464,30 @@ export default function AdminDashboard() {
           })()}
           </div>
         </div>
+
+        {trendData.length > 0 && <TrendChart data={trendData} />}
+
         {error && <p className="text-red-600 mb-4">{error}</p>}
+
+        {/* Bulk action bar */}
+        {selectedTenantIds.size > 0 && (
+          <div className="flex items-center gap-3 mb-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+            <span className="text-sm text-blue-800 font-medium">{selectedTenantIds.size} owner{selectedTenantIds.size !== 1 ? 's' : ''} selected</span>
+            <button
+              onClick={() => handleBulkNotify([...selectedTenantIds])}
+              disabled={bulkNotifying}
+              className="text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-3 py-1 rounded-lg disabled:opacity-60"
+            >
+              {bulkNotifying ? 'Notifying…' : 'Notify Selected'}
+            </button>
+            <button
+              onClick={() => setSelectedTenantIds(new Set())}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Invite modal */}
         {inviteUnit && (
@@ -403,11 +518,24 @@ export default function AdminDashboard() {
           </div>
         )}
 
-
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
               <tr>
+                {(() => {
+                  const filteredForHeader = units.filter(u => u.tenant_id && u.assoc_title !== 'Property Manager')
+                  const allSelected = filteredForHeader.length > 0 && filteredForHeader.every(u => selectedTenantIds.has(String(u.tenant_id)))
+                  return (
+                    <th className="px-4 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => selectAllVisible(filteredForHeader)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
+                  )
+                })()}
                 <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -459,52 +587,59 @@ export default function AdminDashboard() {
               }
               return (
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(u => (
+              {filtered.map(u => {
+                const tenantIdStr = u.tenant_id ? String(u.tenant_id) : null
+                const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
+                return (
                 <tr
                   key={u.unit_id}
-                  onClick={async () => {
-                    if (u.tenant_id) {
-                      navigate(`/admin/tenant/${u.tenant_id}`)
-                      return
-                    }
+                  className={`hover:bg-slate-50 ${(u.tenant_id || u.status === 'missing') ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+                >
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    {tenantIdStr && u.assoc_title !== 'Property Manager' ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleTenantSelect(tenantIdStr)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3" onClick={async () => {
+                    if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
                     if (u.status === 'missing') {
                       try {
                         const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
                         navigate(`/admin/tenant/${res.id}`)
-                      } catch (err) {
-                        setError(err.message)
-                      }
+                      } catch (err) { setError(err.message) }
                     }
-                  }}
-                  className={`hover:bg-slate-50 ${(u.tenant_id || u.status === 'missing') ? 'cursor-pointer' : ''}`}
-                >
-                  <td className="px-4 py-3">
+                  }}>
                     {u.assoc_title === 'Property Manager'
                       ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
                       : <StatusBadge status={u.status} />}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>
                     {u.assoc_title
                       ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 font-medium">{u.unit_number}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
-                  <td className="px-4 py-3 text-slate-600">{displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.owner_secondary || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{displayEmail(u.email_secondary) || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.purchase_date || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.street_address || <span className="italic text-slate-400">—</span>}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.city || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.state || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.zip || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.radar_id || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.assessor_parcel_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.type || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.subdivision || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.corp_name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.sunbiz_doc_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.fein || '—'}</td>
+                  <td className="px-4 py-3 font-medium" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.unit_number}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.owner_secondary || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{displayEmail(u.email_secondary) || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.purchase_date || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.street_address || <span className="italic text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.city || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.state || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.zip || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.radar_id || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.assessor_parcel_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.type || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.subdivision || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.corp_name || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.sunbiz_doc_number || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.fein || '—'}</td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-row gap-1 flex-wrap items-center">
                       {inviteSuccess === u.unit_id + '-primary' ? (
@@ -537,10 +672,11 @@ export default function AdminDashboard() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
               {filtered.length === 0 && !error && (
                 <tr>
-                  <td colSpan={20} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={21} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
