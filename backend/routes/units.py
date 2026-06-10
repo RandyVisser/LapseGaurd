@@ -202,6 +202,13 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 exp_str = extracted.get("expiration_date")
                 validation = extracted.get("validation") or {}
                 validation_passed = validation.get("passed", True)
+                validation_flags = validation.get("flags", [])
+                logger.info(
+                    f"[_run_parsing] policy={policy_id} exp_str={exp_str!r} "
+                    f"validation_passed={validation_passed} flags={validation_flags} "
+                    f"a_min={submitted.get('ho6_coverage_a_min')} "
+                    f"dwelling={extracted.get('dwelling_coverage')}"
+                )
                 if exp_str:
                     try:
                         exp_date = date.fromisoformat(str(exp_str)[:10])
@@ -219,6 +226,7 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 elif not validation_passed:
                     # No expiration date extracted but validation still failed
                     extra_updates["status"] = PolicyStatus.non_compliant.value
+                logger.info(f"[_run_parsing] policy={policy_id} extra_updates={extra_updates}")
                 # Fill insurer / policy_number only if the column is currently blank
                 if extracted.get("insurer") and not existing_row["insurer"]:
                     extra_updates["insurer"] = extracted["insurer"]
