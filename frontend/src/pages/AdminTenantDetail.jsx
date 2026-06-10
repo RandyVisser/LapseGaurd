@@ -145,11 +145,15 @@ function SectionLabel({ children }) {
 
 // ─── Input components ────────────────────────────────────────────────────────
 
-function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, className = '' }) {
+function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, className = '' }) {
+  const isEmpty = !value && value !== 0
+  const showMissing = missing && isEmpty && !highlighted
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
-        {label}{highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
+      <label className={`block text-xs font-medium mb-1.5 ${highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
+        {label}
+        {highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
+        {showMissing && <span className="ml-1.5 text-red-400 font-semibold">— required</span>}
       </label>
       {readOnly
         ? <p className="text-sm text-slate-700 py-2">{value || '—'}</p>
@@ -157,11 +161,13 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
             type={type}
             value={value ?? ''}
             onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
+            placeholder={placeholder || (showMissing ? 'Enter value…' : undefined)}
             maxLength={maxLength}
             className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
               highlighted
                 ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
+                : showMissing
+                ? 'border border-red-300 bg-red-50 focus:ring-red-400'
                 : 'border border-slate-200 bg-white focus:ring-blue-500'
             }`}
           />
@@ -224,8 +230,25 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
     finally { setUploading(false) }
   }
 
+  // Derive missing critical fields for visual cues
+  const missingFields = []
+  if (!form.insurer) missingFields.push('carrier')
+  if (!form.policy_number) missingFields.push('policy_number')
+  if (!form.expiration_date) missingFields.push('expiration_date')
+  if (!form.named_insured) missingFields.push('named_insured')
+  if (!form.document_url) missingFields.push('document')
+  const hasMissing = missingFields.length > 0
+
+  // Left border accent color based on status / completeness
+  const accentColor =
+    form.status === 'active' && !hasMissing ? 'border-l-4 border-l-green-400' :
+    form.status === 'expiring' ? 'border-l-4 border-l-amber-400' :
+    form.status === 'pending_review' || hasMissing ? 'border-l-4 border-l-amber-400' :
+    form.status === 'lapsed' ? 'border-l-4 border-l-red-400' :
+    'border-l-4 border-l-slate-200'
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${accentColor}`}>
       {/* Card header */}
       <div className="flex items-center justify-between gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -249,6 +272,11 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
           )}
           {form.status === 'pending_review' && (
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">Pending review</span>
+          )}
+          {hasMissing && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600 whitespace-nowrap">
+              ⚠ {missingFields.length} field{missingFields.length !== 1 ? 's' : ''} missing
+            </span>
           )}
         </div>
         <button type="button" onClick={() => onDelete(policyId)} disabled={deleting}
@@ -274,7 +302,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Insured parties</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FieldInput label="Named insured" value={form.named_insured} onChange={f('named_insured')} hi={hi('named_insured')} highlighted={hi('named_insured')} />
+            <FieldInput label="Named insured" value={form.named_insured} onChange={f('named_insured')} highlighted={hi('named_insured')} missing={true} />
             <FieldInput label="Additional insured" value={form.additional_insured} onChange={f('additional_insured')} placeholder="e.g. association" highlighted={hi('additional_insured')} />
             <div className="flex flex-col gap-1.5">
               <FieldInput label="Additional interests" value={form.additional_interests} onChange={f('additional_interests')} placeholder="Mortgagee, lender, etc." highlighted={hi('additional_interests')} />
@@ -295,10 +323,10 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Policy details</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <FieldInput label="Carrier" value={form.insurer} onChange={f('insurer')} highlighted={hi('insurer')} />
-            <FieldInput label="Policy #" value={form.policy_number} onChange={f('policy_number')} highlighted={hi('policy_number')} />
+            <FieldInput label="Carrier" value={form.insurer} onChange={f('insurer')} highlighted={hi('insurer')} missing={true} />
+            <FieldInput label="Policy #" value={form.policy_number} onChange={f('policy_number')} highlighted={hi('policy_number')} missing={true} />
             <FieldInput label="Effective date" value={toDateInputValue(form.effective_date)} onChange={f('effective_date')} type="date" highlighted={hi('effective_date')} />
-            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} />
+            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} missing={true} />
           </div>
         </div>
 
@@ -344,17 +372,17 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
             </div>
           ) : (
             <div
-              className="border border-dashed border-slate-300 rounded-xl bg-slate-50 px-5 py-8 flex flex-col items-center gap-1 cursor-pointer hover:bg-slate-100 transition-colors"
+              className="border-2 border-dashed border-amber-300 rounded-xl bg-amber-50 px-5 py-8 flex flex-col items-center gap-1 cursor-pointer hover:bg-amber-100 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               {uploading
-                ? <p className="text-sm text-slate-500">Uploading…</p>
+                ? <p className="text-sm text-amber-700">Uploading…</p>
                 : <>
-                    <svg className="w-7 h-7 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-7 h-7 text-amber-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    <p className="text-sm text-slate-600 font-medium">Click to upload policy PDF or image</p>
-                    <p className="text-xs text-slate-400">PDF, JPG, PNG</p>
+                    <p className="text-sm text-amber-700 font-semibold">Upload dec page to enable AI extraction</p>
+                    <p className="text-xs text-amber-500">PDF, JPG, PNG</p>
                   </>
               }
             </div>
