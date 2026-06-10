@@ -378,7 +378,7 @@ export default function AdminTenantDetail() {
       name: data.name || '',
       email: data.email || '',
       phone: data.phone || '',
-      street_address: data.street_address || '',
+      street_address: [data.street_address, data.unit_number ? `Unit ${data.unit_number}` : ''].filter(Boolean).join(' '),
       city: data.city || '',
       state: data.state || '',
       zip: data.zip || '',
