@@ -548,46 +548,55 @@ export default function AdminTenantDetail() {
     setSaving(true); setSaveMsg('')
     try {
       // 1. Save tenant / unit fields
-      await apiPatch(`/tenant/${tenantId}`, form)
+      try {
+        await apiPatch(`/tenant/${tenantId}`, form)
+      } catch (e) { throw new Error(`[tenant] ${e.message}`) }
 
       // 2. Save HOA requirements if changed
       if (tenant?.hoa_id) {
         const reqPayload = {}
-        if (reqForm.coverage_a_min !== '' && reqForm.coverage_a_min !== (tenant.ho6_coverage_a_min ?? ''))
+        if (reqForm.coverage_a_min !== '' && Number(reqForm.coverage_a_min) !== (tenant.ho6_coverage_a_min ?? ''))
           reqPayload.ho6_coverage_a_min = Number(reqForm.coverage_a_min)
-        if (reqForm.coverage_e_min !== '' && reqForm.coverage_e_min !== (tenant.ho6_coverage_e_min ?? ''))
+        if (reqForm.coverage_e_min !== '' && Number(reqForm.coverage_e_min) !== (tenant.ho6_coverage_e_min ?? ''))
           reqPayload.ho6_coverage_e_min = Number(reqForm.coverage_e_min)
-        if (Object.keys(reqPayload).length)
-          await apiPatch(`/hoa/${tenant.hoa_id}/requirements`, reqPayload)
+        if (Object.keys(reqPayload).length) {
+          try {
+            await apiPatch(`/hoa/${tenant.hoa_id}/requirements`, reqPayload)
+          } catch (e) { throw new Error(`[hoa requirements] ${e.message}`) }
+        }
       }
 
       // 3. Save edits to existing policies
       for (const [policyId, pf] of Object.entries(policyForms)) {
-        await apiPatch(`/policy/${policyId}`, {
-          insurer: pf.insurer || null,
-          policy_number: pf.policy_number || null,
-          expiration_date: pf.expiration_date || null,
-          effective_date: pf.effective_date || null,
-          coverage_type: pf.coverage_type || null,
-          dwelling_coverage: pf.dwelling_coverage !== '' ? Number(pf.dwelling_coverage) : null,
-          liability_coverage: pf.liability_coverage !== '' ? Number(pf.liability_coverage) : null,
-          named_insured: pf.named_insured || null,
-          additional_insured: pf.additional_insured || null,
-          additional_interests: pf.additional_interests || null,
-          association_listed: pf.association_listed,
-          document_url: pf.document_url || null,
-        })
+        try {
+          await apiPatch(`/policy/${policyId}`, {
+            insurer: pf.insurer || null,
+            policy_number: pf.policy_number || null,
+            expiration_date: pf.expiration_date || null,
+            effective_date: pf.effective_date || null,
+            coverage_type: pf.coverage_type || null,
+            dwelling_coverage: pf.dwelling_coverage !== '' ? Number(pf.dwelling_coverage) : null,
+            liability_coverage: pf.liability_coverage !== '' ? Number(pf.liability_coverage) : null,
+            named_insured: pf.named_insured || null,
+            additional_insured: pf.additional_insured || null,
+            additional_interests: pf.additional_interests || null,
+            association_listed: pf.association_listed,
+            document_url: pf.document_url || null,
+          })
+        } catch (e) { throw new Error(`[policy ${policyId}] ${e.message}`) }
       }
 
       // 4. Create draft policies
       for (const draft of drafts) {
         if (!draft.document_url && !draft.policy_number && !draft.insurer) continue
-        await apiPost(`/unit/${tenant.unit_id}/policy`, {
-          insurer: draft.insurer || null,
-          policy_number: draft.policy_number || null,
-          expiration_date: draft.expiration_date || null,
-          document_url: draft.document_url || null,
-        })
+        try {
+          await apiPost(`/unit/${tenant.unit_id}/policy`, {
+            insurer: draft.insurer || null,
+            policy_number: draft.policy_number || null,
+            expiration_date: draft.expiration_date || null,
+            document_url: draft.document_url || null,
+          })
+        } catch (e) { throw new Error(`[new policy] ${e.message}`) }
       }
       setDrafts([])
 
