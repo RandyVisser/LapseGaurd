@@ -833,27 +833,6 @@ export default function AdminTenantDetail() {
               </div>
             </div>
 
-            {/* ── Activity log ─────────────────────────────────────────────── */}
-            {tenant.activity_log?.length > 0 && (
-              <div>
-                <SectionLabel>Activity log</SectionLabel>
-                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-                  {tenant.activity_log.map(entry => (
-                    <div key={entry.id} className="flex gap-3 px-5 py-3">
-                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm text-slate-700">{entry.description}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {fmtDateTime(entry.timestamp)}
-                          {entry.actor && ` · by ${entry.actor}`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* ── Footer ───────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between gap-4 py-2">
               <div className="flex items-center gap-3">
@@ -883,6 +862,27 @@ export default function AdminTenantDetail() {
                 )}
               </div>
             </div>
+
+            {/* ── Activity log ─────────────────────────────────────────────── */}
+            {tenant.activity_log?.length > 0 && (
+              <div>
+                <SectionLabel>Activity log</SectionLabel>
+                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {tenant.activity_log.map(entry => (
+                    <div key={entry.id} className="flex gap-3 px-5 py-3">
+                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-slate-700">{entry.description}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {fmtDateTime(entry.timestamp)}
+                          {entry.actor && ` · by ${entry.actor}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </form>
         )}
