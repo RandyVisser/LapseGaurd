@@ -45,6 +45,29 @@ To determine coverage_type:
 Use null for any field not found."""
 
 
+def _dedupe_insured_lists(result: dict) -> dict:
+    """Ensure no party appears in both additional_insureds and additional_interests.
+    Additional Insured (coverage afforded) takes priority — remove from additional_interests."""
+    insureds = result.get("additional_insureds") or []
+    interests = result.get("additional_interests") or []
+    if not isinstance(insureds, list):
+        insureds = [insureds] if insureds else []
+    if not isinstance(interests, list):
+        interests = [interests] if interests else []
+
+    # Normalise names for comparison (lowercase, strip punctuation)
+    def _norm(s):
+        return re.sub(r'[^a-z0-9]', '', (s or '').lower())
+
+    insured_norms = {_norm(n) for n in insureds}
+    # Remove any interest whose normalised name matches an insured
+    cleaned_interests = [n for n in interests if _norm(n) not in insured_norms]
+
+    result["additional_insureds"] = insureds
+    result["additional_interests"] = cleaned_interests
+    return result
+
+
 def _validate(extracted: dict, submitted: dict) -> dict:
     from datetime import date
     flags = []
@@ -199,6 +222,7 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
             result = await _parse_with_vision(client, content, media_type)
 
         if result:
+            result = _dedupe_insured_lists(result)
             result["validation"] = _validate(result, submitted or {})
         return result
 
