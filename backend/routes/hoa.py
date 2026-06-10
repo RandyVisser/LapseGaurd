@@ -271,15 +271,16 @@ async def compliance_summary(
         elif r["assoc_title"]:
             board_members += 1
 
-        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-        if status == PolicyStatus.active.value:
-            compliant += 1
-        elif status == PolicyStatus.expiring.value:
-            expiring += 1
-        elif status == PolicyStatus.lapsed.value:
-            lapsed += 1
-        elif status == PolicyStatus.missing.value:
-            missing += 1
+        if not is_pm:
+            status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
+            if status == PolicyStatus.active.value:
+                compliant += 1
+            elif status == PolicyStatus.expiring.value:
+                expiring += 1
+            elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
+                lapsed += 1
+            else:
+                missing += 1
 
     return ComplianceSummary(
         total_units=total_units,
@@ -472,10 +473,10 @@ async def send_board_report(
             compliant += 1
         elif status == PolicyStatus.expiring.value:
             expiring += 1
-        elif status == PolicyStatus.lapsed.value:
+        elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
             lapsed += 1
             lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
-        elif status == PolicyStatus.missing.value:
+        else:
             missing += 1
             lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
 
