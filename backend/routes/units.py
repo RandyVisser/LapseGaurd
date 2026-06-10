@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from pydantic import BaseModel
 from datetime import date, timedelta, timezone, datetime
 from typing import Optional
 import hashlib
