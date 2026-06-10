@@ -241,10 +241,10 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
 
   // Left border accent color based on status / completeness
   // NOTE: full class strings required so Tailwind does not purge them
-  let accentColor = 'border-l-4 border-l-slate-200'
-  if (form.status === 'lapsed') accentColor = 'border-l-4 border-l-red-400'
-  else if (form.status === 'active' && !hasMissing) accentColor = 'border-l-4 border-l-green-400'
-  else if (form.status === 'expiring' || form.status === 'pending_review' || hasMissing) accentColor = 'border-l-4 border-l-amber-400'
+  let accentColor = 'border-2 border-slate-200'
+  if (form.status === 'lapsed') accentColor = 'border-2 border-red-400'
+  else if (form.status === 'active' && !hasMissing) accentColor = 'border-2 border-green-400'
+  else if (form.status === 'expiring' || form.status === 'pending_review' || hasMissing) accentColor = 'border-2 border-amber-400'
 
   return (
     <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${accentColor}`}>

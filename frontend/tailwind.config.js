@@ -6,10 +6,10 @@ export default {
   },
   plugins: [],
   safelist: [
-    'border-l-4',
-    'border-l-green-400',
-    'border-l-amber-400',
-    'border-l-red-400',
-    'border-l-slate-200',
+    'border-2',
+    'border-green-400',
+    'border-amber-400',
+    'border-red-400',
+    'border-slate-200',
   ],
 }
