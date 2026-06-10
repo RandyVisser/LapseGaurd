@@ -15,7 +15,9 @@ async function _handleResponse(res, path) {
   const prefix = `[${res.status} ${res.url.replace(/^https?:\/\/[^/]+/, '')}]`
   try {
     const data = JSON.parse(text)
-    throw new Error(`${prefix} ${data.detail || data.message || text}`)
+    const detail = data.detail || data.message || text
+    const msg = typeof detail === 'string' ? detail : JSON.stringify(detail)
+    throw new Error(`${prefix} ${msg}`)
   } catch (e) {
     if (e instanceof SyntaxError) throw new Error(`${prefix} ${text}`)
     throw e
