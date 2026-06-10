@@ -44,7 +44,7 @@ const COVERAGE_TYPE_OPTIONS = [
   { value: 'unknown',           label: 'Unknown' },
 ]
 
-const STATUS_PRIORITY = { active: 0, expiring: 1, pending_review: 2, lapsed: 3, missing: 4 }
+const STATUS_PRIORITY = { active: 0, expiring: 1, non_compliant: 2, pending_review: 3, lapsed: 4, missing: 5 }
 
 function worstStatus(policies) {
   if (!policies.length) return 'missing'
