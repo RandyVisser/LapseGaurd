@@ -24,10 +24,7 @@ Fields:
 - insurer (string — the full legal name of the insurance company/carrier issuing the policy; look in the page header, footer, "Insured by", "Underwritten by", "A policy of", or company logo area; do NOT use the agent or agency name)
 - policy_number (string)
 - named_insured (string — the primary named insured(s) on the policy)
-- additional_insureds (array of strings — ONLY parties the document explicitly designates as "Additional Insured" or "Addl Insured" or "AI"; do NOT include parties labeled as Additional Interest, Certificate Holder, Mortgagee, Loss Payee, or ATIMA — those are different classifications; empty array if none)
-- additional_interests (array of strings — ONLY parties the document explicitly designates as "Additional Interest", "Certificate Holder", "Mortgagee", "Loss Payee", "ATIMA", or similar non-insured designations; do NOT include Additional Insureds here; empty array if none)
-
-IMPORTANT: For every party listed on the dec page, read the exact designation label printed next to or above their name and place them in exactly ONE array — never both. If the label says "Additional Insured" → additional_insureds only. If the label says "Additional Interest", "Mortgagee", "Certificate Holder", or "Loss Payee" → additional_interests only. A party must never appear in both arrays.
+- listed_parties (array of objects — every person, company, or entity listed on the dec page other than the named insured; for each entry include: "name" (string) and "designation" (string — copy the EXACT label printed on the document next to or above their name, e.g. "Additional Insured", "Additional Interest", "Mortgagee", "Loss Payee", "Certificate Holder", "ATIMA"); empty array if none)
 - property_address (string — the insured property's address as shown on the dec page)
 - effective_date (YYYY-MM-DD or null — the policy START date; look for "Effective Date", "Policy Effective", "Coverage Begins", or the first date in a "Policy Period" range such as "04/09/2026 to 04/09/2027")
 - expiration_date (YYYY-MM-DD or null — the policy END date; look for "Expiration Date", "Policy Expiry", "Coverage Ends", "Renewal Date", or the SECOND/last date in a "Policy Period" range; this is the date the coverage lapses if not renewed)
@@ -45,26 +42,44 @@ To determine coverage_type:
 Use null for any field not found."""
 
 
+_INSURED_KEYWORDS = {"additional insured", "addl insured", "addl. insured", "add'l insured", " ai "}
+_INTEREST_KEYWORDS = {"additional interest", "addl interest", "certificate holder", "mortgagee",
+                      "loss payee", "atima", "lienholder", "lender"}
+
+
 def _dedupe_insured_lists(result: dict) -> dict:
-    """Ensure no party appears in both additional_insureds and additional_interests.
-    Additional Insured (coverage afforded) takes priority — remove from additional_interests."""
-    insureds = result.get("additional_insureds") or []
-    interests = result.get("additional_interests") or []
-    if not isinstance(insureds, list):
-        insureds = [insureds] if insureds else []
-    if not isinstance(interests, list):
-        interests = [interests] if interests else []
+    """Convert listed_parties [{name, designation}] into additional_insureds / additional_interests
+    using Python keyword matching on the designation text — more reliable than asking the AI to sort them."""
+    parties = result.get("listed_parties") or []
 
-    # Normalise names for comparison (lowercase, strip punctuation)
-    def _norm(s):
-        return re.sub(r'[^a-z0-9]', '', (s or '').lower())
+    insureds: list[str] = []
+    interests: list[str] = []
 
-    insured_norms = {_norm(n) for n in insureds}
-    # Remove any interest whose normalised name matches an insured
-    cleaned_interests = [n for n in interests if _norm(n) not in insured_norms]
+    for party in parties:
+        if not isinstance(party, dict):
+            continue
+        name = (party.get("name") or "").strip()
+        designation = (party.get("designation") or "").lower()
+        if not name:
+            continue
+        # Check designation against keyword sets
+        is_insured = any(kw in designation for kw in _INSURED_KEYWORDS)
+        if is_insured:
+            insureds.append(name)
+        else:
+            interests.append(name)
+
+    # Fall back to any existing arrays if listed_parties wasn't returned
+    if not parties:
+        insureds = result.get("additional_insureds") or []
+        interests = result.get("additional_interests") or []
+        if not isinstance(insureds, list):
+            insureds = [insureds] if insureds else []
+        if not isinstance(interests, list):
+            interests = [interests] if interests else []
 
     result["additional_insureds"] = insureds
-    result["additional_interests"] = cleaned_interests
+    result["additional_interests"] = interests
     return result
 
 
