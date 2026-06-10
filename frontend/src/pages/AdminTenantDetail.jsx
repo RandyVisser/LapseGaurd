@@ -85,17 +85,22 @@ function buildComplianceChecks(tenant, currentPolicies) {
   }
 
   // Named insured / additional insured matches unit-owner name
+  // Owner may appear as named insured OR any additional insured (e.g. LLC owner with individual as add'l insured)
   if (tenant.ho6_named_insured_match_required && ho6?.extracted_data) {
     const ext = ho6.extracted_data
-    const namedMatch    = nameMatches(tenant.name, ext.named_insured)
-    const additionalMatch = nameMatches(tenant.name, ext.additional_insured)
-    const match = namedMatch || additionalMatch
-    if (ext.named_insured || ext.additional_insured) {
+    // Collect all insured names: named_insured + additional_insureds (array) + additional_insured (legacy string)
+    const allInsuredNames = [
+      ext.named_insured,
+      ...(Array.isArray(ext.additional_insureds) ? ext.additional_insureds : ext.additional_insureds ? [ext.additional_insureds] : []),
+      ...(ext.additional_insured && !Array.isArray(ext.additional_insured) ? [ext.additional_insured] : []),
+    ].filter(Boolean)
+    const match = allInsuredNames.some(n => nameMatches(tenant.name, n))
+    if (allInsuredNames.length > 0) {
       items.push({
         type: match ? 'pass' : 'fail',
         text: match
           ? `Named insured matches unit-owner (${tenant.name})`
-          : `Named insured does not match unit-owner — policy shows "${ext.named_insured || ext.additional_insured}", expected "${tenant.name}"`,
+          : `Named insured does not match unit-owner — policy lists "${allInsuredNames.join('; ')}", expected "${tenant.name}"`,
       })
     }
   }
@@ -445,8 +450,12 @@ export default function AdminTenantDetail() {
         dwelling_coverage: ext.dwelling_coverage ?? '',
         liability_coverage: ext.liability_coverage ?? '',
         named_insured: ext.named_insured || '',
-        additional_insured: ext.additional_insured || '',
-        additional_interests: ext.additional_interests || '',
+        additional_insured: Array.isArray(ext.additional_insureds)
+          ? ext.additional_insureds.join(', ')
+          : (ext.additional_insureds || ext.additional_insured || ''),
+        additional_interests: Array.isArray(ext.additional_interests)
+          ? ext.additional_interests.join(', ')
+          : (ext.additional_interests || ''),
         association_listed: assocListed === 'pass' || assocListed === 'override',
         document_url: p.document_url || '',
         uploaded_at: p.uploaded_at || '',

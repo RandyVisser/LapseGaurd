@@ -23,7 +23,9 @@ Return a JSON object only — no explanation, no markdown, just the JSON.
 Fields:
 - insurer (string)
 - policy_number (string)
-- named_insured (string — the name(s) of the insured person(s) on the policy)
+- named_insured (string — the primary named insured(s) on the policy)
+- additional_insureds (array of strings — ALL additional insureds listed, including LLCs, trusts, or other individuals; empty array if none)
+- additional_interests (array of strings — all additional interests or certificate holders listed, e.g. mortgage holders, HOAs, condo associations; empty array if none)
 - property_address (string — the insured property's address as shown on the dec page)
 - effective_date (YYYY-MM-DD or null)
 - expiration_date (YYYY-MM-DD or null)
@@ -72,17 +74,28 @@ def _validate(extracted: dict, submitted: dict) -> dict:
     if sub_exp and ext_exp and sub_exp != ext_exp:
         flags.append(f"Expiration date mismatch — entered '{submitted['expiration_date']}', document shows '{extracted['expiration_date']}'")
 
-    # Named insured — fuzzy word-overlap match (names are often formatted differently)
+    # Named insured — unit owner must match the named insured OR any additional insured
+    # (unit may be owned in an LLC with the individual listed as additional insured, or vice versa)
     def _name_words(s):
         return set(w for w in re.split(r'[\s,&]+', _norm(s)) if len(w) > 1)
 
-    sub_name = submitted.get("named_insured")
+    sub_name = submitted.get("named_insured")  # unit owner name from our records
     ext_name = extracted.get("named_insured")
-    if sub_name and ext_name:
+    ext_additional = extracted.get("additional_insureds") or []
+    if isinstance(ext_additional, str):
+        ext_additional = [ext_additional]
+
+    if sub_name and (ext_name or ext_additional):
         sub_words = _name_words(sub_name)
-        ext_words = _name_words(ext_name)
-        if sub_words and ext_words and not (sub_words & ext_words):
-            flags.append(f"Named insured mismatch — unit owner on file is '{sub_name}', document shows '{ext_name}'")
+        # Build combined pool of all insured names on the policy
+        all_insured_names = ([ext_name] if ext_name else []) + list(ext_additional)
+        matched = any(sub_words & _name_words(n) for n in all_insured_names if n)
+        if sub_words and not matched:
+            all_names_str = ", ".join(filter(None, all_insured_names))
+            flags.append(
+                f"Named insured mismatch — unit owner '{sub_name}' does not appear as "
+                f"named insured or additional insured on the policy (policy lists: {all_names_str})"
+            )
 
     # Address — fuzzy word-overlap match (street number + street name should overlap).
     # Generic address tokens (unit/street-type words, state abbreviations) are excluded

@@ -108,8 +108,8 @@ def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str,
         except (TypeError, ValueError):
             pass
 
-    # Named Insured Matches
-    if submitted.get("named_insured") and extracted.get("named_insured"):
+    # Named Insured Matches — owner must appear as named insured OR any additional insured
+    if submitted.get("named_insured") and (extracted.get("named_insured") or extracted.get("additional_insureds")):
         result["named_insured_match"] = "fail" if "Named insured mismatch" in flags_text else "pass"
 
     # Property Address Matches
