@@ -13,8 +13,13 @@ from datetime import date
 
 from models.schemas import PolicyStatus
 
-_COVERAGE_STATUSES = (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.lapsed.value)
-_STATUS_PRIORITY = {PolicyStatus.active.value: 0, PolicyStatus.expiring.value: 1, PolicyStatus.lapsed.value: 2}
+_COVERAGE_STATUSES = (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value, PolicyStatus.lapsed.value)
+_STATUS_PRIORITY = {
+    PolicyStatus.active.value: 0,
+    PolicyStatus.expiring.value: 1,
+    PolicyStatus.pending_review.value: 2,
+    PolicyStatus.lapsed.value: 3,
+}
 
 
 def _sort_key(p):
