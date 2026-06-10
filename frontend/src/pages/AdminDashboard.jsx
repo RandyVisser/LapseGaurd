@@ -308,7 +308,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'missing']) {
+            for (const key of ['total_units', 'board_members', 'compliant', 'expiring', 'lapsed', 'missing']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
             </div>
             {summary && (
               <div className="flex flex-wrap gap-2 mt-2">
-                <StatCard compact label="Board + PM" value={summary.board_members + summary.property_managers} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                 <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                 <StatCard compact label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
                 <StatCard compact label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
@@ -537,7 +537,7 @@ export default function AdminDashboard() {
                   )
                 })()}
                 <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Board + PM"        col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                <SortTh label="Board"             col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -614,13 +614,11 @@ export default function AdminDashboard() {
                       } catch (err) { setError(err.message) }
                     }
                   }}>
-                    {u.assoc_title === 'Property Manager'
-                      ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">PM</span>
-                      : <StatusBadge status={u.status} />}
+                    <StatusBadge status={u.status} />
                   </td>
                   <td className="px-4 py-3" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>
                     {u.assoc_title
-                      ? <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${u.assoc_title === 'Property Manager' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-green-100 text-green-800 border-green-300'}`}>{u.assoc_title}</span>
+                      ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-100 text-green-800 border-green-300">{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 font-medium" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.unit_number}</td>

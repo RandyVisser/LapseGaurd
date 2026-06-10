@@ -260,32 +260,28 @@ async def compliance_summary(
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
     statuses = await _compliance_status_by_tenant(conn, tenant_ids)
 
-    total_units = board_members = property_managers = 0
+    total_units = board_members = 0
     compliant = expiring = lapsed = missing = 0
     for r in rows:
-        is_pm = r["assoc_title"] == "Property Manager"
-        if not is_pm:
-            total_units += 1
-        if is_pm:
-            property_managers += 1
-        elif r["assoc_title"]:
+        # Property Manager units are hidden entirely — skip them
+        if r["assoc_title"] == "Property Manager":
+            continue
+        total_units += 1
+        if r["assoc_title"]:
             board_members += 1
-
-        if not is_pm:
-            status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-            if status == PolicyStatus.active.value:
-                compliant += 1
-            elif status == PolicyStatus.expiring.value:
-                expiring += 1
-            elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
-                lapsed += 1
-            else:
-                missing += 1
+        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
+        if status == PolicyStatus.active.value:
+            compliant += 1
+        elif status == PolicyStatus.expiring.value:
+            expiring += 1
+        elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
+            lapsed += 1
+        else:
+            missing += 1
 
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
-        property_managers=property_managers,
         compliant=compliant,
         expiring=expiring,
         lapsed=lapsed,

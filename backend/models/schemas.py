@@ -108,7 +108,7 @@ class UnitComplianceOut(BaseModel):
 class ComplianceSummary(BaseModel):
     total_units: int
     board_members: int
-    property_managers: int
+    property_managers: int = 0  # kept for backwards compat, always 0
     compliant: int
     expiring: int
     lapsed: int
