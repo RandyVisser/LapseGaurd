@@ -306,9 +306,9 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Coverage</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <FieldInput label="Coverage A ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} type="number" highlighted={hi('dwelling_coverage')} />
+            <FieldInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} type="number" highlighted={hi('dwelling_coverage')} />
             {isHo6 && (
-              <FieldInput label="Coverage E ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} type="number" highlighted={hi('liability_coverage')} />
+              <FieldInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} type="number" highlighted={hi('liability_coverage')} />
             )}
             {isHo6 && (
               <FieldSelect
