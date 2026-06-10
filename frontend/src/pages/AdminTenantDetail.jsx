@@ -54,6 +54,24 @@ function worstStatus(policies) {
   )
 }
 
+// Fuzzy name match: all words of tenantName must appear in policyName (case-insensitive)
+function nameMatches(tenantName, policyName) {
+  if (!tenantName || !policyName) return false
+  const words = tenantName.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1)
+  const target = policyName.toLowerCase()
+  return words.length > 0 && words.every(w => target.includes(w))
+}
+
+// Fuzzy address match: street number + first street word must both appear in policyAddress
+function addressMatches(unitStreet, policyAddress) {
+  if (!unitStreet || !policyAddress) return false
+  const parts = unitStreet.toLowerCase().trim().split(/[\s,]+/).filter(Boolean)
+  const target = policyAddress.toLowerCase()
+  // Require at least the street number and first street name word to match
+  const keyParts = parts.slice(0, 2)
+  return keyParts.length > 0 && keyParts.every(p => target.includes(p))
+}
+
 function buildComplianceChecks(tenant, currentPolicies) {
   const ho6  = currentPolicies.find(p => ['ho6_with_wind', 'ho6_wind_excluded'].includes(p.coverage_type))
   const wind = currentPolicies.find(p => p.coverage_type === 'wind_only')
@@ -64,6 +82,33 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const d = daysUntil(p.expiration_date)
     if (d !== null && d >= 0 && d <= 30)
       items.push({ type: 'warning', text: `${label} policy (${p.insurer || 'unknown'}) expires in ${d} day${d !== 1 ? 's' : ''} — renewal required` })
+  }
+
+  // Named insured / additional insured matches unit-owner name
+  if (tenant.ho6_named_insured_match_required && ho6?.extracted_data) {
+    const ext = ho6.extracted_data
+    const namedMatch    = nameMatches(tenant.name, ext.named_insured)
+    const additionalMatch = nameMatches(tenant.name, ext.additional_insured)
+    const match = namedMatch || additionalMatch
+    if (ext.named_insured || ext.additional_insured) {
+      items.push({
+        type: match ? 'pass' : 'fail',
+        text: match
+          ? `Named insured matches unit-owner (${tenant.name})`
+          : `Named insured does not match unit-owner — policy shows "${ext.named_insured || ext.additional_insured}", expected "${tenant.name}"`,
+      })
+    }
+  }
+
+  // Property address matches unit address
+  if (tenant.ho6_property_address_match_required && ho6?.extracted_data?.property_address) {
+    const match = addressMatches(tenant.street_address, ho6.extracted_data.property_address)
+    items.push({
+      type: match ? 'pass' : 'fail',
+      text: match
+        ? `Property address matches unit (${ho6.extracted_data.property_address})`
+        : `Property address mismatch — policy shows "${ho6.extracted_data.property_address}", unit is "${tenant.street_address || 'no address on file'}"`,
+    })
   }
 
   const ho6CovA = ho6?.extracted_data?.dwelling_coverage
