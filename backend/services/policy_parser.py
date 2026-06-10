@@ -24,8 +24,10 @@ Fields:
 - insurer (string — the full legal name of the insurance company/carrier issuing the policy; look in the page header, footer, "Insured by", "Underwritten by", "A policy of", or company logo area; do NOT use the agent or agency name)
 - policy_number (string)
 - named_insured (string — the primary named insured(s) on the policy)
-- additional_insureds (array of strings — ALL additional insureds listed, including LLCs, trusts, or other individuals; empty array if none)
-- additional_interests (array of strings — all additional interests or certificate holders listed, e.g. mortgage holders, HOAs, condo associations; empty array if none)
+- additional_insureds (array of strings — ONLY parties the document explicitly designates as "Additional Insured" or "Addl Insured" or "AI"; do NOT include parties labeled as Additional Interest, Certificate Holder, Mortgagee, Loss Payee, or ATIMA — those are different classifications; empty array if none)
+- additional_interests (array of strings — ONLY parties the document explicitly designates as "Additional Interest", "Certificate Holder", "Mortgagee", "Loss Payee", "ATIMA", or similar non-insured designations; do NOT include Additional Insureds here; empty array if none)
+
+IMPORTANT: For every party listed on the dec page, read the exact designation label printed next to or above their name (e.g. "Additional Insured", "Additional Interest", "Mortgagee") and place them in the correct array. Do NOT guess — if the label says "Additional Interest", they go in additional_interests even if they sound like they should have coverage.
 - property_address (string — the insured property's address as shown on the dec page)
 - effective_date (YYYY-MM-DD or null — the policy START date; look for "Effective Date", "Policy Effective", "Coverage Begins", or the first date in a "Policy Period" range such as "04/09/2026 to 04/09/2027")
 - expiration_date (YYYY-MM-DD or null — the policy END date; look for "Expiration Date", "Policy Expiry", "Coverage Ends", "Renewal Date", or the SECOND/last date in a "Policy Period" range; this is the date the coverage lapses if not renewed)
