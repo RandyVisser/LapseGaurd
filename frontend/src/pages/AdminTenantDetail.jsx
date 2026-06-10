@@ -676,9 +676,9 @@ export default function AdminTenantDetail() {
                 <div className="pt-4 border-t border-slate-100">
                   <SectionLabel>Association requirements</SectionLabel>
                   <div className="grid grid-cols-2 gap-4">
-                    <FieldInput label="Min Coverage A ($)" value={reqForm.coverage_a_min}
+                    <FieldInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
                       onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} type="number" placeholder="200000" />
-                    <FieldInput label="Min Coverage E ($)" value={reqForm.coverage_e_min}
+                    <FieldInput label="Min Coverage E (Liability) ($)" value={reqForm.coverage_e_min}
                       onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} type="number" placeholder="100000" />
                   </div>
                 </div>
