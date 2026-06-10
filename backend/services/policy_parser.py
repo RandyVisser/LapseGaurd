@@ -21,7 +21,7 @@ EXTRACT_PROMPT = """Extract the following fields from this insurance declaration
 Return a JSON object only — no explanation, no markdown, just the JSON.
 
 Fields:
-- insurer (string)
+- insurer (string — the full legal name of the insurance company/carrier issuing the policy; look in the page header, footer, "Insured by", "Underwritten by", "A policy of", or company logo area; do NOT use the agent or agency name)
 - policy_number (string)
 - named_insured (string — the primary named insured(s) on the policy)
 - additional_insureds (array of strings — ALL additional insureds listed, including LLCs, trusts, or other individuals; empty array if none)
@@ -215,7 +215,7 @@ def _extract_pdf_text(content: bytes) -> str:
 async def _parse_with_text(client: anthropic.AsyncAnthropic, text: str) -> dict | None:
     msg = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{
             "role": "user",
             "content": f"{EXTRACT_PROMPT}\n\nDec page text:\n{text[:5000]}"
@@ -231,7 +231,7 @@ async def _parse_with_vision(
     b64 = base64.standard_b64encode(content).decode()
     msg = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{
             "role": "user",
             "content": [
