@@ -186,7 +186,9 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 auto_results = _auto_review_overrides(extracted, submitted, coverage_type, has_wind_only_companion)
                 now_iso = datetime.now(timezone.utc).isoformat()
 
-                existing_row = await conn.fetchrow("SELECT review_overrides FROM policies WHERE id = $1", policy_id)
+                existing_row = await conn.fetchrow(
+                    "SELECT review_overrides, insurer, policy_number FROM policies WHERE id = $1", policy_id
+                )
                 overrides = existing_row["review_overrides"] if existing_row else None
                 if isinstance(overrides, str):
                     overrides = json.loads(overrides)
@@ -194,13 +196,32 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 for key, value in auto_results.items():
                     overrides[key] = {"value": value, "by": "AI (Run AI on Document)", "at": now_iso}
 
+                # Promote extracted fields to top-level policy columns
+                extra_updates = {}
+                # Always write expiration_date + recompute status from AI extraction
+                exp_str = extracted.get("expiration_date")
+                if exp_str:
+                    try:
+                        exp_date = date.fromisoformat(str(exp_str)[:10])
+                        extra_updates["expiration_date"] = exp_date
+                        extra_updates["status"] = _compute_status(exp_date).value
+                    except (ValueError, TypeError):
+                        pass
+                # Fill insurer / policy_number only if the column is currently blank
+                if extracted.get("insurer") and not existing_row["insurer"]:
+                    extra_updates["insurer"] = extracted["insurer"]
+                if extracted.get("policy_number") and not existing_row["policy_number"]:
+                    extra_updates["policy_number"] = extracted["policy_number"]
+
+                set_parts = "extracted_data = $1, parsed_at = $2, coverage_type = $3, review_overrides = $4"
+                params = [json.dumps(extracted), datetime.now(timezone.utc), coverage_type, json.dumps(overrides)]
+                for col, val in extra_updates.items():
+                    params.append(val)
+                    set_parts += f", {col} = ${len(params)}"
+                params.append(policy_id)
                 await conn.execute(
-                    "UPDATE policies SET extracted_data = $1, parsed_at = $2, coverage_type = $3, review_overrides = $4 WHERE id = $5",
-                    json.dumps(extracted),
-                    datetime.now(timezone.utc),
-                    coverage_type,
-                    json.dumps(overrides),
-                    policy_id,
+                    f"UPDATE policies SET {set_parts} WHERE id = ${len(params)}",
+                    *params,
                 )
     except Exception as e:
         logger.error(f"Failed to save parsed dec page for policy {policy_id}: {e}")
