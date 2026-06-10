@@ -8,7 +8,7 @@ from typing import List, Optional
 import asyncpg
 
 from models.db import get_conn
-from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus
+from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus, ActivityLogEntry
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
@@ -40,6 +40,16 @@ REVIEW_CHECK_KEYS = {
 class PolicyReviewUpdate(BaseModel):
     check_key: str
     value: str  # "pass" | "fail" | "override"
+
+
+class TenantUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
 
 router = APIRouter()
 
@@ -80,8 +90,11 @@ async def get_tenant_detail(
 ):
     row = await conn.fetchrow(
         """
-        SELECT t.id, t.unit_id, t.name, t.email, u.unit_number, u.hoa_id,
+        SELECT t.id, t.unit_id, t.name, t.email,
+               COALESCE(t.phone, '') AS phone,
+               u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
+               h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
                h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required
         FROM tenants t
@@ -105,8 +118,66 @@ async def get_tenant_detail(
         tenant_id,
     )
 
+    alert_rows = await conn.fetch(
+        "SELECT id, alert_type, sent_at FROM alert_log WHERE tenant_id = $1 ORDER BY sent_at DESC LIMIT 50",
+        tenant_id,
+    )
+
     evaluation = evaluate_compliance([dict(r) for r in policy_rows])
     current_ids = evaluation["current_ids"]
+
+    # Build activity log from alerts + policy events
+    _COVERAGE_LABELS = {
+        "ho6_with_wind": "HO-6",
+        "ho6_wind_excluded": "HO-6 excl wind",
+        "wind_only": "Wind-only",
+    }
+    _ALERT_LABELS = {
+        "admin_notify": "Admin notification sent to",
+        "expiry": "Expiry notification sent to",
+        "lapse": "Lapse notification sent to",
+    }
+    activity: list[ActivityLogEntry] = []
+    for a in alert_rows:
+        label = _ALERT_LABELS.get(a["alert_type"], f"Alert ({a['alert_type']}) sent to")
+        activity.append(ActivityLogEntry(
+            id=str(a["id"]),
+            description=f"{label} {row['email']}",
+            timestamp=a["sent_at"],
+            actor=None,
+        ))
+    for p in policy_rows:
+        cov = _COVERAGE_LABELS.get(p["coverage_type"] or "", "Policy")
+        pnum = p["policy_number"] or ""
+        activity.append(ActivityLogEntry(
+            id=f"upload-{p['id']}",
+            description=f"{cov} {pnum} uploaded".strip(),
+            timestamp=p["uploaded_at"],
+            actor=row["name"],
+        ))
+        if p["parsed_at"]:
+            extracted = json.loads(p["extracted_data"]) if isinstance(p["extracted_data"], str) else (p["extracted_data"] or {})
+            field_count = sum(1 for v in extracted.values() if v is not None and v != "" and not isinstance(v, dict))
+            activity.append(ActivityLogEntry(
+                id=f"parse-{p['id']}",
+                description=f"AI extracted {field_count} fields from {cov} {pnum}".strip(),
+                timestamp=p["parsed_at"],
+                actor="AI",
+            ))
+        overrides = json.loads(p["review_overrides"]) if isinstance(p["review_overrides"], str) else (p["review_overrides"] or {})
+        for check_key, check_val in overrides.items():
+            if isinstance(check_val, dict) and check_val.get("by") and check_val.get("at"):
+                try:
+                    ts = datetime.fromisoformat(check_val["at"])
+                except Exception:
+                    continue
+                activity.append(ActivityLogEntry(
+                    id=f"review-{p['id']}-{check_key}",
+                    description=f"{cov} {pnum} — {check_key.replace('_', ' ')} marked {check_val['value']}".strip(),
+                    timestamp=ts,
+                    actor=check_val["by"],
+                ))
+    activity.sort(key=lambda x: x.timestamp, reverse=True)
 
     policies = [
         PolicyOut(
@@ -133,6 +204,9 @@ async def get_tenant_detail(
         unit_number=row["unit_number"],
         name=row["name"],
         email=row["email"],
+        phone=row["phone"] or None,
+        hoa_id=row["hoa_id"],
+        hoa_name=row["hoa_name"],
         street_address=row["street_address"],
         city=row["city"],
         state=row["state"],
@@ -146,7 +220,51 @@ async def get_tenant_detail(
         ho6_policy_in_force_required=row["ho6_policy_in_force_required"],
         ho6_named_insured_match_required=row["ho6_named_insured_match_required"],
         ho6_property_address_match_required=row["ho6_property_address_match_required"],
+        activity_log=activity,
     )
+
+
+@router.patch("/tenant/{tenant_id}")
+async def update_tenant(
+    tenant_id: str,
+    body: TenantUpdate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    # Verify access
+    access = await conn.fetchrow(
+        "SELECT t.id, u.hoa_id, u.id AS unit_id FROM tenants t JOIN units u ON u.id = t.unit_id WHERE t.id = $1",
+        tenant_id,
+    )
+    if not access:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if user.hoa_id and str(access["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Update tenants table
+    tenant_fields = {k: v for k, v in {"name": body.name, "email": body.email, "phone": body.phone}.items() if v is not None}
+    if tenant_fields:
+        set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(tenant_fields))
+        await conn.execute(
+            f"UPDATE tenants SET {set_clause} WHERE id = $1",
+            tenant_id, *tenant_fields.values(),
+        )
+
+    # Update units table
+    unit_fields = {k: v for k, v in {
+        "street_address": body.street_address,
+        "city": body.city,
+        "state": body.state,
+        "zip": body.zip,
+    }.items() if v is not None}
+    if unit_fields:
+        set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(unit_fields))
+        await conn.execute(
+            f"UPDATE units SET {set_clause} WHERE id = $1",
+            str(access["unit_id"]), *unit_fields.values(),
+        )
+
+    return {"ok": True}
 
 
 @router.post("/tenant/{tenant_id}/notify")

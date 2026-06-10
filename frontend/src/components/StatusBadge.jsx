@@ -6,12 +6,14 @@ const colors = {
   pending_review: 'bg-blue-100 text-blue-800',
   fail: 'bg-red-100 text-red-800',
   pass: 'bg-green-100 text-green-800',
+  expired: 'bg-slate-100 text-slate-500',
 }
 
 const labels = {
   pending_review: 'Pending Review',
   fail: 'Fail',
   pass: 'Pass',
+  expired: 'Expired',
 }
 
 export default function StatusBadge({ status }) {

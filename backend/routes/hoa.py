@@ -140,6 +140,34 @@ async def list_hoas(
     ]
 
 
+class HoaRequirementsUpdate(BaseModel):
+    ho6_coverage_a_min: Optional[float] = None
+    ho6_coverage_e_min: Optional[float] = None
+    ho6_wind_required: Optional[bool] = None
+    ho6_additional_interest_required: Optional[bool] = None
+    ho6_policy_in_force_required: Optional[bool] = None
+    ho6_named_insured_match_required: Optional[bool] = None
+    ho6_property_address_match_required: Optional[bool] = None
+
+
+@router.patch("/hoa/{hoa_id}/requirements")
+async def update_hoa_requirements(
+    hoa_id: str,
+    body: HoaRequirementsUpdate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+    fields = {k: v for k, v in body.dict().items() if v is not None}
+    if fields:
+        set_clause = ", ".join(f"{k} = ${i + 2}" for i, k in enumerate(fields))
+        await conn.execute(
+            f"UPDATE hoas SET {set_clause} WHERE id = $1",
+            hoa_id, *fields.values(),
+        )
+    return {"ok": True}
+
+
 @router.get("/hoa/{hoa_id}/units", response_model=List[UnitComplianceOut])
 async def list_units(
     hoa_id: str,

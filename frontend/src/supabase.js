@@ -54,6 +54,20 @@ export async function apiPut(path, body) {
   return _handleResponse(res)
 }
 
+export async function apiPatch(path, body) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+  return _handleResponse(res)
+}
+
 export async function apiPost(path, body) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token

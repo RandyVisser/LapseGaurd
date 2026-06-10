@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import date, timedelta, timezone, datetime
+from typing import Optional
 import hashlib
 import json
 import logging
@@ -334,6 +335,115 @@ async def upload_policy(
                 background_tasks.add_task(send_email, hoa_row_full["admin_email"], subject, html)
 
     return policy
+
+
+class PolicyEdit(BaseModel):
+    insurer: Optional[str] = None
+    policy_number: Optional[str] = None
+    expiration_date: Optional[date] = None
+    effective_date: Optional[str] = None
+    coverage_type: Optional[str] = None
+    document_url: Optional[str] = None
+    # extracted_data fields
+    named_insured: Optional[str] = None
+    additional_insured: Optional[str] = None
+    additional_interests: Optional[str] = None
+    dwelling_coverage: Optional[float] = None
+    liability_coverage: Optional[float] = None
+    # review override shortcut
+    association_listed: Optional[bool] = None
+
+
+@router.patch("/policy/{policy_id}", response_model=PolicyOut)
+async def edit_policy(
+    policy_id: str,
+    body: PolicyEdit,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Admin edits policy fields directly (carrier, dates, coverage amounts, etc.)."""
+    row = await conn.fetchrow(
+        """SELECT p.*, u.hoa_id FROM policies p
+           JOIN tenants t ON t.id = p.tenant_id
+           JOIN units u ON u.id = t.unit_id
+           WHERE p.id = $1""",
+        policy_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    updates: dict = {}
+
+    # Direct policy fields
+    if body.insurer is not None:
+        updates["insurer"] = body.insurer
+    if body.policy_number is not None:
+        updates["policy_number"] = body.policy_number
+    if body.coverage_type is not None:
+        updates["coverage_type"] = body.coverage_type
+    if body.document_url is not None:
+        updates["document_url"] = body.document_url
+
+    # Expiration date — also recompute status
+    exp = body.expiration_date if body.expiration_date is not None else row["expiration_date"]
+    if body.expiration_date is not None:
+        updates["expiration_date"] = body.expiration_date
+    if exp is not None:
+        updates["status"] = _compute_status(exp).value
+
+    # Merge extracted_data with new values
+    extracted_patch = {k: v for k, v in {
+        "named_insured": body.named_insured,
+        "additional_insured": body.additional_insured,
+        "additional_interests": body.additional_interests,
+        "effective_date": body.effective_date,
+        "dwelling_coverage": body.dwelling_coverage,
+        "liability_coverage": body.liability_coverage,
+    }.items() if v is not None}
+
+    if extracted_patch:
+        existing = {}
+        if row["extracted_data"]:
+            existing = json.loads(row["extracted_data"]) if isinstance(row["extracted_data"], str) else dict(row["extracted_data"] or {})
+        existing.update(extracted_patch)
+        updates["extracted_data"] = json.dumps(existing)
+
+    # Association listed → review_overrides shortcut
+    if body.association_listed is not None:
+        overrides = row["review_overrides"]
+        if isinstance(overrides, str):
+            overrides = json.loads(overrides)
+        overrides = dict(overrides or {})
+        overrides["association_additional_interest"] = {
+            "value": "pass" if body.association_listed else "fail",
+            "by": user.email,
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+        updates["review_overrides"] = json.dumps(overrides)
+
+    if updates:
+        set_clause = ", ".join(f"{k} = ${i + 2}" for i, k in enumerate(updates))
+        row = await conn.fetchrow(
+            f"UPDATE policies SET {set_clause} WHERE id = $1 RETURNING *",
+            policy_id, *updates.values(),
+        )
+
+    return PolicyOut(
+        id=row["id"],
+        tenant_id=row["tenant_id"],
+        insurer=row["insurer"],
+        policy_number=row["policy_number"],
+        expiration_date=row["expiration_date"],
+        status=row["status"],
+        document_url=row["document_url"],
+        uploaded_at=row["uploaded_at"],
+        extracted_data=json.loads(row["extracted_data"]) if isinstance(row["extracted_data"], str) else (row["extracted_data"] or None),
+        parsed_at=row["parsed_at"],
+        coverage_type=row["coverage_type"],
+        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
+    )
 
 
 @router.delete("/policy/{policy_id}")

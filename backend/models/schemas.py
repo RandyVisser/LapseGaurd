@@ -36,12 +36,22 @@ class PolicyOut(BaseModel):
     review_overrides: dict = {}
 
 
+class ActivityLogEntry(BaseModel):
+    id: str
+    description: str
+    timestamp: datetime
+    actor: Optional[str] = None
+
+
 class TenantDetailOut(BaseModel):
     tenant_id: uuid.UUID
     unit_id: uuid.UUID
     unit_number: str
     name: str
     email: str
+    phone: Optional[str] = None
+    hoa_id: Optional[uuid.UUID] = None
+    hoa_name: Optional[str] = None
     street_address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
@@ -55,6 +65,7 @@ class TenantDetailOut(BaseModel):
     ho6_policy_in_force_required: bool = True
     ho6_named_insured_match_required: bool = True
     ho6_property_address_match_required: bool = True
+    activity_log: list[ActivityLogEntry] = []
 
 
 class TenantOut(BaseModel):

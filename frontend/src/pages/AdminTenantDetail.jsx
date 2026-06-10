@@ -1,746 +1,828 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
-import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, apiDelete, supabase } from '../supabase'
+import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 
-function Field({ label, value }) {
-  if (!value) return null
-  return (
-    <div>
-      <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-slate-700 mt-0.5">{value}</p>
-    </div>
-  )
-}
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function currency(val) {
-  if (val == null) return null
+  if (val == null || val === '') return null
   return `$${Number(val).toLocaleString()}`
 }
 
-const STATUS_PRIORITY = { active: 0, expiring: 1, pending_review: 2, lapsed: 3, missing: 4 }
-
-function hasFailedReview(policy) {
-  const overrides = policy?.review_overrides || {}
-  return Object.values(overrides).some(v => v?.value === 'fail')
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const exp = new Date(dateStr + 'T00:00:00'); exp.setHours(0, 0, 0, 0)
+  return Math.round((exp - today) / 86400000)
 }
 
-function hasAnyReview(policy) {
-  const overrides = policy?.review_overrides || {}
-  return Object.keys(overrides).length > 0
+function fmtDate(dateStr) {
+  if (!dateStr) return null
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function reviewStatus(policy, fallback) {
-  if (hasFailedReview(policy)) return 'fail'
-  if (hasAnyReview(policy)) return 'pass'
-  return fallback
+function fmtDateTime(ts) {
+  if (!ts) return null
+  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function coverageLabel(coverageType) {
-  switch (coverageType) {
-    case 'ho6_with_wind': return 'HO6 Policy (Wind Included)'
-    case 'ho6_wind_excluded': return 'HO6 Policy (Wind Excluded)'
-    case 'wind_only': return 'Wind-Only Policy'
-    default: return 'Current Policy'
-  }
+function toDateInputValue(dateStr) {
+  if (!dateStr) return ''
+  return String(dateStr).slice(0, 10)
 }
 
-const REVIEW_CHECKS = [
-  { key: 'named_insured_match', label: 'Named Insured matches Unit' },
-  { key: 'property_address_match', label: 'Property Address matches' },
-  { key: 'coverage_a_min', label: 'Coverage A min' },
-  { key: 'coverage_e_min', label: 'Coverage E (Liability) min' },
-  { key: 'wind_coverage', label: 'Wind Coverage' },
-  { key: 'association_additional_interest', label: 'Association Listed as Additional Interest' },
+function fileNameFromUrl(url) {
+  if (!url) return null
+  try { return decodeURIComponent(url.split('/').pop().split('?')[0]) } catch { return url.split('/').pop() }
+}
+
+const COVERAGE_TYPE_OPTIONS = [
+  { value: 'ho6_wind_excluded', label: 'HO-6 excl wind' },
+  { value: 'ho6_with_wind',     label: 'HO-6 with wind' },
+  { value: 'wind_only',         label: 'Wind only' },
+  { value: 'unknown',           label: 'Unknown' },
 ]
 
-function InlinePassFail({ policy, checkKey, onSetReview, savingKey }) {
-  if (!policy) return null
-  const overrides = policy.review_overrides || {}
-  const current = overrides[checkKey]?.value
-  const saving = savingKey === `${policy.id}:${checkKey}`
+const STATUS_PRIORITY = { active: 0, expiring: 1, pending_review: 2, lapsed: 3, missing: 4 }
+
+function worstStatus(policies) {
+  if (!policies.length) return 'missing'
+  return policies.reduce((w, p) =>
+    (STATUS_PRIORITY[p.status] ?? 4) > (STATUS_PRIORITY[w] ?? 4) ? p.status : w,
+    policies[0].status,
+  )
+}
+
+function buildComplianceChecks(tenant, currentPolicies) {
+  const ho6  = currentPolicies.find(p => ['ho6_with_wind', 'ho6_wind_excluded'].includes(p.coverage_type))
+  const wind = currentPolicies.find(p => p.coverage_type === 'wind_only')
+  const items = []
+
+  for (const [p, label] of [[ho6, 'HO-6'], [wind, 'Wind only']]) {
+    if (!p) continue
+    const d = daysUntil(p.expiration_date)
+    if (d !== null && d >= 0 && d <= 30)
+      items.push({ type: 'warning', text: `${label} policy (${p.insurer || 'unknown'}) expires in ${d} day${d !== 1 ? 's' : ''} — renewal required` })
+  }
+
+  const ho6CovA = ho6?.extracted_data?.dwelling_coverage
+  if (tenant.ho6_coverage_a_min && ho6CovA != null) {
+    const meets = Number(ho6CovA) >= tenant.ho6_coverage_a_min
+    items.push({ type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
+  }
+  const windCovA = wind?.extracted_data?.dwelling_coverage
+  if (wind && windCovA != null)
+    items.push({ type: 'pass', text: `Wind Coverage A ${currency(windCovA)} meets minimum` })
+  const covE = ho6?.extracted_data?.liability_coverage
+  if (tenant.ho6_coverage_e_min && covE != null) {
+    const meets = Number(covE) >= tenant.ho6_coverage_e_min
+    items.push({ type: meets ? 'pass' : 'fail', text: `Coverage E ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
+  }
+  if (tenant.ho6_additional_interest_required) {
+    const v = ho6?.review_overrides?.association_additional_interest?.value
+    if (v === 'pass' || v === 'override') items.push({ type: 'pass', text: 'Association listed on HO-6' })
+    else if (v === 'fail')               items.push({ type: 'fail', text: 'Association not listed on HO-6' })
+  }
+  return items
+}
+
+// ─── Section header ──────────────────────────────────────────────────────────
+
+function SectionLabel({ children }) {
+  return <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">{children}</p>
+}
+
+// ─── Input components ────────────────────────────────────────────────────────
+
+function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, className = '' }) {
   return (
-    <div className="flex items-center gap-1">
-      {[
-        { value: 'pass', label: 'Pass', active: 'bg-green-600 text-white', idle: 'bg-green-50 text-green-700 hover:bg-green-100' },
-        { value: 'fail', label: 'Fail', active: 'bg-red-600 text-white', idle: 'bg-red-50 text-red-700 hover:bg-red-100' },
-      ].map(btn => (
-        <button
-          key={btn.value}
-          type="button"
-          disabled={saving}
-          onClick={() => onSetReview(policy.id, checkKey, btn.value)}
-          className={`text-[11px] font-medium px-2 py-0.5 rounded disabled:opacity-50 ${current === btn.value ? btn.active : btn.idle}`}
-        >
-          {btn.label}
+    <div className={className}>
+      <label className={`block text-xs font-medium mb-1.5 ${highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
+        {label}{highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
+      </label>
+      {readOnly
+        ? <p className="text-sm text-slate-700 py-2">{value || '—'}</p>
+        : <input
+            type={type}
+            value={value ?? ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            maxLength={maxLength}
+            className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+              highlighted
+                ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
+                : 'border border-slate-200 bg-white focus:ring-blue-500'
+            }`}
+          />
+      }
+    </div>
+  )
+}
+
+function FieldSelect({ label, value, onChange, options, highlighted, className = '' }) {
+  return (
+    <div className={className}>
+      <label className={`block text-xs font-medium mb-1.5 ${highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
+        {label}{highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
+      </label>
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 appearance-none ${
+          highlighted
+            ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
+            : 'border border-slate-200 bg-white focus:ring-blue-500'
+        }`}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+// ─── Policy edit card ────────────────────────────────────────────────────────
+
+function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId }) {
+  const fileInputRef = useRef()
+  const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+
+  function f(key) { return v => onChange(key, v) }
+  function hi(key) { return aiUpdated?.includes(key) }
+
+  const isHo6 = ['ho6_with_wind', 'ho6_wind_excluded'].includes(form.coverage_type)
+  const days = daysUntil(form.expiration_date)
+  const isExpiringSoon = days !== null && days >= 0 && days <= 30
+  const aiCount = aiUpdated?.length || 0
+  const typLabel = COVERAGE_TYPE_OPTIONS.find(o => o.value === form.coverage_type)?.label || form.coverage_type || 'Policy'
+  const fileName = fileNameFromUrl(form.document_url)
+
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true); setUploadErr('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${unitId}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('policy-documents').upload(path, file, { upsert: true })
+      if (upErr) throw new Error(upErr.message)
+      const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+      onChange('document_url', data.publicUrl)
+      onChange('uploaded_at', new Date().toISOString())
+    } catch (e) { setUploadErr(e.message) }
+    finally { setUploading(false) }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center justify-between gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <select
+            value={form.coverage_type || 'unknown'}
+            onChange={e => onChange('coverage_type', e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {COVERAGE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {/* Type chip */}
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">{typLabel}</span>
+          {/* Expiry chip */}
+          {isExpiringSoon && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1 whitespace-nowrap">
+              ⚠ Expires soon
+            </span>
+          )}
+          {days !== null && days < 0 && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700 whitespace-nowrap">Expired</span>
+          )}
+          {form.status === 'pending_review' && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">Pending review</span>
+          )}
+        </div>
+        <button type="button" onClick={() => onDelete(policyId)} disabled={deleting}
+          className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 disabled:opacity-50 flex-shrink-0">
+          {deleting
+            ? <span className="text-xs">…</span>
+            : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          }
         </button>
-      ))}
-    </div>
-  )
-}
-
-function ReviewChecklist({ policy, onSetReview, savingKey }) {
-  const overrides = policy.review_overrides || {}
-  return (
-    <div className="mt-5 pt-5 border-t border-slate-100">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Manual Review</p>
-      <div className="space-y-2">
-        {REVIEW_CHECKS.map(({ key, label }) => {
-          const current = overrides[key]?.value
-          const saving = savingKey === `${policy.id}:${key}`
-          return (
-            <div key={key} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-slate-600">{label}</span>
-              <div className="flex items-center gap-1.5">
-                {[
-                  { value: 'pass', label: 'Pass', active: 'bg-green-600 text-white', idle: 'bg-green-50 text-green-700 hover:bg-green-100' },
-                  { value: 'fail', label: 'Fail', active: 'bg-red-600 text-white', idle: 'bg-red-50 text-red-700 hover:bg-red-100' },
-                  { value: 'override', label: 'Override', active: 'bg-amber-600 text-white', idle: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
-                ].map(btn => (
-                  <button
-                    key={btn.value}
-                    type="button"
-                    disabled={saving}
-                    onClick={() => onSetReview(policy.id, key, btn.value)}
-                    className={`text-xs font-medium px-2.5 py-1 rounded-md disabled:opacity-50 ${current === btn.value ? btn.active : btn.idle}`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function PolicyCard({ policy, onApprove, approving, onSetReview, savingKey, onRunAi, runningAiId }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-slate-700">{coverageLabel(policy.coverage_type)}</h2>
-        <StatusBadge status={reviewStatus(policy, policy.status)} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Insurer" value={policy.insurer} />
-        <Field label="Policy Number" value={policy.policy_number} />
-        <Field label="Expiration Date" value={policy.expiration_date} />
-        <Field label="Uploaded" value={new Date(policy.uploaded_at).toLocaleDateString()} />
       </div>
 
-      {policy.document_url && (
-        <div className="mt-4 flex items-center gap-4">
-          <a
-            href={policy.document_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
-            View Dec Page →
-          </a>
-        </div>
-      )}
+      <div className="p-5 space-y-6">
 
-      {/* Pending review banner + approve action */}
-      {policy.status === 'pending_review' && (
-        <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-          <div>
-            <p className="text-blue-800 font-semibold text-sm">Pending Review</p>
-            <p className="text-blue-600 text-xs mt-0.5">Confirm named insured, address, and expiration date match before approving.</p>
+        {/* AI extraction banner */}
+        {aiCount > 0 && (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
+            <span>✦</span>
+            <span>{aiCount} field{aiCount !== 1 ? 's were' : ' was'} updated by AI extraction — highlighted in amber</span>
           </div>
-          <button
-            onClick={() => onApprove(policy.id)}
-            disabled={approving}
-            className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
-          >
-            {approving ? 'Approving…' : 'Approve'}
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* AI extracted data + validation */}
-      {policy.extracted_data && (() => {
-        const v = policy.extracted_data.validation
-        return (
-          <div className="mt-5 pt-5 border-t border-slate-100 space-y-4">
-
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-                AI Extracted Details
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Named Insured" value={policy.extracted_data.named_insured} />
-                <Field label="Property Address" value={policy.extracted_data.property_address} />
-                <Field label="Effective Date" value={policy.extracted_data.effective_date} />
-                <Field label="Expiration Date" value={policy.extracted_data.expiration_date} />
-                <Field label="Dwelling Coverage" value={currency(policy.extracted_data.dwelling_coverage)} />
-                <Field label="Liability Coverage" value={currency(policy.extracted_data.liability_coverage)} />
-                <Field label="Deductible" value={currency(policy.extracted_data.deductible)} />
-              </div>
-              {policy.parsed_at && (
-                <p className="text-xs text-slate-400 mt-3">
-                  Parsed {new Date(policy.parsed_at).toLocaleString()}
-                </p>
-              )}
+        {/* INSURED PARTIES */}
+        <div>
+          <SectionLabel>Insured parties</SectionLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FieldInput label="Named insured" value={form.named_insured} onChange={f('named_insured')} hi={hi('named_insured')} highlighted={hi('named_insured')} />
+            <FieldInput label="Additional insured" value={form.additional_insured} onChange={f('additional_insured')} placeholder="e.g. association" highlighted={hi('additional_insured')} />
+            <div className="flex flex-col gap-1.5">
+              <FieldInput label="Additional interests" value={form.additional_interests} onChange={f('additional_interests')} placeholder="Mortgagee, lender, etc." highlighted={hi('additional_interests')} />
+              <label className="flex items-center gap-2 text-sm text-slate-600 mt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!form.association_listed}
+                  onChange={e => onChange('association_listed', e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Association listed
+              </label>
             </div>
+          </div>
+        </div>
 
-            {/* Validation banner */}
-            {v && (
-              v.passed ? (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-                  <span className="text-green-600 font-semibold text-sm">✓ Verified</span>
-                  <span className="text-green-700 text-sm">Policy matches submitted details and is current.</span>
-                </div>
-              ) : (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                  <p className="text-red-700 font-semibold text-sm mb-1">Issues Found</p>
-                  <ul className="space-y-1">
-                    {v.flags.map((f, i) => (
-                      <li key={i} className="text-sm text-red-600 flex gap-2">
-                        <span>•</span><span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
+        {/* POLICY DETAILS */}
+        <div>
+          <SectionLabel>Policy details</SectionLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <FieldInput label="Carrier" value={form.insurer} onChange={f('insurer')} highlighted={hi('insurer')} />
+            <FieldInput label="Policy #" value={form.policy_number} onChange={f('policy_number')} highlighted={hi('policy_number')} />
+            <FieldInput label="Effective date" value={toDateInputValue(form.effective_date)} onChange={f('effective_date')} type="date" highlighted={hi('effective_date')} />
+            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} />
+          </div>
+        </div>
+
+        {/* COVERAGE */}
+        <div>
+          <SectionLabel>Coverage</SectionLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <FieldInput label="Coverage A ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} type="number" highlighted={hi('dwelling_coverage')} />
+            {isHo6 && (
+              <FieldInput label="Coverage E ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} type="number" highlighted={hi('liability_coverage')} />
+            )}
+            {isHo6 && (
+              <FieldSelect
+                label="Wind included"
+                value={form.coverage_type === 'ho6_with_wind' ? 'yes' : 'no'}
+                onChange={v => onChange('coverage_type', v === 'yes' ? 'ho6_with_wind' : 'ho6_wind_excluded')}
+                options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]}
+              />
             )}
           </div>
-        )
-      })()}
+        </div>
 
-      {policy.document_url && !policy.extracted_data && (
-        <p className="mt-4 text-xs text-slate-400 italic">AI parsing in progress…</p>
-      )}
+        {/* POLICY DOCUMENT */}
+        <div>
+          <SectionLabel>Policy document</SectionLabel>
+          {form.document_url ? (
+            <div
+              className="border border-dashed border-slate-300 rounded-xl bg-slate-50 px-5 py-6 flex flex-col items-center gap-1 cursor-pointer hover:bg-slate-100 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              title="Click to replace document"
+            >
+              <svg className="w-7 h-7 text-blue-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <a href={form.document_url} target="_blank" rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="text-sm text-blue-600 hover:underline font-medium text-center break-all max-w-xs">
+                {fileName}
+              </a>
+              {form.uploaded_at && (
+                <p className="text-xs text-slate-400">Uploaded {fmtDate(String(form.uploaded_at).slice(0, 10))}</p>
+              )}
+            </div>
+          ) : (
+            <div
+              className="border border-dashed border-slate-300 rounded-xl bg-slate-50 px-5 py-8 flex flex-col items-center gap-1 cursor-pointer hover:bg-slate-100 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading
+                ? <p className="text-sm text-slate-500">Uploading…</p>
+                : <>
+                    <svg className="w-7 h-7 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <p className="text-sm text-slate-600 font-medium">Click to upload policy PDF or image</p>
+                    <p className="text-xs text-slate-400">PDF, JPG, PNG</p>
+                  </>
+              }
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
+          {uploadErr && <p className="text-xs text-red-600 mt-1">{uploadErr}</p>}
+
+          {/* AI extract button */}
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={!form.document_url || runningAiId === policyId || isDraft}
+              onClick={() => onRunAi(policyId)}
+              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span className="text-base">✦</span>
+              {runningAiId === policyId ? 'Extracting…' : (form.document_url ? 'Re-extract with AI' : 'Extract with AI')}
+            </button>
+            {isDraft && <p className="text-xs text-slate-400">Save the policy first, then extract</p>}
+            {aiCount > 0 && <p className="text-xs text-slate-500">{aiCount} field{aiCount !== 1 ? 's' : ''} updated — changed fields highlighted</p>}
+          </div>
+        </div>
+
+      </div>
     </div>
   )
 }
+
+// ─── Main page ───────────────────────────────────────────────────────────────
+
+let _draftCounter = 0
 
 export default function AdminTenantDetail() {
   const { tenantId } = useParams()
   const navigate = useNavigate()
+
   const [tenant, setTenant] = useState(null)
   const [error, setError] = useState('')
-  const [notifying, setNotifying] = useState(false)
-  const [notifySuccess, setNotifySuccess] = useState(false)
-  const [approving, setApproving] = useState(false)
-  const [savingKey, setSavingKey] = useState(null)
-  const [runningAiId, setRunningAiId] = useState(null)
 
-  const [reviewPolicyId, setReviewPolicyId] = useState(null)
+  // Editable tenant/unit form
+  const [form, setForm]     = useState({})
+  // Association requirements (from HOA)
+  const [reqForm, setReqForm] = useState({ coverage_a_min: '', coverage_e_min: '' })
+
+  // Per-policy form state: { [policyId]: { insurer, policy_number, ... } }
+  const [policyForms, setPolicyForms] = useState({})
+  // Which fields were AI-updated per policy: { [policyId]: ['insurer', 'expiration_date', ...] }
+  const [aiUpdated, setAiUpdated] = useState({})
+  // Draft policies (new, not yet saved): [{ _draftId, coverage_type, ... }]
+  const [drafts, setDrafts] = useState([])
+
+  const [runningAiId, setRunningAiId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [notifying, setNotifying] = useState(false)
+
+  function tField(key) { return v => setForm(f => ({ ...f, [key]: v })) }
+  function pField(id, key, val) {
+    setPolicyForms(f => ({ ...f, [id]: { ...(f[id] || {}), [key]: val } }))
+  }
+  function draftField(draftId, key, val) {
+    setDrafts(ds => ds.map(d => d._draftId === draftId ? { ...d, [key]: val } : d))
+  }
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+
+  function initFromTenant(data) {
+    setTenant(data)
+    setForm({
+      name: data.name || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      street_address: data.street_address || '',
+      city: data.city || '',
+      state: data.state || '',
+      zip: data.zip || '',
+    })
+    setReqForm({
+      coverage_a_min: data.ho6_coverage_a_min ?? '',
+      coverage_e_min: data.ho6_coverage_e_min ?? '',
+    })
+    const pf = {}
+    for (const p of (data.policies || [])) {
+      const ext = p.extracted_data || {}
+      const assocListed = p.review_overrides?.association_additional_interest?.value
+      pf[p.id] = {
+        coverage_type: p.coverage_type || 'unknown',
+        insurer: p.insurer || '',
+        policy_number: p.policy_number || '',
+        expiration_date: toDateInputValue(p.expiration_date),
+        effective_date: toDateInputValue(ext.effective_date),
+        dwelling_coverage: ext.dwelling_coverage ?? '',
+        liability_coverage: ext.liability_coverage ?? '',
+        named_insured: ext.named_insured || '',
+        additional_insured: ext.additional_insured || '',
+        additional_interests: ext.additional_interests || '',
+        association_listed: assocListed === 'pass' || assocListed === 'override',
+        document_url: p.document_url || '',
+        uploaded_at: p.uploaded_at || '',
+        status: p.status,
+      }
+    }
+    setPolicyForms(pf)
+  }
+
+  useEffect(() => {
+    apiGet(`/tenant/${tenantId}`).then(initFromTenant).catch(e => setError(e.message))
+  }, [tenantId])
+
+  // ── Derived ─────────────────────────────────────────────────────────────────
+
+  const currentPolicies = tenant?.policies?.filter(p => p.is_current) || []
+  const historyPolicies = tenant?.policies?.filter(p => !p.is_current) || []
+  const overallStatus   = worstStatus(currentPolicies)
+  const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
+
+  const lastUpdated = tenant?.policies?.reduce((latest, p) => {
+    const t = p.parsed_at || p.uploaded_at
+    return !latest || (t && t > latest) ? t : latest
+  }, null)
+
+  const formattedAddress = [
+    form.street_address,
+    [form.city, form.state].filter(Boolean).join(', '),
+    form.zip,
+  ].filter(Boolean).join(', ')
+
+  // ── Status card style ──────────────────────────────────────────────────────
+
+  const statusStyles = {
+    active:         { card: 'bg-green-50 border-green-200',  icon: '✓', label: 'Active', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
+    expiring:       { card: 'bg-amber-50 border-amber-200',  icon: '⚠', label: 'Expiring / gap detected', text: 'text-amber-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    pending_review: { card: 'bg-blue-50 border-blue-200',    icon: '●', label: 'Pending review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    lapsed:         { card: 'bg-red-50 border-red-200',      icon: '✗', label: 'Lapsed', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    missing:        { card: 'bg-red-50 border-red-200',      icon: '✗', label: 'No policy on file', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+  }
+  const ss = statusStyles[overallStatus] || statusStyles.missing
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   async function handleRunAi(policyId) {
-    setReviewPolicyId(policyId)
-    setRunningAiId(policyId)
-    setError('')
+    setRunningAiId(policyId); setError('')
+    const beforeParsedAt = tenant.policies.find(p => p.id === policyId)?.parsed_at
+    const beforeExt = tenant.policies.find(p => p.id === policyId)?.extracted_data || {}
     try {
-      const before = tenant.policies.find(p => p.id === policyId)
-      const beforeParsedAt = before?.parsed_at
       await apiPost(`/policy/${policyId}/run-ai`, {})
-
-      // Poll for the background parse to complete (parsed_at changes)
       for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 3000))
         const fresh = await apiGet(`/tenant/${tenantId}`)
         const updated = fresh.policies.find(p => p.id === policyId)
-        if (updated && updated.parsed_at !== beforeParsedAt) {
-          setTenant(fresh)
+        if (updated?.parsed_at !== beforeParsedAt) {
+          // Compute which fields changed
+          const newExt = updated.extracted_data || {}
+          const changed = Object.keys(newExt).filter(k => {
+            if (k === 'validation') return false
+            return String(newExt[k]) !== String(beforeExt[k] ?? '')
+          })
+          setAiUpdated(a => ({ ...a, [policyId]: changed }))
+          initFromTenant(fresh)
           break
         }
-        if (i === 19) setTenant(fresh)
+        if (i === 19) initFromTenant(fresh)
       }
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setRunningAiId(null)
-    }
+    } catch (e) { setError(e.message) }
+    finally { setRunningAiId(null) }
   }
 
-  async function handleSetReview(policyId, checkKey, value) {
-    const savingId = `${policyId}:${checkKey}`
-    setSavingKey(savingId)
-    setError('')
-    try {
-      const res = await apiPost(`/policy/${policyId}/review`, { check_key: checkKey, value })
-      setTenant(t => ({
-        ...t,
-        policies: t.policies.map(p => p.id === policyId ? { ...p, review_overrides: res.review_overrides } : p),
-      }))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSavingKey(null)
-    }
-  }
 
-  const [deletingTenant, setDeletingTenant] = useState(false)
-
-  async function handleDeleteTenant() {
-    if (!window.confirm(`Remove ${tenant?.name} from this unit? Their policy history will be deleted. This cannot be undone.`)) return
-    setDeletingTenant(true)
-    try {
-      await apiDelete(`/tenant/${tenantId}`)
-      navigate('/admin/dashboard')
-    } catch (e) {
-      setError(e.message)
-      setDeletingTenant(false)
-    }
-  }
-
-  const [deletingId, setDeletingId] = useState(null)
 
   async function handleDeletePolicy(policyId) {
+    if (policyId.startsWith('draft-')) {
+      setDrafts(ds => ds.filter(d => d._draftId !== policyId)); return
+    }
     if (!window.confirm('Delete this policy record? This cannot be undone.')) return
     setDeletingId(policyId)
-    setError('')
     try {
       await apiDelete(`/policy/${policyId}`)
       setTenant(t => ({ ...t, policies: t.policies.filter(p => p.id !== policyId) }))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setDeletingId(null)
-    }
+    } catch (e) { setError(e.message) }
+    finally { setDeletingId(null) }
   }
 
-  const [showUpload, setShowUpload] = useState(false)
-  const [uploadForm, setUploadForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
-  const [uploadFile, setUploadFile] = useState(null)
-  const [uploadFileKey, setUploadFileKey] = useState(0)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const [uploadSuccess, setUploadSuccess] = useState('')
+  function handleAddPolicy() {
+    const id = `draft-${++_draftCounter}`
+    setDrafts(ds => [...ds, {
+      _draftId: id, coverage_type: 'ho6_wind_excluded', insurer: '', policy_number: '',
+      expiration_date: '', effective_date: '', dwelling_coverage: '', liability_coverage: '',
+      named_insured: '', additional_insured: '', additional_interests: '',
+      association_listed: false, document_url: '', uploaded_at: '',
+    }])
+  }
 
-  const [windForm, setWindForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
-  const [windFile, setWindFile] = useState(null)
-  const [windFileKey, setWindFileKey] = useState(0)
-  const [windUploading, setWindUploading] = useState(false)
-  const [windError, setWindError] = useState('')
-  const [windSuccess, setWindSuccess] = useState('')
-
-  async function handleUploadSubmit(e) {
+  async function handleSave(e) {
     e.preventDefault()
-    setUploadError(''); setUploadSuccess('')
-
-    if (uploadForm.expiration_date && new Date(uploadForm.expiration_date) < new Date()) {
-      setUploadError('Policy is already expired — please upload a current policy.')
-      return
-    }
-
-    setUploading(true)
+    setSaving(true); setSaveMsg('')
     try {
-      let document_url = null
-      if (uploadFile) {
-        const ext = uploadFile.name.split('.').pop()
-        const path = `${tenant.unit_id}/${Date.now()}.${ext}`
-        const { error: uploadErr } = await supabase.storage
-          .from('policy-documents')
-          .upload(path, uploadFile, { upsert: true })
-        if (uploadErr) throw new Error(uploadErr.message)
-        const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
-        document_url = data.publicUrl
+      // 1. Save tenant / unit fields
+      await apiPatch(`/tenant/${tenantId}`, form)
+
+      // 2. Save HOA requirements if changed
+      if (tenant?.hoa_id) {
+        const reqPayload = {}
+        if (reqForm.coverage_a_min !== '' && reqForm.coverage_a_min !== (tenant.ho6_coverage_a_min ?? ''))
+          reqPayload.ho6_coverage_a_min = Number(reqForm.coverage_a_min)
+        if (reqForm.coverage_e_min !== '' && reqForm.coverage_e_min !== (tenant.ho6_coverage_e_min ?? ''))
+          reqPayload.ho6_coverage_e_min = Number(reqForm.coverage_e_min)
+        if (Object.keys(reqPayload).length)
+          await apiPatch(`/hoa/${tenant.hoa_id}/requirements`, reqPayload)
       }
-      const saved = await apiPost(`/unit/${tenant.unit_id}/policy`, {
-        ...uploadForm,
-        expiration_date: uploadForm.expiration_date || null,
-        document_url,
-      })
-      setTenant(t => ({ ...t, policies: [saved, ...(t.policies || [])] }))
-      setUploadSuccess('Dec page uploaded successfully.')
-      setUploadForm({ insurer: '', policy_number: '', expiration_date: '' })
-      setUploadFile(null)
-      setUploadFileKey(k => k + 1)
-    } catch (e) {
-      setUploadError(e.message)
-    } finally {
-      setUploading(false)
-    }
-  }
 
-  async function handleWindUploadSubmit(e) {
-    e.preventDefault()
-    setWindError(''); setWindSuccess('')
-
-    if (windForm.expiration_date && new Date(windForm.expiration_date) < new Date()) {
-      setWindError('Policy is already expired — please upload a current policy.')
-      return
-    }
-
-    setWindUploading(true)
-    try {
-      let document_url = null
-      if (windFile) {
-        const ext = windFile.name.split('.').pop()
-        const path = `${tenant.unit_id}/${Date.now()}.${ext}`
-        const { error: uploadErr } = await supabase.storage
-          .from('policy-documents')
-          .upload(path, windFile, { upsert: true })
-        if (uploadErr) throw new Error(uploadErr.message)
-        const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
-        document_url = data.publicUrl
+      // 3. Save edits to existing policies
+      for (const [policyId, pf] of Object.entries(policyForms)) {
+        await apiPatch(`/policy/${policyId}`, {
+          insurer: pf.insurer || null,
+          policy_number: pf.policy_number || null,
+          expiration_date: pf.expiration_date || null,
+          effective_date: pf.effective_date || null,
+          coverage_type: pf.coverage_type || null,
+          dwelling_coverage: pf.dwelling_coverage !== '' ? Number(pf.dwelling_coverage) : null,
+          liability_coverage: pf.liability_coverage !== '' ? Number(pf.liability_coverage) : null,
+          named_insured: pf.named_insured || null,
+          additional_insured: pf.additional_insured || null,
+          additional_interests: pf.additional_interests || null,
+          association_listed: pf.association_listed,
+          document_url: pf.document_url || null,
+        })
       }
-      const saved = await apiPost(`/unit/${tenant.unit_id}/policy`, {
-        ...windForm,
-        expiration_date: windForm.expiration_date || null,
-        document_url,
-      })
-      setTenant(t => ({ ...t, policies: [saved, ...(t.policies || [])] }))
-      setWindSuccess('Wind-only dec page uploaded successfully.')
-      setWindForm({ insurer: '', policy_number: '', expiration_date: '' })
-      setWindFile(null)
-      setWindFileKey(k => k + 1)
+
+      // 4. Create draft policies
+      for (const draft of drafts) {
+        if (!draft.document_url && !draft.policy_number && !draft.insurer) continue
+        await apiPost(`/unit/${tenant.unit_id}/policy`, {
+          insurer: draft.insurer || null,
+          policy_number: draft.policy_number || null,
+          expiration_date: draft.expiration_date || null,
+          document_url: draft.document_url || null,
+        })
+      }
+      setDrafts([])
+
+      // Refresh
+      const fresh = await apiGet(`/tenant/${tenantId}`)
+      initFromTenant(fresh)
+      setSaveMsg('Saved successfully.')
+      setTimeout(() => setSaveMsg(''), 3000)
     } catch (e) {
-      setWindError(e.message)
+      setSaveMsg('Save failed: ' + e.message)
     } finally {
-      setWindUploading(false)
+      setSaving(false)
     }
   }
 
-  async function handleApprove(policyId) {
-    setApproving(true)
-    setError('')
-    try {
-      const updated = await apiPost(`/policy/${policyId}/approve`, {})
-      setTenant(t => ({
-        ...t,
-        policies: t.policies.map(p => p.id === updated.id ? { ...p, status: updated.status } : p),
-      }))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setApproving(false)
-    }
-  }
-
-  async function handleNotify() {
+  async function handleSendReminder() {
     setNotifying(true)
-    setNotifySuccess(false)
     try {
-      await apiPost(`/tenant/${tenantId}/notify`, {})
-      setNotifySuccess(true)
-      setTimeout(() => setNotifySuccess(false), 4000)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setNotifying(false)
-    }
+      await apiPost(`/tenant/${tenantId}/notify`, { message: null })
+      setSaveMsg('Reminder sent.')
+      setTimeout(() => setSaveMsg(''), 3000)
+    } catch (e) { setError(e.message) }
+    finally { setNotifying(false) }
   }
 
-  useEffect(() => {
-    apiGet(`/tenant/${tenantId}`)
-      .then(setTenant)
-      .catch(e => setError(e.message))
-  }, [tenantId])
+  // ── Render ─────────────────────────────────────────────────────────────────
 
-  let currentPolicies = tenant?.policies?.filter(p => p.is_current) || []
-  const historyPolicies = tenant?.policies?.filter(p => !p.is_current) || []
-  const headerStatus = currentPolicies.length
-    ? currentPolicies.reduce((worst, p) =>
-        STATUS_PRIORITY[p.status] > STATUS_PRIORITY[worst] ? p.status : worst,
-        currentPolicies[0].status)
-    : 'missing'
+  const headerName = form.name || tenant?.name || ''
+  const headerUnit = tenant?.unit_number ? `Unit ${tenant.unit_number}` : ''
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-1">
 
-        <button
-          onClick={() => navigate('/admin/dashboard')}
-          className="text-sm text-blue-600 hover:underline mb-6 flex items-center gap-1"
-        >
-          ← Back to dashboard
-        </button>
+        {/* ── Top nav ──────────────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between pb-5">
+          <div className="flex items-start gap-4">
+            <button type="button" onClick={() => navigate('/admin/dashboard')}
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 mt-0.5">
+              ← Dashboard
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800">
+                {headerName}{headerUnit ? ` — ${headerUnit}` : ''}
+              </h1>
+              {formattedAddress && <p className="text-sm text-slate-500 mt-0.5">{formattedAddress}</p>}
+            </div>
+          </div>
+        </div>
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-        {tenant && (
-          <div className="space-y-6">
+        {!tenant && !error && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 h-28 animate-pulse" />
+            <div className="bg-white rounded-xl border border-slate-200 h-52 animate-pulse" />
+          </div>
+        )}
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row gap-4 items-stretch">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex items-start justify-between flex-1">
-              <div>
-                <h1 className="text-xl font-bold text-slate-800">{tenant.name}</h1>
-                {!tenant.email?.toLowerCase().endsWith('@condo.insure') && (
-                  <p className="text-sm text-slate-500 mt-1">{tenant.email}</p>
-                )}
-                {!(tenant.street_address || tenant.city || tenant.state || tenant.zip) && (
-                  <p className="text-xs text-slate-400 mt-1">Unit {tenant.unit_number}</p>
-                )}
-                {(tenant.street_address || tenant.city || tenant.state || tenant.zip) && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    {[
-                      tenant.street_address && `${tenant.street_address}${tenant.unit_number ? ` Unit ${tenant.unit_number}` : ''}`,
-                      [tenant.city, tenant.state].filter(Boolean).join(', '),
-                      tenant.zip,
-                    ].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-                <div className="mt-2">
-                  {notifySuccess ? (
-                    <span className="text-xs text-green-600 font-medium">Email sent ✓</span>
-                  ) : (
-                    <button
-                      onClick={handleNotify}
-                      disabled={notifying}
-                      className="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-lg disabled:opacity-60"
-                    >
-                      {notifying ? 'Sending…' : 'Notify Unit-Owner'}
-                    </button>
-                  )}
+        {tenant && (
+          <form onSubmit={handleSave} className="space-y-6">
+
+            {/* ── Status card ───────────────────────────────────────────────── */}
+            <div className={`rounded-xl border p-5 ${ss.card}`}>
+              <p className={`font-bold text-base mb-3 flex items-center gap-2 ${ss.text}`}>
+                <span>{ss.icon}</span> {ss.label}
+              </p>
+              {complianceChecks.length > 0 && (
+                <ul className="space-y-1.5">
+                  {complianceChecks.map((c, i) => (
+                    <li key={i} className={`flex items-start gap-2 text-sm font-medium ${ss.bullet[c.type]}`}>
+                      <span className="mt-0.5 flex-shrink-0">
+                        {c.type === 'pass' ? '✓' : c.type === 'fail' ? '✗' : '⚠'}
+                      </span>
+                      {c.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* ── Unit & Owner ──────────────────────────────────────────────── */}
+            <div>
+              <SectionLabel>Unit &amp; owner</SectionLabel>
+              <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
+
+                {/* 4-col owner row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <FieldInput label="Owner name"        value={form.name}    onChange={tField('name')} />
+                  <FieldInput label="Owner email"       value={form.email}   onChange={tField('email')} type="email" />
+                  <FieldInput label="Owner phone"       value={form.phone}   onChange={tField('phone')} type="tel" placeholder="(555) 000-0000" />
+                  <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
                 </div>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {tenant.policies?.length > 0 && (() => {
-                  const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review') || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
-                  return <StatusBadge status={reviewStatus(reviewPolicy, headerStatus)} />
-                })()}
-                <button
-                  onClick={handleDeleteTenant}
-                  disabled={deletingTenant}
-                  className="text-xs text-red-500 hover:text-red-700 hover:underline disabled:opacity-50 mt-1"
-                >
-                  {deletingTenant ? 'Removing…' : 'Remove tenant'}
-                </button>
+
+                {/* Unit address */}
+                <div className="pt-4 border-t border-slate-100">
+                  <SectionLabel>Unit address</SectionLabel>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1.5">Street address &amp; unit</label>
+                      <input value={form.street_address || ''} onChange={e => tField('street_address')(e.target.value)}
+                        placeholder="123 Ocean Blvd Unit 101"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1.5">City</label>
+                        <input value={form.city || ''} onChange={e => tField('city')(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1.5">State</label>
+                        <input value={form.state || ''} onChange={e => tField('state')(e.target.value)}
+                          placeholder="FL" maxLength={2}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1.5">ZIP</label>
+                        <input value={form.zip || ''} onChange={e => tField('zip')(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
+                    {formattedAddress && (
+                      <p className="text-xs text-slate-400">{formattedAddress}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Association requirements */}
+                <div className="pt-4 border-t border-slate-100">
+                  <SectionLabel>Association requirements</SectionLabel>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldInput label="Min Coverage A ($)" value={reqForm.coverage_a_min}
+                      onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} type="number" placeholder="200000" />
+                    <FieldInput label="Min Coverage E ($)" value={reqForm.coverage_e_min}
+                      onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} type="number" placeholder="100000" />
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 text-sm sm:w-[36rem]">
-              <p className="font-semibold text-slate-700 mb-2">HO-6 Requirements</p>
-              {(() => {
-                const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review') || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
-                const rows = [
-                  { label: 'Policy In-Force', value: tenant.ho6_policy_in_force_required ? 'Required' : 'Not Required', key: 'policy_in_force' },
-                  { label: 'Named Insured Matches', value: tenant.ho6_named_insured_match_required ? 'Required' : 'Not Required', key: 'named_insured_match' },
-                  { label: 'Property Address Matches', value: tenant.ho6_property_address_match_required ? 'Required' : 'Not Required', key: 'property_address_match' },
-                  { label: 'Coverage A (Dwelling) min', value: tenant.ho6_coverage_a_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_a_min).toLocaleString()}`, key: 'coverage_a_min' },
-                  { label: 'Coverage E (Liability) min', value: tenant.ho6_coverage_e_min == null ? 'Not Selected' : `$${Number(tenant.ho6_coverage_e_min).toLocaleString()}`, key: 'coverage_e_min' },
-                  { label: 'Wind Coverage', value: tenant.ho6_wind_required ? 'Required' : 'Not Required', key: 'wind_coverage' },
-                  { label: 'Additional Interest', value: tenant.ho6_additional_interest_required ? 'Required' : 'Not Required', key: 'association_additional_interest' },
-                ]
-                return (
-                  <ul className="text-slate-600 space-y-1.5">
-                    {rows.map(r => (
-                      <li key={r.key} className="flex items-center justify-between gap-3">
-                        <span>{r.label}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-800">{r.value}</span>
-                          <InlinePassFail policy={reviewPolicy} checkKey={r.key} onSetReview={handleSetReview} savingKey={savingKey} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )
-              })()}
-              {(() => {
-                const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review') || tenant.policies?.find(p => p.is_current) || tenant.policies?.[0]
-                const flags = reviewPolicy?.extracted_data?.validation?.flags
-                if (!flags || flags.length === 0) return null
-                return (
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <p className="text-red-700 font-semibold text-sm mb-1">Issues Found</p>
-                    <ul className="space-y-1">
-                      {flags.map((f, i) => (
-                        <li key={i} className="text-sm text-red-600 flex gap-2">
-                          <span>•</span><span>{f}</span>
+            {/* ── Policies ──────────────────────────────────────────────────── */}
+            <div>
+              <SectionLabel>Policies</SectionLabel>
+              <div className="space-y-4">
+
+                {/* Current policies */}
+                {currentPolicies.map(p => (
+                  <PolicyEditCard
+                    key={p.id}
+                    policyId={p.id}
+                    form={policyForms[p.id] || {}}
+                    onChange={(key, val) => pField(p.id, key, val)}
+                    aiUpdated={aiUpdated[p.id] || []}
+                    onRunAi={handleRunAi}
+                    runningAiId={runningAiId}
+                    onDelete={handleDeletePolicy}
+                    deleting={deletingId === p.id}
+                    isDraft={false}
+                    unitId={tenant.unit_id}
+                  />
+                ))}
+
+                {/* Draft (new) policies */}
+                {drafts.map(d => (
+                  <PolicyEditCard
+                    key={d._draftId}
+                    policyId={d._draftId}
+                    form={d}
+                    onChange={(key, val) => draftField(d._draftId, key, val)}
+                    aiUpdated={[]}
+                    onRunAi={() => {}}
+                    runningAiId={null}
+                    onDelete={handleDeletePolicy}
+                    deleting={false}
+                    isDraft={true}
+                    unitId={tenant.unit_id}
+                  />
+                ))}
+
+                {/* Add policy */}
+                <button type="button" onClick={handleAddPolicy}
+                  className="flex items-center gap-2 text-sm font-medium text-slate-600 border border-dashed border-slate-300 rounded-xl px-5 py-3 hover:bg-slate-50 w-full justify-center bg-white">
+                  + Add policy
+                </button>
+
+                {/* History */}
+                {historyPolicies.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-slate-100">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Policy history</p>
+                    </div>
+                    <ul className="divide-y divide-slate-100">
+                      {historyPolicies.map(p => (
+                        <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
+                          <div>
+                            <span className="font-medium text-slate-700">
+                              {COVERAGE_TYPE_OPTIONS.find(o => o.value === p.coverage_type)?.label || 'Policy'}
+                            </span>
+                            {(p.insurer || p.policy_number) && (
+                              <span className="text-slate-400 ml-2 text-xs">{[p.insurer, p.policy_number].filter(Boolean).join(' · ')}</span>
+                            )}
+                            {p.expiration_date && (
+                              <span className="text-slate-400 ml-2 text-xs">exp {fmtDate(String(p.expiration_date).slice(0, 10))}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Expired</span>
+                            {p.document_url && (
+                              <a href={p.document_url} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs">View</a>
+                            )}
+                            <button type="button" onClick={() => handleDeletePolicy(p.id)} disabled={deletingId === p.id}
+                              className="text-red-500 hover:underline text-xs disabled:opacity-50">
+                              {deletingId === p.id ? '…' : 'Delete'}
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )
-              })()}
-            </div>
-            </div>
-
-            {/* Current policy/policies — also surface whichever policy Run AI was last run on, so its freshly-extracted data is visible */}
-            {(() => {
-              const reviewPolicy = (reviewPolicyId && tenant.policies?.find(p => p.id === reviewPolicyId)) || tenant.policies?.find(p => p.status === 'pending_review')
-              if (reviewPolicy && !currentPolicies.find(p => p.id === reviewPolicy.id)) {
-                currentPolicies = [reviewPolicy, ...currentPolicies]
-              }
-              return null
-            })()}
-            {currentPolicies.length > 0 ? (
-              <>
-                {tenant.needs_wind_policy && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
-                    <p className="font-semibold text-amber-800 text-sm">Wind-Only Policy Needed</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      This unit-owner's HO6 policy excludes wind coverage. A separate, active
-                      wind-only policy is required for them to be considered compliant —
-                      please ask them to upload one.
-                    </p>
-                  </div>
                 )}
-                {tenant.needs_wind_policy ? (
-                  <div className="grid sm:grid-cols-2 gap-4 items-start">
-                    {currentPolicies.map(p => (
-                      <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} onRunAi={handleRunAi} runningAiId={runningAiId} />
-                    ))}
-                    <div className="bg-white rounded-xl border border-amber-300 shadow-sm p-5">
-                      <h2 className="font-semibold text-slate-700">Wind-Only Policy</h2>
-                      <p className="text-xs text-slate-400 mt-1 mb-3">
-                        Upload the unit-owner's separate wind-only dec page here.
-                      </p>
-                      <form onSubmit={handleWindUploadSubmit} className="space-y-3">
-                        {[
-                          { label: 'Insurer', key: 'insurer', placeholder: 'Citizens' },
-                          { label: 'Policy Number', key: 'policy_number', placeholder: 'WO-123456' },
-                          { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
-                        ].map(({ label, key, placeholder, type }) => (
-                          <div key={key}>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
-                            <input
-                              type={type || 'text'}
-                              value={windForm[key]}
-                              onChange={e => setWindForm(f => ({ ...f, [key]: e.target.value }))}
-                              placeholder={placeholder}
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                        ))}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
-                          <input
-                            key={windFileKey}
-                            type="file"
-                            accept=".pdf,.png,.jpg,.jpeg"
-                            onChange={e => setWindFile(e.target.files[0] || null)}
-                            className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                          />
-                          {windFile && <p className="text-xs text-slate-500 mt-1">{windFile.name}</p>}
-                        </div>
-                        {windError && <p className="text-sm text-red-600">{windError}</p>}
-                        {windSuccess && <p className="text-sm text-green-600">{windSuccess}</p>}
-                        <button type="submit" disabled={windUploading}
-                          className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
-                          {windUploading ? 'Uploading…' : 'Submit Wind-Only Dec Page'}
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                ) : (
-                  currentPolicies.map(p => (
-                    <PolicyCard key={p.id} policy={p} onApprove={handleApprove} approving={approving} onSetReview={handleSetReview} savingKey={savingKey} onRunAi={handleRunAi} runningAiId={runningAiId} />
-                  ))
-                )}
-              </>
-            ) : (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-5">
-                <p className="font-semibold text-red-700">No policy on file</p>
-                <p className="text-sm text-red-600 mt-1">This unit-owner has not uploaded proof of insurance.</p>
               </div>
-            )}
-
-            {/* Admin upload — for dec pages mailed/faxed in by unit-owners without email */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-              <button
-                type="button"
-                onClick={() => setShowUpload(s => !s)}
-                className="font-semibold text-slate-700 flex items-center gap-2"
-              >
-                {showUpload ? '▾' : '▸'} Add Dec Page on Behalf of Unit-Owner
-              </button>
-              <p className="text-xs text-slate-400 mt-1">
-                Use this if the unit-owner mailed or faxed in their dec page instead of uploading it themselves.
-              </p>
-              {showUpload && (
-                <form onSubmit={handleUploadSubmit} className="space-y-3 mt-4">
-                  {[
-                    { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
-                    { label: 'Policy Number', key: 'policy_number', placeholder: 'HO-123456' },
-                    { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
-                  ].map(({ label, key, placeholder, type }) => (
-                    <div key={key}>
-                      <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
-                      <input
-                        type={type || 'text'}
-                        value={uploadForm[key]}
-                        onChange={e => setUploadForm(f => ({ ...f, [key]: e.target.value }))}
-                        placeholder={placeholder}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
-                    <input
-                      key={uploadFileKey}
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
-                      onChange={e => setUploadFile(e.target.files[0] || null)}
-                      className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {uploadFile && <p className="text-xs text-slate-500 mt-1">{uploadFile.name}</p>}
-                  </div>
-                  {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
-                  {uploadSuccess && <p className="text-sm text-green-600">{uploadSuccess}</p>}
-                  <button type="submit" disabled={uploading}
-                    className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
-                    {uploading ? 'Uploading…' : 'Submit Dec Page'}
-                  </button>
-                </form>
-              )}
             </div>
 
-            {/* Policy history */}
-            {historyPolicies.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-slate-100">
-                  <h2 className="font-semibold text-slate-700">Policy History</h2>
-                </div>
-                <ul className="divide-y divide-slate-100">
-                  {historyPolicies.map(p => (
-                    <li key={p.id} className="px-5 py-3 flex items-center justify-between text-sm">
+            {/* ── Activity log ─────────────────────────────────────────────── */}
+            {tenant.activity_log?.length > 0 && (
+              <div>
+                <SectionLabel>Activity log</SectionLabel>
+                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {tenant.activity_log.map(entry => (
+                    <div key={entry.id} className="flex gap-3 px-5 py-3">
+                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
                       <div>
-                        <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>
-                        <span className="text-slate-400 ml-2">#{p.policy_number}</span>
+                        <p className="text-sm text-slate-700">{entry.description}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {fmtDateTime(entry.timestamp)}
+                          {entry.actor && ` · by ${entry.actor}`}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400">
-                          Uploaded {new Date(p.uploaded_at).toLocaleDateString()}
-                        </span>
-                        <StatusBadge status={p.status} />
-                        {p.document_url && (
-                          <a href={p.document_url} target="_blank" rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-xs">View</a>
-                        )}
-                        {p.document_url && (
-                          <button
-                            onClick={() => handleRunAi(p.id)}
-                            disabled={runningAiId === p.id}
-                            className="text-xs font-medium px-2.5 py-1 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
-                          >
-                            {runningAiId === p.id ? 'Running AI…' : 'Run AI on Document'}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeletePolicy(p.id)}
-                          disabled={deletingId === p.id}
-                          className="text-red-600 hover:underline text-xs disabled:opacity-50"
-                        >
-                          {deletingId === p.id ? 'Deleting…' : 'Delete'}
-                        </button>
-                      </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
-          </div>
-        )}
+            {/* ── Footer ───────────────────────────────────────────────────── */}
+            <div className="flex items-center justify-between gap-4 py-2">
+              <div className="flex items-center gap-3">
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
+                <button type="button" onClick={handleSendReminder} disabled={notifying}
+                  className="flex items-center gap-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  {notifying ? 'Sending…' : 'Send reminder ↗'}
+                </button>
+              </div>
+              <div className="text-right">
+                {saveMsg && (
+                  <p className={`text-sm font-medium ${saveMsg.startsWith('Save failed') ? 'text-red-600' : 'text-green-600'}`}>
+                    {saveMsg}
+                  </p>
+                )}
+                {!saveMsg && lastUpdated && (
+                  <p className="text-xs text-slate-400">Last updated {fmtDateTime(lastUpdated)}</p>
+                )}
+              </div>
+            </div>
 
-        {!tenant && !error && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-slate-200 h-24 animate-pulse" />
-            <div className="bg-white rounded-xl border border-slate-200 h-40 animate-pulse" />
-          </div>
+          </form>
         )}
-
       </main>
     </div>
   )
