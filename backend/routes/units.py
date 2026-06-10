@@ -203,11 +203,12 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 validation = extracted.get("validation") or {}
                 validation_passed = validation.get("passed", True)
                 validation_flags = validation.get("flags", [])
-                logger.info(
+                print(
                     f"[_run_parsing] policy={policy_id} exp_str={exp_str!r} "
                     f"validation_passed={validation_passed} flags={validation_flags} "
                     f"a_min={submitted.get('ho6_coverage_a_min')} "
-                    f"dwelling={extracted.get('dwelling_coverage')}"
+                    f"dwelling={extracted.get('dwelling_coverage')}",
+                    flush=True,
                 )
                 if exp_str:
                     try:
@@ -226,7 +227,7 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 elif not validation_passed:
                     # No expiration date extracted but validation still failed
                     extra_updates["status"] = PolicyStatus.non_compliant.value
-                logger.info(f"[_run_parsing] policy={policy_id} extra_updates={extra_updates}")
+                print(f"[_run_parsing] policy={policy_id} extra_updates={extra_updates}", flush=True)
                 # Fill insurer / policy_number only if the column is currently blank
                 if extracted.get("insurer") and not existing_row["insurer"]:
                     extra_updates["insurer"] = extracted["insurer"]
@@ -244,7 +245,8 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                     *params,
                 )
     except Exception as e:
-        logger.error(f"Failed to save parsed dec page for policy {policy_id}: {e}")
+        import traceback
+        print(f"[_run_parsing] FAILED for policy {policy_id}: {e}\n{traceback.format_exc()}", flush=True)
 
 
 @router.post("/unit/{unit_id}/policy", response_model=PolicyOut)
