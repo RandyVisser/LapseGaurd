@@ -308,7 +308,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'compliant', 'expiring', 'lapsed', 'missing']) {
+            for (const key of ['total_units', 'board_members', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'missing']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -386,7 +386,9 @@ export default function AdminDashboard() {
                 <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                 <StatCard compact label="Compliant" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
                 <StatCard compact label="Expiring Soon" value={summary.expiring} color="text-yellow-700" active={activeFilter === 'expiring'} onClick={() => setActiveFilter('expiring')} />
-                <StatCard compact label="Lapsed / Missing" value={summary.lapsed + summary.missing} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+                <StatCard compact label="Lapsed" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+                <StatCard compact label="Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
+                <StatCard compact label="No Info Received" value={summary.missing} color="text-slate-500" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
               </div>
             )}
           </div>
@@ -564,7 +566,9 @@ export default function AdminDashboard() {
                   if (u.assoc_title === 'Property Manager') return false
                 } else {
                   if (activeFilter === 'board') { if (!u.assoc_title) return false }
-                  else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed' && u.status !== 'missing') return false }
+                  else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed' && u.status !== 'pending_review') return false }
+                  else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
+                  else if (activeFilter === 'missing') { if (u.status !== 'missing') return false }
                   else { if (u.status !== activeFilter) return false }
                 }
                 if (search) {

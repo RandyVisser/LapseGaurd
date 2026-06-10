@@ -264,7 +264,7 @@ async def compliance_summary(
     statuses = await _compliance_status_by_tenant(conn, tenant_ids)
 
     total_units = board_members = 0
-    compliant = expiring = lapsed = missing = 0
+    compliant = expiring = lapsed = non_compliant = missing = 0
     for r in rows:
         # Property Manager units are hidden entirely — skip them
         if r["assoc_title"] == "Property Manager":
@@ -277,7 +277,9 @@ async def compliance_summary(
             compliant += 1
         elif status == PolicyStatus.expiring.value:
             expiring += 1
-        elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
+        elif status == PolicyStatus.non_compliant.value:
+            non_compliant += 1
+        elif status in (PolicyStatus.lapsed.value, PolicyStatus.pending_review.value):
             lapsed += 1
         else:
             missing += 1
@@ -288,6 +290,7 @@ async def compliance_summary(
         compliant=compliant,
         expiring=expiring,
         lapsed=lapsed,
+        non_compliant=non_compliant,
         missing=missing,
     )
 

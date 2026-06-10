@@ -112,6 +112,7 @@ class ComplianceSummary(BaseModel):
     compliant: int
     expiring: int
     lapsed: int
+    non_compliant: int = 0
     missing: int
 
 
