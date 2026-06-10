@@ -69,7 +69,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const ho6CovA = ho6?.extracted_data?.dwelling_coverage
   if (tenant.ho6_coverage_a_min && ho6CovA != null) {
     const meets = Number(ho6CovA) >= tenant.ho6_coverage_a_min
-    items.push({ type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A (Dwelling) ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
   }
   const windCovA = wind?.extracted_data?.dwelling_coverage
   if (wind && windCovA != null)
@@ -77,7 +77,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const covE = ho6?.extracted_data?.liability_coverage
   if (tenant.ho6_coverage_e_min && covE != null) {
     const meets = Number(covE) >= tenant.ho6_coverage_e_min
-    items.push({ type: meets ? 'pass' : 'fail', text: `Coverage E ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
   }
   if (tenant.ho6_additional_interest_required) {
     const v = ho6?.review_overrides?.association_additional_interest?.value
