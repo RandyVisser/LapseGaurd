@@ -199,7 +199,7 @@ function FieldSelect({ label, value, onChange, options, highlighted, className =
 
 // ─── Policy edit card ────────────────────────────────────────────────────────
 
-function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId }) {
+function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded }) {
   const fileInputRef = useRef()
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
@@ -226,6 +226,8 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
       const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
       onChange('document_url', data.publicUrl)
       onChange('uploaded_at', new Date().toISOString())
+      // Autosave so the document_url is persisted immediately
+      if (onDocumentUploaded) await onDocumentUploaded(policyId, data.publicUrl, isDraft)
     } catch (e) { setUploadErr(e.message) }
     finally { setUploading(false) }
   }
@@ -579,8 +581,9 @@ export default function AdminTenantDetail() {
     }])
   }
 
-  async function handleSave(e) {
-    e.preventDefault()
+  async function doSave(overridePolicyForms, overrideDrafts) {
+    const pf = overridePolicyForms ?? policyForms
+    const dr = overrideDrafts ?? drafts
     setSaving(true); setSaveMsg('')
     try {
       // 1. Save tenant / unit fields
@@ -603,27 +606,27 @@ export default function AdminTenantDetail() {
       }
 
       // 3. Save edits to existing policies
-      for (const [policyId, pf] of Object.entries(policyForms)) {
+      for (const [policyId, pfItem] of Object.entries(pf)) {
         try {
           await apiPatch(`/policy/${policyId}`, {
-            insurer: pf.insurer || null,
-            policy_number: pf.policy_number || null,
-            expiration_date: pf.expiration_date || null,
-            effective_date: pf.effective_date || null,
-            coverage_type: pf.coverage_type || null,
-            dwelling_coverage: pf.dwelling_coverage !== '' ? Number(pf.dwelling_coverage) : null,
-            liability_coverage: pf.liability_coverage !== '' ? Number(pf.liability_coverage) : null,
-            named_insured: pf.named_insured || null,
-            additional_insured: pf.additional_insured || null,
-            additional_interests: pf.additional_interests || null,
-            association_listed: pf.association_listed,
-            document_url: pf.document_url || null,
+            insurer: pfItem.insurer || null,
+            policy_number: pfItem.policy_number || null,
+            expiration_date: pfItem.expiration_date || null,
+            effective_date: pfItem.effective_date || null,
+            coverage_type: pfItem.coverage_type || null,
+            dwelling_coverage: pfItem.dwelling_coverage !== '' ? Number(pfItem.dwelling_coverage) : null,
+            liability_coverage: pfItem.liability_coverage !== '' ? Number(pfItem.liability_coverage) : null,
+            named_insured: pfItem.named_insured || null,
+            additional_insured: pfItem.additional_insured || null,
+            additional_interests: pfItem.additional_interests || null,
+            association_listed: pfItem.association_listed,
+            document_url: pfItem.document_url || null,
           })
         } catch (e) { throw new Error(`[policy ${policyId}] ${e.message}`) }
       }
 
       // 4. Create draft policies
-      for (const draft of drafts) {
+      for (const draft of dr) {
         if (!draft.document_url && !draft.policy_number && !draft.insurer) continue
         try {
           await apiPost(`/unit/${tenant.unit_id}/policy`, {
@@ -645,6 +648,31 @@ export default function AdminTenantDetail() {
       setSaveMsg('Save failed: ' + e.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleSave(e) {
+    e.preventDefault()
+    await doSave()
+  }
+
+  // Called by PolicyEditCard after a file is uploaded — autosaves with the new document_url baked in
+  async function handleDocumentUploaded(policyId, documentUrl, isDraft) {
+    if (isDraft) {
+      // Update draft and autosave with updated drafts list
+      const updatedDrafts = drafts.map(d =>
+        d._draftId === policyId ? { ...d, document_url: documentUrl } : d
+      )
+      setDrafts(updatedDrafts)
+      await doSave(policyForms, updatedDrafts)
+    } else {
+      // Update existing policy form and autosave with updated policyForms
+      const updatedForms = {
+        ...policyForms,
+        [policyId]: { ...policyForms[policyId], document_url: documentUrl },
+      }
+      setPolicyForms(updatedForms)
+      await doSave(updatedForms, drafts)
     }
   }
 
@@ -795,6 +823,7 @@ export default function AdminTenantDetail() {
                     deleting={deletingId === p.id}
                     isDraft={false}
                     unitId={tenant.unit_id}
+                    onDocumentUploaded={handleDocumentUploaded}
                   />
                 ))}
 
@@ -812,6 +841,7 @@ export default function AdminTenantDetail() {
                     deleting={false}
                     isDraft={true}
                     unitId={tenant.unit_id}
+                    onDocumentUploaded={handleDocumentUploaded}
                   />
                 ))}
 
