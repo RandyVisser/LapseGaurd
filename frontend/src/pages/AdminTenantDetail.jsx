@@ -143,6 +143,34 @@ function SectionLabel({ children }) {
   return <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">{children}</p>
 }
 
+// ─── Currency input ──────────────────────────────────────────────────────────
+
+function CurrencyInput({ label, value, onChange, placeholder, className = '' }) {
+  const [focused, setFocused] = useState(false)
+  const raw = value === '' || value == null ? '' : String(value)
+  const formatted = raw !== '' && !isNaN(Number(raw))
+    ? '$' + Number(raw).toLocaleString('en-US', { maximumFractionDigits: 0 })
+    : raw
+  return (
+    <div className={className}>
+      <label className="block text-xs font-medium mb-1.5 text-slate-500">{label}</label>
+      <input
+        type="text"
+        value={focused ? raw : formatted}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={e => {
+          // Strip $ and commas so the stored value stays a plain number string
+          const stripped = e.target.value.replace(/[$,]/g, '')
+          onChange(stripped)
+        }}
+        placeholder={placeholder ? '$' + Number(placeholder).toLocaleString('en-US', { maximumFractionDigits: 0 }) : ''}
+        className="w-full rounded-lg px-3 py-2 text-sm border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  )
+}
+
 // ─── Input components ────────────────────────────────────────────────────────
 
 function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, className = '' }) {
@@ -335,9 +363,9 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Coverage</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <FieldInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} type="number" highlighted={hi('dwelling_coverage')} />
+            <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} />
             {isHo6 && (
-              <FieldInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} type="number" highlighted={hi('liability_coverage')} />
+              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} />
             )}
             {isHo6 && (
               <FieldSelect
@@ -794,10 +822,10 @@ export default function AdminTenantDetail() {
                 <div className="pt-4 border-t border-slate-100">
                   <SectionLabel>Association requirements</SectionLabel>
                   <div className="grid grid-cols-2 gap-4">
-                    <FieldInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
-                      onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} type="number" placeholder="200000" />
-                    <FieldInput label="Min Coverage E (Liability) ($)" value={reqForm.coverage_e_min}
-                      onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} type="number" placeholder="100000" />
+                    <CurrencyInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
+                      onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} placeholder="200000" />
+                    <CurrencyInput label="Min Coverage E (Liability) ($)" value={reqForm.coverage_e_min}
+                      onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} placeholder="100000" />
                   </div>
                 </div>
 
