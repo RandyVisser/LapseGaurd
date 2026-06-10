@@ -485,7 +485,14 @@ export default function AdminTenantDetail() {
       name: data.name || '',
       email: data.email || '',
       phone: data.phone || '',
-      street_address: [data.street_address, data.unit_number ? `Unit ${data.unit_number}` : ''].filter(Boolean).join(' '),
+      street_address: [
+        // Strip any existing embedded "Unit XXXX" occurrences from the stored address
+        // before appending the canonical unit number — prevents duplication on every save
+        data.unit_number
+          ? (data.street_address || '').replace(new RegExp(`\\s*Unit\\s+${data.unit_number}`, 'gi'), '').trim()
+          : (data.street_address || ''),
+        data.unit_number ? `Unit ${data.unit_number}` : '',
+      ].filter(Boolean).join(' '),
       city: data.city || '',
       state: data.state || '',
       zip: data.zip || '',
@@ -615,8 +622,14 @@ export default function AdminTenantDetail() {
     setSaving(true); setSaveMsg('')
     try {
       // 1. Save tenant / unit fields
+      // Strip the " Unit XXXX" suffix from street_address before saving so the DB
+      // stores only the base address — the unit number lives in its own column
+      const unitNumber = tenant?.unit_number
+      const cleanStreetAddress = unitNumber
+        ? form.street_address.replace(new RegExp(`\\s*Unit\\s+${unitNumber}`, 'gi'), '').trim()
+        : form.street_address
       try {
-        await apiPatch(`/tenant/${tenantId}`, form)
+        await apiPatch(`/tenant/${tenantId}`, { ...form, street_address: cleanStreetAddress })
       } catch (e) { throw new Error(`[tenant] ${e.message}`) }
 
       // 2. Save HOA requirements if changed
