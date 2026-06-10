@@ -202,7 +202,9 @@ async def list_units(
             t.email AS tenant_email,
             t.id AS tenant_id
         FROM units u
-        LEFT JOIN tenants t ON t.unit_id = u.id
+        LEFT JOIN LATERAL (
+            SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
+        ) t ON true
         WHERE u.hoa_id = $1
         ORDER BY u.unit_number
         """,
@@ -251,9 +253,10 @@ async def compliance_summary(
     await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
-        """SELECT u.id AS unit_id, u.assoc_title, t.id AS tenant_id
+        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
-           WHERE u.hoa_id = $1""",
+           WHERE u.hoa_id = $1
+           ORDER BY u.id, t.id""",
         hoa_id,
     )
 
@@ -448,10 +451,11 @@ async def send_board_report(
         raise HTTPException(status_code=422, detail="No admin email on file for this HOA")
 
     rows = await conn.fetch(
-        """SELECT u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
+        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
                   u.unit_number, COALESCE(t.name, u.owner_primary, 'No owner') AS display_name
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
-           WHERE u.hoa_id = $1""",
+           WHERE u.hoa_id = $1
+           ORDER BY u.id, t.id""",
         hoa_id,
     )
 
@@ -533,7 +537,9 @@ async def export_compliance_csv(
                   u.purchase_date, u.type, u.subdivision, u.corp_name, u.sunbiz_doc_number, u.fein,
                   u.radar_id, u.assessor_parcel_number,
                   t.id AS tenant_id, t.name AS tenant_name, t.email AS tenant_email
-           FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
+           FROM units u LEFT JOIN LATERAL (
+               SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
+           ) t ON true
            WHERE u.hoa_id = $1 ORDER BY u.unit_number""",
         hoa_id,
     )
