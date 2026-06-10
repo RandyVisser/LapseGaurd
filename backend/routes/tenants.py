@@ -91,7 +91,7 @@ async def get_tenant_detail(
     row = await conn.fetchrow(
         """
         SELECT t.id, t.unit_id, t.name, t.email,
-               COALESCE(t.phone, '') AS phone,
+               NULL::text AS phone,
                u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
                h.name AS hoa_name,
@@ -242,7 +242,9 @@ async def update_tenant(
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Update tenants table
-    tenant_fields = {k: v for k, v in {"name": body.name, "email": body.email, "phone": body.phone}.items() if v is not None}
+    # phone is excluded until the column migration has been run in Supabase:
+    # ALTER TABLE tenants ADD COLUMN IF NOT EXISTS phone TEXT;
+    tenant_fields = {k: v for k, v in {"name": body.name, "email": body.email}.items() if v is not None}
     if tenant_fields:
         set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(tenant_fields))
         await conn.execute(
