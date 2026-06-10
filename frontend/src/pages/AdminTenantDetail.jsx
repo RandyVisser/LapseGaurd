@@ -274,6 +274,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
   // NOTE: full class strings required so Tailwind does not purge them
   let accentColor = 'border-2 border-slate-200'
   if (form.status === 'lapsed') accentColor = 'border-2 border-red-400'
+  else if (form.status === 'non_compliant') accentColor = 'border-2 border-orange-400'
   else if (form.status === 'active' && !hasMissing) accentColor = 'border-2 border-green-400'
   else if (form.status === 'expiring' || form.status === 'pending_review' || hasMissing) accentColor = 'border-2 border-amber-400'
 
@@ -555,11 +556,12 @@ export default function AdminTenantDetail() {
   // ── Status card style ──────────────────────────────────────────────────────
 
   const statusStyles = {
-    active:         { card: 'bg-green-50 border-green-200',  icon: '✓', label: 'Active', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
-    expiring:       { card: 'bg-amber-50 border-amber-200',  icon: '⚠', label: 'Expiring / gap detected', text: 'text-amber-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    pending_review: { card: 'bg-blue-50 border-blue-200',    icon: '●', label: 'Pending review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    lapsed:         { card: 'bg-red-50 border-red-200',      icon: '✗', label: 'Lapsed', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
-    missing:        { card: 'bg-red-50 border-red-200',      icon: '✗', label: 'No policy on file', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    active:         { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
+    expiring:       { card: 'bg-amber-50 border-amber-200',   icon: '⚠', label: 'Expiring / gap detected', text: 'text-amber-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    non_compliant:  { card: 'bg-orange-50 border-orange-200', icon: '✗', label: 'Non-Compliant', text: 'text-orange-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    pending_review: { card: 'bg-blue-50 border-blue-200',     icon: '●', label: 'Pending review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    lapsed:         { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'Lapsed', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    missing:        { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'No policy on file', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
   }
   const ss = statusStyles[overallStatus] || statusStyles.missing
 

@@ -200,13 +200,25 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 extra_updates = {}
                 # Always write expiration_date + recompute status from AI extraction
                 exp_str = extracted.get("expiration_date")
+                validation = extracted.get("validation") or {}
+                validation_passed = validation.get("passed", True)
                 if exp_str:
                     try:
                         exp_date = date.fromisoformat(str(exp_str)[:10])
                         extra_updates["expiration_date"] = exp_date
-                        extra_updates["status"] = _compute_status(exp_date).value
+                        computed = _compute_status(exp_date)
+                        # If policy isn't already lapsed/expired but validation failed, mark non_compliant
+                        if not validation_passed and computed.value in (
+                            PolicyStatus.active.value, PolicyStatus.expiring.value
+                        ):
+                            extra_updates["status"] = PolicyStatus.non_compliant.value
+                        else:
+                            extra_updates["status"] = computed.value
                     except (ValueError, TypeError):
                         pass
+                elif not validation_passed:
+                    # No expiration date extracted but validation still failed
+                    extra_updates["status"] = PolicyStatus.non_compliant.value
                 # Fill insurer / policy_number only if the column is currently blank
                 if extracted.get("insurer") and not existing_row["insurer"]:
                     extra_updates["insurer"] = extracted["insurer"]

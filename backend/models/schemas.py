@@ -8,6 +8,7 @@ import uuid
 class PolicyStatus(str, Enum):
     active = "active"
     expiring = "expiring"
+    non_compliant = "non_compliant"
     lapsed = "lapsed"
     missing = "missing"
     pending_review = "pending_review"
@@ -56,6 +57,8 @@ class TenantDetailOut(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     zip: Optional[str] = None
+    owner_primary: Optional[str] = None
+    owner_secondary: Optional[str] = None
     policies: list[PolicyOut]
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None
