@@ -187,12 +187,10 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
         is_pdf = "pdf" in content_type or document_url.lower().endswith(".pdf")
 
         if is_pdf:
-            # Extract text with pdfplumber; fall back to vision if text is sparse
+            # Always send the PDF natively so Claude can see logos/headers visually.
+            # Also attach pdfplumber text as a hint when available (helps with dense layouts).
             text = _extract_pdf_text(content)
-            if len(text.strip()) > 100:
-                result = await _parse_with_text(client, text)
-            else:
-                result = await _parse_with_vision(client, content, "image/jpeg")
+            result = await _parse_with_pdf(client, content, text if len(text.strip()) > 100 else None)
         else:
             # Image file — go straight to vision
             media_type = content_type if content_type.startswith("image/") else "image/jpeg"
@@ -212,14 +210,31 @@ def _extract_pdf_text(content: bytes) -> str:
         return "\n".join(page.extract_text() or "" for page in pdf.pages)
 
 
-async def _parse_with_text(client: anthropic.AsyncAnthropic, text: str) -> dict | None:
+async def _parse_with_pdf(
+    client: anthropic.AsyncAnthropic, content: bytes, text_hint: str | None
+) -> dict | None:
+    """Send the raw PDF as a native document block so Claude sees logos and layout visually.
+    Optionally include pdfplumber-extracted text as an additional hint."""
+    import base64
+    b64 = base64.standard_b64encode(content).decode()
+    message_content = [
+        {
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
+        },
+    ]
+    if text_hint:
+        message_content.append({
+            "type": "text",
+            "text": f"Extracted text from the document (use as a hint):\n{text_hint[:3000]}\n\n{EXTRACT_PROMPT}",
+        })
+    else:
+        message_content.append({"type": "text", "text": EXTRACT_PROMPT})
+
     msg = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
-        messages=[{
-            "role": "user",
-            "content": f"{EXTRACT_PROMPT}\n\nDec page text:\n{text[:5000]}"
-        }],
+        messages=[{"role": "user", "content": message_content}],
     )
     return _parse_response(msg.content[0].text)
 
