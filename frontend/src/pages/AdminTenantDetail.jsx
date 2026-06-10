@@ -94,13 +94,14 @@ function buildComplianceChecks(tenant, currentPolicies) {
       ...(Array.isArray(ext.additional_insureds) ? ext.additional_insureds : ext.additional_insureds ? [ext.additional_insureds] : []),
       ...(ext.additional_insured && !Array.isArray(ext.additional_insured) ? [ext.additional_insured] : []),
     ].filter(Boolean)
-    const match = allInsuredNames.some(n => nameMatches(tenant.name, n))
+    const ownerName = tenant.owner_primary || tenant.owner_secondary || tenant.name
+    const match = allInsuredNames.some(n => nameMatches(ownerName, n))
     if (allInsuredNames.length > 0) {
       items.push({
         type: match ? 'pass' : 'fail',
         text: match
-          ? `Named insured matches unit-owner (${tenant.name})`
-          : `Named insured does not match unit-owner — policy lists "${allInsuredNames.join('; ')}", expected "${tenant.name}"`,
+          ? `Named insured matches unit-owner (${ownerName})`
+          : `Named insured does not match unit-owner — policy lists "${allInsuredNames.join('; ')}", expected "${ownerName}"`,
       })
     }
   }
