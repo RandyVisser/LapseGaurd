@@ -817,7 +817,11 @@ export default function AdminTenantDetail() {
 
                 {/* Add policy */}
                 <button type="button" onClick={handleAddPolicy}
-                  className="flex items-center gap-2 text-sm font-medium text-slate-600 border border-dashed border-slate-300 rounded-xl px-5 py-3 hover:bg-slate-50 w-full justify-center bg-white">
+                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-5 py-3 w-full justify-center border-2 border-dashed transition-colors ${
+                    currentPolicies.length === 0 && drafts.length === 0
+                      ? 'border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}>
                   + Add policy
                 </button>
 

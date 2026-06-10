@@ -11,5 +11,8 @@ export default {
     'border-amber-400',
     'border-red-400',
     'border-slate-200',
+    'bg-amber-50',
+    'bg-amber-100',
+    'text-amber-700',
   ],
 }
