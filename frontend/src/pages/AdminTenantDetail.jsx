@@ -555,13 +555,18 @@ export default function AdminTenantDetail() {
 
   // ── Status card style ──────────────────────────────────────────────────────
 
+  const isExpiringSoon = currentPolicies.some(p => {
+    if (!p.expiration_date) return false
+    const days = Math.ceil((new Date(p.expiration_date) - new Date()) / (1000 * 60 * 60 * 24))
+    return days >= 0 && days <= 30
+  })
   const statusStyles = {
-    active:         { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
-    expiring:       { card: 'bg-amber-50 border-amber-200',   icon: '⚠', label: 'Expiring / gap detected', text: 'text-amber-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    non_compliant:  { card: 'bg-orange-50 border-orange-200', icon: '✗', label: 'Non-Compliant', text: 'text-orange-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    pending_review: { card: 'bg-blue-50 border-blue-200',     icon: '●', label: 'Pending review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    lapsed:         { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'Lapsed', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
-    missing:        { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'No policy on file', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    active:         { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
+    expiring:       { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
+    non_compliant:  { card: 'bg-orange-50 border-orange-200', icon: '✗', label: 'Active · Non-Compliant', text: 'text-orange-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    pending_review: { card: 'bg-blue-50 border-blue-200',     icon: '●', label: 'Pending Review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
+    lapsed:         { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'Expired', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    missing:        { card: 'bg-slate-50 border-slate-200',   icon: '—', label: 'No Policy Received', text: 'text-slate-600', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
   }
   const ss = statusStyles[overallStatus] || statusStyles.missing
 
@@ -770,8 +775,9 @@ export default function AdminTenantDetail() {
 
             {/* ── Status card ───────────────────────────────────────────────── */}
             <div className={`rounded-xl border p-5 ${ss.card}`}>
-              <p className={`font-bold text-base mb-3 flex items-center gap-2 ${ss.text}`}>
+              <p className={`font-bold text-base mb-3 flex items-center gap-2 flex-wrap ${ss.text}`}>
                 <span>{ss.icon}</span> {ss.label}
+                {isExpiringSoon && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">Expiring Soon</span>}
               </p>
               {complianceChecks.length > 0 && (
                 <ul className="space-y-1.5">

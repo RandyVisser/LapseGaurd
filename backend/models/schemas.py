@@ -103,6 +103,7 @@ class UnitComplianceOut(BaseModel):
     purchase_date: Optional[date]
     tenant_id: Optional[uuid.UUID]
     status: PolicyStatus
+    expiration_date: Optional[date] = None
 
 
 class ComplianceSummary(BaseModel):
@@ -110,9 +111,10 @@ class ComplianceSummary(BaseModel):
     board_members: int
     property_managers: int = 0  # kept for backwards compat, always 0
     compliant: int
-    expiring: int
+    expiring: int = 0
     lapsed: int
     non_compliant: int = 0
+    pending_review: int = 0
     missing: int
 
 

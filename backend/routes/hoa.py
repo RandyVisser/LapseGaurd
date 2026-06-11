@@ -38,11 +38,12 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
 
 
-async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: list) -> dict:
+async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: list) -> tuple[dict, dict]:
     """Evaluate each tenant's overall compliance status, accounting for the
-    HO6-with-wind vs (HO6-wind-excluded + standalone wind) coverage combo."""
+    HO6-with-wind vs (HO6-wind-excluded + standalone wind) coverage combo.
+    Returns (statuses_dict, expiration_dates_dict)."""
     if not tenant_ids:
-        return {}
+        return {}, {}
     rows = await conn.fetch(
         """SELECT id, tenant_id, status, coverage_type, expiration_date, uploaded_at
            FROM policies WHERE tenant_id = ANY($1::uuid[])""",
@@ -51,7 +52,18 @@ async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: lis
     by_tenant: dict = {}
     for r in rows:
         by_tenant.setdefault(r["tenant_id"], []).append(dict(r))
-    return {tid: evaluate_compliance(policies)["status"] for tid, policies in by_tenant.items()}
+    statuses = {}
+    exp_dates = {}
+    for tid, policies in by_tenant.items():
+        result = evaluate_compliance(policies)
+        statuses[tid] = result["status"]
+        # Pick expiration date from the current policy set
+        current_ids = result.get("current_ids", set())
+        current = [p for p in policies if p["id"] in current_ids]
+        if current:
+            best_exp = max((p["expiration_date"] for p in current if p["expiration_date"]), default=None)
+            exp_dates[tid] = best_exp
+    return statuses, exp_dates
 
 
 class HoaOut(BaseModel):
@@ -212,7 +224,7 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
+    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids)
 
     return [
         UnitComplianceOut(
@@ -239,6 +251,7 @@ async def list_units(
             purchase_date=r["purchase_date"],
             tenant_id=r["tenant_id"],
             status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
+            expiration_date=exp_dates.get(r["tenant_id"]),
         )
         for r in rows
     ]
@@ -261,10 +274,10 @@ async def compliance_summary(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
+    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids)
 
     total_units = board_members = 0
-    compliant = expiring = lapsed = non_compliant = missing = 0
+    compliant = expiring = lapsed = non_compliant = pending_review = missing = 0
     for r in rows:
         # Property Manager units are hidden entirely — skip them
         if r["assoc_title"] == "Property Manager":
@@ -273,14 +286,16 @@ async def compliance_summary(
         if r["assoc_title"]:
             board_members += 1
         status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-        if status == PolicyStatus.active.value:
-            compliant += 1
-        elif status == PolicyStatus.expiring.value:
-            expiring += 1
+        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
+            compliant += 1  # expiring = still meets requirements, sub-indicator only
+            if status == PolicyStatus.expiring.value:
+                expiring += 1  # tracked separately for the sub-badge count
         elif status == PolicyStatus.non_compliant.value:
             non_compliant += 1
-        elif status in (PolicyStatus.lapsed.value, PolicyStatus.pending_review.value):
+        elif status == PolicyStatus.lapsed.value:
             lapsed += 1
+        elif status == PolicyStatus.pending_review.value:
+            pending_review += 1
         else:
             missing += 1
 
@@ -291,6 +306,7 @@ async def compliance_summary(
         expiring=expiring,
         lapsed=lapsed,
         non_compliant=non_compliant,
+        pending_review=pending_review,
         missing=missing,
     )
 
@@ -463,7 +479,7 @@ async def send_board_report(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    statuses = await _compliance_status_by_tenant(conn, tenant_ids)
+    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids)
 
     total_units = compliant = expiring = lapsed = missing = 0
     lapsed_units = []

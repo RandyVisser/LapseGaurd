@@ -1,27 +1,46 @@
 const colors = {
-  active: 'bg-green-100 text-green-800',
-  expiring: 'bg-yellow-100 text-yellow-800',
-  non_compliant: 'bg-orange-100 text-orange-800',
-  lapsed: 'bg-red-100 text-red-800',
-  missing: 'bg-yellow-100 text-yellow-800',
+  active:         'bg-green-100 text-green-800',
+  expiring:       'bg-green-100 text-green-800',  // same as active — expiring is a sub-indicator
+  non_compliant:  'bg-orange-100 text-orange-800',
+  lapsed:         'bg-red-100 text-red-800',
+  missing:        'bg-slate-100 text-slate-500',
   pending_review: 'bg-blue-100 text-blue-800',
-  fail: 'bg-red-100 text-red-800',
-  pass: 'bg-green-100 text-green-800',
-  expired: 'bg-slate-100 text-slate-500',
+  fail:           'bg-red-100 text-red-800',
+  pass:           'bg-green-100 text-green-800',
 }
 
 const labels = {
-  non_compliant: 'Non-Compliant',
+  active:         'Active · Meets Requirements',
+  expiring:       'Active · Meets Requirements',
+  non_compliant:  'Active · Non-Compliant',
+  lapsed:         'Expired',
+  missing:        'No Policy Received',
   pending_review: 'Pending Review',
-  fail: 'Fail',
-  pass: 'Pass',
-  expired: 'Expired',
+  fail:           'Fail',
+  pass:           'Pass',
 }
 
-export default function StatusBadge({ status }) {
+// Expiring Soon sub-badge — shown alongside the main status when policy expires within 30 days
+export function ExpiringBadge() {
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${colors[status] || colors.missing}`}>
-      {labels[status] || status}
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+      Expiring Soon
+    </span>
+  )
+}
+
+export default function StatusBadge({ status, expirationDate }) {
+  const isExpiringSoon = expirationDate && status !== 'lapsed' && status !== 'missing' && (() => {
+    const days = Math.ceil((new Date(expirationDate) - new Date()) / (1000 * 60 * 60 * 24))
+    return days >= 0 && days <= 30
+  })()
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors[status] || colors.missing}`}>
+        {labels[status] || status}
+      </span>
+      {isExpiringSoon && <ExpiringBadge />}
     </span>
   )
 }
