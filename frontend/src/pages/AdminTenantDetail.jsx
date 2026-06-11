@@ -834,7 +834,7 @@ export default function AdminTenantDetail() {
               <li key={i} className={`flex items-start gap-3 text-sm ${s.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                 <span className="text-base leading-snug">{s.icon}</span>
                 <span>
-                  {!s.done && <span className="font-semibold text-blue-700">Step {i + 1}: </span>}
+                  {!s.done && <span className="font-semibold text-blue-700">Next: </span>}
                   {s.text}
                 </span>
               </li>
