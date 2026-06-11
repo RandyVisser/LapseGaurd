@@ -766,9 +766,47 @@ export default function AdminTenantDetail() {
   const headerName = form.name || tenant?.name || ''
   const headerUnit = tenant?.unit_number ? `Unit ${tenant.unit_number}` : ''
 
+  // ── Next-steps panel ────────────────────────────────────────────────────────
+  const nextSteps = []
+  if (!tenant) {
+    // loading
+  } else if (currentPolicies.length === 0 && drafts.length === 0) {
+    nextSteps.push({ icon: '📋', text: 'Click "+ Add policy" to upload the unit owner\'s insurance policy.' })
+  } else if (hasLapsedPolicy && !drafts.length) {
+    nextSteps.push({ icon: '🔄', text: 'Policy is expired — click "+ Add renewal policy" to upload the new term.' })
+  } else if (drafts.length > 0) {
+    const hasDoc = drafts.some(d => d.document_url)
+    if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Upload the declaration page document to the policy card.' })
+    else nextSteps.push({ icon: '🤖', text: 'Click "Extract with AI" to auto-fill policy details from the document.' })
+    const hasAllFields = drafts.every(d => d.insurer && d.policy_number && d.expiration_date && d.named_insured)
+    if (hasDoc && hasAllFields) nextSteps.push({ icon: '💾', text: 'Review the extracted fields then click "Save" to confirm.' })
+  } else if (needsWindPolicy) {
+    nextSteps.push({ icon: '💨', text: 'Association requires wind coverage — click "+ Add wind policy" to upload a separate wind-only policy.' })
+  } else if (overallStatus === 'non_compliant') {
+    const fails = complianceChecks.filter(c => c.type === 'fail')
+    fails.forEach(f => nextSteps.push({ icon: '⚠️', text: f.text }))
+  } else if (overallStatus === 'pending_review') {
+    nextSteps.push({ icon: '🔍', text: 'Policy is pending review — verify the extracted fields and save to confirm compliance.' })
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
+      {nextSteps.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 w-80 bg-white border border-blue-200 rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-blue-600 px-4 py-3 flex items-center gap-2">
+            <span className="text-white font-semibold text-sm">Next Steps</span>
+          </div>
+          <ul className="p-4 space-y-3">
+            {nextSteps.map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                <span className="text-base leading-snug">{s.icon}</span>
+                <span><span className="font-semibold text-blue-700">Step {i + 1}:</span> {s.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-1">
 
         {/* ── Top nav ──────────────────────────────────────────────────────── */}
