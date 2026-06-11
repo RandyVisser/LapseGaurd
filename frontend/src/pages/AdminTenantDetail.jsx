@@ -242,7 +242,7 @@ function FieldSelect({ label, value, onChange, options, highlighted, danger, cla
 
 // ─── Policy edit card ────────────────────────────────────────────────────────
 
-function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded }) {
+function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded, windRequired }) {
   const fileInputRef = useRef()
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
@@ -389,7 +389,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
                 value={form.coverage_type === 'ho6_with_wind' ? 'yes' : 'no'}
                 onChange={v => onChange('coverage_type', v === 'yes' ? 'ho6_with_wind' : 'ho6_wind_excluded')}
                 options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]}
-                danger={tenant.ho6_wind_required && form.coverage_type === 'ho6_wind_excluded'}
+                danger={windRequired && form.coverage_type === 'ho6_wind_excluded'}
               />
             )}
           </div>
@@ -889,6 +889,7 @@ export default function AdminTenantDetail() {
                     isDraft={false}
                     unitId={tenant.unit_id}
                     onDocumentUploaded={handleDocumentUploaded}
+                    windRequired={tenant.ho6_wind_required}
                   />
                 ))}
 
@@ -907,6 +908,7 @@ export default function AdminTenantDetail() {
                     isDraft={true}
                     unitId={tenant.unit_id}
                     onDocumentUploaded={handleDocumentUploaded}
+                    windRequired={tenant.ho6_wind_required}
                   />
                 ))}
 
