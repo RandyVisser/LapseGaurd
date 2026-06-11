@@ -819,15 +819,17 @@ export default function AdminTenantDetail() {
     fails.forEach(f => nextSteps.push({ icon: '⚠️', text: f.text }))
   } else if (overallStatus === 'pending_review') {
     nextSteps.push({ icon: '🔍', text: 'Policy is pending review — verify the extracted fields and save to confirm compliance.' })
+  } else if (overallStatus === 'active' || overallStatus === 'expiring') {
+    nextSteps.push({ icon: '🎉', text: 'All set! The declaration page has been uploaded and all association requirements are met.', success: true })
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       {nextSteps.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 bg-white border border-blue-200 rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-blue-600 px-4 py-3 flex items-center gap-2">
-            <span className="text-white font-semibold text-sm">Next Steps</span>
+        <div className={`fixed bottom-6 right-6 z-50 w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'}`}>
+          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+            <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
           </div>
           <ul className="p-4 space-y-3">
             {nextSteps.map((s, i) => (
