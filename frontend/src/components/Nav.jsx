@@ -18,7 +18,10 @@ export default function Nav({ role, title }) {
         { to: '/admin/settings', label: 'Settings' },
       ]
     : role === 'tenant'
-      ? [{ to: '/tenant/dashboard', label: 'My Policy' }]
+      ? [
+          { to: '/tenant/dashboard', label: 'My Policy' },
+          { to: '/tenant/documents', label: 'Building Documents' },
+        ]
       : []
 
   return (

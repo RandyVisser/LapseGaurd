@@ -6,14 +6,54 @@ import { useAuth } from '../context/AuthContext'
 
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
 
+// One unambiguous answer per status — the page leads with this.
+const STATUS_HERO = {
+  active: {
+    icon: '✓', title: "You're covered",
+    blurb: 'Your policy is on file and meets your association\'s requirements.',
+    card: 'bg-green-50 border-green-200', accent: 'bg-green-600 text-white', text: 'text-green-900', sub: 'text-green-700',
+  },
+  expiring: {
+    icon: '⏳', title: 'Renewal due soon',
+    blurb: 'Your policy is active but expires soon — upload your renewal when you have it.',
+    card: 'bg-amber-50 border-amber-200', accent: 'bg-amber-500 text-white', text: 'text-amber-900', sub: 'text-amber-700',
+  },
+  pending_review: {
+    icon: '🔍', title: 'Under review',
+    blurb: 'We received your document and your association is reviewing it.',
+    card: 'bg-blue-50 border-blue-200', accent: 'bg-blue-600 text-white', text: 'text-blue-900', sub: 'text-blue-700',
+  },
+  non_compliant: {
+    icon: '!', title: 'Action needed',
+    blurb: 'Your policy is on file but doesn\'t meet a requirement — details below.',
+    card: 'bg-orange-50 border-orange-200', accent: 'bg-orange-500 text-white', text: 'text-orange-900', sub: 'text-orange-700',
+  },
+  lapsed: {
+    icon: '!', title: 'Policy expired',
+    blurb: 'Your association requires active insurance — upload your current policy below.',
+    card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
+  },
+  missing: {
+    icon: '!', title: 'No policy on file',
+    blurb: 'Your association requires proof of insurance — upload your declaration page below.',
+    card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
+  },
+}
+
+function fmtDate(d) {
+  if (!d) return null
+  return new Date(String(d).slice(0, 10) + 'T00:00:00')
+    .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 export default function TenantDashboard() {
   const { unitId, hoaId, user, profileError, tenantUnits, selectUnit } = useAuth()
-  const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
   const [allPolicies, setAllPolicies] = useState([])
   const [policyLoading, setPolicyLoading] = useState(true)
-  const [docs, setDocs] = useState([])
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
+  const [showManual, setShowManual] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -38,13 +78,11 @@ export default function TenantDashboard() {
       })
       .catch(e => setError(e.message))
       .finally(() => setPolicyLoading(false))
-    apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => {})
   }, [unitId])
 
-  // Clean up polling on unmount
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
-  function startParsingPoll(policyId) {
+  function startParsingPoll() {
     setParsing(true)
     let attempts = 0
     pollRef.current = setInterval(async () => {
@@ -70,8 +108,12 @@ export default function TenantDashboard() {
     e.preventDefault()
     setError(''); setSuccess('')
 
+    if (!file && !form.insurer && !form.policy_number && !form.expiration_date) {
+      setError('Attach your declaration page (or enter the details manually).')
+      return
+    }
     if (form.expiration_date && new Date(form.expiration_date) < new Date()) {
-      setError('Policy is already expired — please upload a current policy.')
+      setError('That policy is already expired — please upload a current one.')
       return
     }
 
@@ -95,11 +137,12 @@ export default function TenantDashboard() {
       })
       setPolicy(saved)
       setAllPolicies(prev => [saved, ...prev.filter(p => p.id !== saved.id)])
-      setSuccess(file ? 'Policy uploaded — analyzing your document…' : 'Policy saved.')
+      setSuccess(file ? 'Got it — reading your document now…' : 'Policy details saved.')
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
-      if (file) startParsingPoll(saved.id)
+      setShowManual(false)
+      if (file) startParsingPoll()
     } catch (e) {
       setError(e.message)
     } finally {
@@ -114,15 +157,19 @@ export default function TenantDashboard() {
     if (dropped) setFile(dropped)
   }
 
-  const needsQuote = !policy || policy.status === 'lapsed' || policy.status === 'missing'
-  const quoteUrl = (() => {
-    const params = new URLSearchParams({
-      tenant_name: user?.user_metadata?.name || user?.email || '',
-      unit: unitId || '',
-      hoa: hoaId || '',
-    })
-    return `${QUOTE_FORM_URL}?${params}`
-  })()
+  const status = policy?.status || 'missing'
+  const hero = STATUS_HERO[status] || STATUS_HERO.missing
+  const flags = policy?.parsed_at && policy?.extracted_data?.validation?.passed === false
+    ? (policy.extracted_data.validation.flags || [])
+    : []
+  const needsQuote = !policy || status === 'lapsed' || status === 'missing' || status === 'non_compliant'
+  const quoteUrl = `${QUOTE_FORM_URL}?${new URLSearchParams({
+    tenant_name: user?.user_metadata?.name || user?.email || '',
+    unit: unitId || '',
+    hoa: hoaId || '',
+  })}`
+  const history = allPolicies.filter(p => p.id !== policy?.id)
+  const activeUnit = tenantUnits.find(u => u.unit_id === unitId)
 
   if (!unitId) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -143,276 +190,253 @@ export default function TenantDashboard() {
       <Nav role="tenant" />
       <main className="max-w-2xl mx-auto px-4 py-8">
 
-        {/* Unit switcher — only for owners with multiple units */}
-        {tenantUnits.length > 1 && (
-          <div className="mb-5">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">My units</p>
-            <div className="flex gap-2 flex-wrap">
-              {tenantUnits.map(u => {
-                const active = u.unit_id === unitId
-                return (
-                  <button
-                    key={u.unit_id}
-                    onClick={() => selectUnit(u.unit_id)}
-                    className={`text-left px-3.5 py-2 rounded-xl border transition-colors ${
-                      active
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
-                    }`}
-                  >
-                    <span className="block text-sm font-semibold">Unit {u.unit_number || '—'}</span>
-                    {u.hoa_name && (
-                      <span className={`block text-xs ${active ? 'text-blue-100' : 'text-slate-400'}`}>{u.hoa_name}</span>
-                    )}
-                  </button>
-                )
-              })}
+        {/* Unit context */}
+        <header className="mb-5">
+          <h1 className="text-xl font-bold text-slate-800">
+            {activeUnit?.unit_number ? `Unit ${activeUnit.unit_number}` : 'My Policy'}
+          </h1>
+          {activeUnit?.hoa_name && (
+            <p className="text-sm text-slate-500 mt-0.5">{activeUnit.hoa_name}</p>
+          )}
+          {tenantUnits.length > 1 && (
+            <div className="flex gap-2 flex-wrap mt-3">
+              {tenantUnits.map(u => (
+                <button
+                  key={u.unit_id}
+                  onClick={() => selectUnit(u.unit_id)}
+                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                    u.unit_id === unitId
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+                  }`}
+                >
+                  Unit {u.unit_number || '—'}
+                  {u.hoa_name && tenantUnits.some(o => o.hoa_id !== u.hoa_id) && (
+                    <span className="opacity-70"> · {u.hoa_name}</span>
+                  )}
+                </button>
+              ))}
             </div>
-          </div>
+          )}
+        </header>
+
+        {error && !uploading && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+        {/* ── Status hero ─────────────────────────────────────────────── */}
+        {policyLoading ? (
+          <div className="bg-white rounded-2xl border border-slate-200 h-36 animate-pulse mb-5" />
+        ) : (
+          <section className={`rounded-2xl border p-6 mb-5 ${hero.card}`}>
+            <div className="flex items-start gap-4">
+              <span className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 ${hero.accent}`}>
+                {hero.icon}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className={`text-lg font-bold leading-snug ${hero.text}`}>
+                  {parsing ? 'Reading your document…' : hero.title}
+                </h2>
+                <p className={`text-sm mt-1 ${hero.sub}`}>
+                  {parsing
+                    ? 'This usually takes under 30 seconds — the page will update on its own.'
+                    : hero.blurb}
+                </p>
+
+                {/* Policy facts */}
+                {policy && (policy.insurer || policy.expiration_date) && !parsing && (
+                  <dl className={`mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm ${hero.text}`}>
+                    {policy.insurer && (
+                      <div>
+                        <dt className={`text-xs uppercase tracking-wide ${hero.sub}`}>Insurer</dt>
+                        <dd className="font-semibold mt-0.5">{policy.insurer}</dd>
+                      </div>
+                    )}
+                    {policy.expiration_date && (
+                      <div>
+                        <dt className={`text-xs uppercase tracking-wide ${hero.sub}`}>Expires</dt>
+                        <dd className="font-semibold mt-0.5">{fmtDate(policy.expiration_date)}</dd>
+                      </div>
+                    )}
+                    {policy.policy_number && (
+                      <div>
+                        <dt className={`text-xs uppercase tracking-wide ${hero.sub}`}>Policy #</dt>
+                        <dd className="font-semibold mt-0.5">{policy.policy_number}</dd>
+                      </div>
+                    )}
+                    {policy.document_url && (
+                      <div className="self-end">
+                        <a href={policy.document_url} target="_blank" rel="noopener noreferrer"
+                          className={`text-sm font-medium underline underline-offset-2 ${hero.sub}`}>
+                          View document ↗
+                        </a>
+                      </div>
+                    )}
+                  </dl>
+                )}
+
+                {/* What needs fixing */}
+                {flags.length > 0 && !parsing && (
+                  <div className="mt-4 pt-4 border-t border-black/10">
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${hero.sub}`}>What needs fixing</p>
+                    <ul className={`space-y-1.5 text-sm ${hero.text}`}>
+                      {flags.map((f, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="flex-shrink-0">→</span>
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Quote CTA, only when it actually helps */}
+                {needsQuote && QUOTE_FORM_URL && !parsing && (
+                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-block mt-4 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+                    Get a quote →
+                  </a>
+                )}
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1 w-fit">
-          {[['policy', 'My Policy'], ['documents', 'Building Documents']].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+        {/* ── Upload card ─────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-5">
+          <h2 className="font-semibold text-slate-800">
+            {policy ? 'Upload a new or renewed policy' : 'Upload your proof of insurance'}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1 mb-4">
+            Attach your declaration page — we'll read the details automatically.
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleFileDrop}
+              onClick={() => document.getElementById('file-input-hidden').click()}
+              className={`relative border-2 border-dashed rounded-xl px-4 py-8 text-center cursor-pointer transition-colors ${
+                dragOver
+                  ? 'border-blue-400 bg-blue-50'
+                  : file
+                  ? 'border-green-400 bg-green-50'
+                  : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
               }`}
             >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'policy' && (
-          <div className="space-y-6">
-            {policyLoading ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-20 animate-pulse" />
-            ) : policy ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-slate-500">Current status</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <StatusBadge status={policy.status} />
-                    {parsing && (
-                      <span className="text-xs text-blue-600 animate-pulse">Analyzing document…</span>
-                    )}
-                  </div>
-                  {policy.expiration_date && (
-                    <p className="text-xs text-slate-500 mt-2">Expires {policy.expiration_date}</p>
-                  )}
-                  {policy.insurer && (
-                    <p className="text-xs text-slate-500 mt-1">{policy.insurer} — {policy.policy_number}</p>
-                  )}
-                  {policy.document_url && (
-                    <a href={policy.document_url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline mt-1 block">
-                      View dec page
-                    </a>
-                  )}
-                </div>
-                {needsQuote && QUOTE_FORM_URL && (
-                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
-                    Get a Quote
-                  </a>
-                )}
-              </div>
-            ) : (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-red-700">No policy on file</p>
-                  <p className="text-sm text-red-600 mt-1">Your condo association requires proof of insurance.</p>
-                </div>
-                {QUOTE_FORM_URL && (
-                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm">
-                    Get a Quote
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* AI parsing result */}
-            {policy?.parsed_at && policy?.extracted_data?.validation && (
-              policy.extracted_data.validation.passed === false ? (
-                <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4">
-                  <p className="font-semibold text-yellow-800 text-sm mb-2">Action Required — Issues found with your uploaded policy</p>
-                  <ul className="space-y-1">
-                    {policy.extracted_data.validation.flags.map((f, i) => (
-                      <li key={i} className="text-sm text-yellow-700 flex gap-2">
-                        <span>•</span><span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-yellow-600 mt-2">Please upload a corrected policy using the form below.</p>
+              {file ? (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-sm text-green-700 font-medium">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setFile(null); setFileInputKey(k => k + 1) }}
+                    className="text-xs text-slate-400 hover:text-slate-600 ml-1"
+                  >
+                    ✕
+                  </button>
                 </div>
               ) : (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <p className="text-sm text-green-800 font-medium">Your policy was reviewed and meets all requirements.</p>
+                <div>
+                  <p className="text-2xl mb-1.5">📄</p>
+                  <p className="text-sm text-slate-600 font-medium hidden sm:block">
+                    {dragOver ? 'Drop to upload' : 'Drag & drop your dec page'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
+                  <p className="text-sm text-slate-600 font-medium sm:hidden">Tap to take a photo or choose a file</p>
+                  <p className="text-xs text-slate-400 mt-1 sm:hidden">PDF, PNG, JPG</p>
                 </div>
-              )
-            )}
+              )}
+              <input
+                id="file-input-hidden"
+                key={fileInputKey}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={e => setFile(e.target.files[0] || null)}
+                className="hidden"
+              />
+            </div>
 
-            {parsing && !policy?.parsed_at && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                <svg className="animate-spin h-4 w-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                <p className="text-sm text-blue-800">Your document is being analyzed. This usually takes under 30 seconds.</p>
-              </div>
-            )}
-
-            {QUOTE_FORM_URL && !needsQuote && (
-              <a
-                href={quoteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 hover:bg-blue-100 transition-colors"
+            {/* Manual details, tucked away — the AI reads the doc anyway */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowManual(s => !s)}
+                className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2"
               >
-                <div>
-                  <p className="font-semibold text-blue-800 text-sm">Need a new or updated policy?</p>
-                  <p className="text-blue-600 text-xs mt-0.5">Get a free quote in minutes</p>
-                </div>
-                <span className="text-blue-700 font-semibold text-sm">Request a Quote →</span>
-              </a>
-            )}
-
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-              <h2 className="font-semibold text-slate-700 mb-4">
-                {policy ? 'Update Policy' : 'Upload Proof of Insurance'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-3">
-                {[
-                  { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
-                  { label: 'Policy Number', key: 'policy_number', placeholder: 'HO-123456' },
-                  { label: 'Expiration Date', key: 'expiration_date', type: 'date' },
-                ].map(({ label, key, placeholder, type }) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
-                    <input
-                      type={type || 'text'}
-                      value={form[key]}
-                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                ))}
-
-                {/* Drag-and-drop upload zone */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Dec Page (PDF or image)</label>
-                  <div
-                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={handleFileDrop}
-                    onClick={() => document.getElementById('file-input-hidden').click()}
-                    className={`relative border-2 border-dashed rounded-xl px-4 py-6 text-center cursor-pointer transition-colors ${
-                      dragOver
-                        ? 'border-blue-400 bg-blue-50'
-                        : file
-                        ? 'border-green-400 bg-green-50'
-                        : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
-                    }`}
-                  >
-                    {file ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-green-600 text-lg">✓</span>
-                        <span className="text-sm text-green-700 font-medium">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); setFile(null); setFileInputKey(k => k + 1) }}
-                          className="text-xs text-slate-400 hover:text-slate-600 ml-1"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-sm text-slate-500 hidden sm:block">
-                          {dragOver ? 'Drop to upload' : 'Drag & drop your dec page here'}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
-                        <p className="text-sm text-slate-500 sm:hidden">Tap to take a photo or choose a file</p>
-                        <p className="text-xs text-slate-400 mt-1 sm:hidden">PDF, PNG, JPG</p>
-                      </div>
-                    )}
-                    <input
-                      id="file-input-hidden"
-                      key={fileInputKey}
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
-                      onChange={e => setFile(e.target.files[0] || null)}
-                      className="hidden"
-                    />
-                  </div>
-                </div>
-
-                {error && <p className="text-sm text-red-600">{error}</p>}
-                {success && <p className="text-sm text-green-600">{success}</p>}
-                <button type="submit" disabled={uploading}
-                  className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
-                  {uploading ? 'Uploading…' : 'Submit Policy'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {tab === 'policy' && allPolicies.length > 1 && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h2 className="font-semibold text-slate-700 text-sm">Previous Submissions</h2>
-            </div>
-            <ul className="divide-y divide-slate-100">
-              {allPolicies.slice(1).map(p => (
-                <li key={p.id} className="px-5 py-3 flex items-center justify-between text-sm">
-                  <div>
-                    <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>
-                    {p.policy_number && <span className="text-slate-400 ml-2">#{p.policy_number}</span>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-400">
-                      {p.expiration_date ? `Exp ${p.expiration_date}` : 'No expiration'}
-                    </span>
-                    <StatusBadge status={p.status} />
-                    {p.document_url && (
-                      <a href={p.document_url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline">View</a>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {tab === 'documents' && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            {docs.length === 0 ? (
-              <p className="px-6 py-10 text-center text-slate-400 italic text-sm">No documents posted yet.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {docs.map(d => (
-                  <li key={d.id} className="px-5 py-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{d.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{new Date(d.created_at).toLocaleDateString()}</p>
+                {showManual ? 'Hide manual details' : 'Or enter details manually'}
+              </button>
+              {showManual && (
+                <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                  {[
+                    { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
+                    { label: 'Policy number', key: 'policy_number', placeholder: 'HO-123456' },
+                    { label: 'Expiration date', key: 'expiration_date', type: 'date' },
+                  ].map(({ label, key, placeholder, type }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+                      <input
+                        type={type || 'text'}
+                        value={form[key]}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
-                    <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline font-medium">
-                      Download
-                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {success && <p className="text-sm text-green-600">{success}</p>}
+
+            <button
+              type="submit"
+              disabled={uploading}
+              className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-60"
+            >
+              {uploading ? 'Uploading…' : 'Submit'}
+            </button>
+          </form>
+        </section>
+
+        {/* ── History, collapsed ──────────────────────────────────────── */}
+        {history.length > 0 && (
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowHistory(s => !s)}
+              className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50"
+            >
+              <span className="text-sm font-semibold text-slate-700">
+                Previous submissions <span className="text-slate-400 font-normal">({history.length})</span>
+              </span>
+              <svg className={`w-4 h-4 text-slate-400 transition-transform ${showHistory ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showHistory && (
+              <ul className="divide-y divide-slate-100 border-t border-slate-100">
+                {history.map(p => (
+                  <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>
+                      {p.policy_number && <span className="text-slate-400 ml-2">#{p.policy_number}</span>}
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-xs text-slate-400">
+                        {p.expiration_date ? `Exp ${p.expiration_date}` : 'No expiration'}
+                      </span>
+                      <StatusBadge status={p.status} />
+                      {p.document_url && (
+                        <a href={p.document_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline">View</a>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </section>
         )}
 
       </main>

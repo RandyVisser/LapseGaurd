@@ -15,6 +15,7 @@ const AdminDocuments = lazy(() => import('./pages/AdminDocuments'))
 const AdminSettings = lazy(() => import('./pages/AdminSettings'))
 const AdminTenantDetail = lazy(() => import('./pages/AdminTenantDetail'))
 const TenantDashboard = lazy(() => import('./pages/TenantDashboard'))
+const TenantDocuments = lazy(() => import('./pages/TenantDocuments'))
 
 function PageLoader() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/admin/settings" element={<RequireAuth role="hoa_admin"><AdminSettings /></RequireAuth>} />
             <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />
             <Route path="/tenant/dashboard" element={<RequireAuth role="tenant"><TenantDashboard /></RequireAuth>} />
+            <Route path="/tenant/documents" element={<RequireAuth role="tenant"><TenantDocuments /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
