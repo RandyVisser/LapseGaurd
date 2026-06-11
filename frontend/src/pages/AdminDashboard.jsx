@@ -385,7 +385,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-wrap gap-2">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-slate-600" active={activeFilter === 'pm'} onClick={() => setActiveFilter('pm')} />
+                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => setActiveFilter('pm')} />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
