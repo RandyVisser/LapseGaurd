@@ -814,6 +814,8 @@ export default function AdminTenantDetail() {
     nextSteps.push({ icon: '🤖', text: 'Document uploaded — click "Extract with AI" to auto-fill policy details.' })
   } else if (needsWindPolicy) {
     nextSteps.push({ icon: '💨', text: 'Association requires wind coverage — click "+ Add wind policy" to upload a separate wind-only policy.' })
+  } else if (currentPolicies.length > 0 && !complianceChecks.some(c => c.type === 'fail')) {
+    nextSteps.push({ icon: '🎉', text: 'You\'re all done! This unit is now compliant.', success: true })
   } else if (overallStatus === 'non_compliant') {
     const fails = complianceChecks.filter(c => c.type === 'fail')
     fails.forEach(f => nextSteps.push({ icon: '⚠️', text: f.text }))
