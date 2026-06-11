@@ -864,7 +864,7 @@ export default function AdminTenantDetail() {
   const wasCompliantRef = useRef(isCompliantNow)
   useEffect(() => {
     if (isCompliantNow && !wasCompliantRef.current) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 400)
     }
     wasCompliantRef.current = isCompliantNow
   }, [isCompliantNow])
