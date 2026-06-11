@@ -1,10 +1,16 @@
-"""Tests for the inbound email webhook helpers (signature check, attachment pick)."""
+"""Tests for the inbound email webhook helpers (signature check, attachment pick,
+multi-unit disambiguation)."""
 import base64
 import hashlib
 import hmac
 import time
 
-from routes.inbound import _verify_svix_signature, _pick_attachment
+from routes.inbound import (
+    _verify_svix_signature,
+    _pick_attachment,
+    _match_by_subject,
+    _match_by_address,
+)
 
 
 def _sign(secret_b64: str, msg_id: str, timestamp: str, body: bytes) -> str:
@@ -86,3 +92,54 @@ class TestPickAttachment:
     def test_no_usable_attachment(self):
         assert _pick_attachment([{"filename": "notes.txt", "content_type": "text/plain"}]) is None
         assert _pick_attachment([]) is None
+
+
+UNITS = [
+    {"unit_number": "1002", "street_address": "123 Ocean Blvd"},
+    {"unit_number": "204", "street_address": "456 Palm Ave"},
+]
+
+
+class TestMatchBySubject:
+    def test_unit_number_in_subject(self):
+        hits = _match_by_subject("Dec page for Unit 1002", UNITS)
+        assert len(hits) == 1 and hits[0]["unit_number"] == "1002"
+
+    def test_unit_with_hash_prefix(self):
+        hits = _match_by_subject("Insurance #204", UNITS)
+        assert len(hits) == 1 and hits[0]["unit_number"] == "204"
+
+    def test_no_unit_in_subject(self):
+        assert _match_by_subject("My insurance documents", UNITS) == []
+
+    def test_partial_number_does_not_match(self):
+        # "100" must not match unit 1002
+        assert _match_by_subject("Unit 100", UNITS) == []
+
+    def test_empty_subject(self):
+        assert _match_by_subject("", UNITS) == []
+
+
+class TestMatchByAddress:
+    def test_unit_and_street_match(self):
+        hits = _match_by_address("123 Ocean Blvd Unit 1002, Naples FL 34102", UNITS)
+        assert len(hits) == 1 and hits[0]["unit_number"] == "1002"
+
+    def test_unit_number_alone_matches(self):
+        hits = _match_by_address("Apt 204, Tampa FL", UNITS)
+        assert len(hits) == 1 and hits[0]["unit_number"] == "204"
+
+    def test_street_number_breaks_tie(self):
+        # Two units in different buildings — street number resolves it
+        same_unit = [
+            {"unit_number": "101", "street_address": "123 Ocean Blvd"},
+            {"unit_number": "101", "street_address": "456 Palm Ave"},
+        ]
+        hits = _match_by_address("456 Palm Ave Unit 101", same_unit)
+        assert len(hits) == 1 and hits[0]["street_address"] == "456 Palm Ave"
+
+    def test_no_match(self):
+        assert _match_by_address("999 Nowhere St Unit 77", UNITS) == []
+
+    def test_empty_address(self):
+        assert _match_by_address("", UNITS) == []

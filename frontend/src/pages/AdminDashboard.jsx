@@ -130,6 +130,19 @@ function RowActionsMenu({ items }) {
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef(null)
 
+  // The menu is position:fixed, so it can't follow the button when the table
+  // scrolls — close it on any scroll/resize instead (native menu behavior)
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [open])
+
   function toggle(e) {
     e.stopPropagation()
     if (!open && btnRef.current) {

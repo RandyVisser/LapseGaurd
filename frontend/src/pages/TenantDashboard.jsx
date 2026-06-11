@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
 
 export default function TenantDashboard() {
-  const { unitId, hoaId, user, profileError } = useAuth()
+  const { unitId, hoaId, user, profileError, tenantUnits, selectUnit } = useAuth()
   const [tab, setTab] = useState('policy')
   const [policy, setPolicy] = useState(null)
   const [allPolicies, setAllPolicies] = useState([])
@@ -25,9 +25,12 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!unitId) return
+    setPolicyLoading(true)
+    setPolicy(null)
+    setError(''); setSuccess('')
     Promise.all([
       apiGet(`/unit/${unitId}/policy`),
-      apiGet('/tenant/me/policies'),
+      apiGet(`/tenant/me/policies?unit_id=${unitId}`),
     ])
       .then(([current, all]) => {
         setPolicy(current)
@@ -139,6 +142,34 @@ export default function TenantDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="tenant" />
       <main className="max-w-2xl mx-auto px-4 py-8">
+
+        {/* Unit switcher — only for owners with multiple units */}
+        {tenantUnits.length > 1 && (
+          <div className="mb-5">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">My units</p>
+            <div className="flex gap-2 flex-wrap">
+              {tenantUnits.map(u => {
+                const active = u.unit_id === unitId
+                return (
+                  <button
+                    key={u.unit_id}
+                    onClick={() => selectUnit(u.unit_id)}
+                    className={`text-left px-3.5 py-2 rounded-xl border transition-colors ${
+                      active
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">Unit {u.unit_number || '—'}</span>
+                    {u.hoa_name && (
+                      <span className={`block text-xs ${active ? 'text-blue-100' : 'text-slate-400'}`}>{u.hoa_name}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 bg-slate-100 rounded-lg p-1 w-fit">

@@ -59,26 +59,44 @@ async def get_my_tenant(
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    row = await conn.fetchrow(
+    # An owner may hold multiple units — in one association or across several.
+    # Return them all; the first row keeps the legacy single-unit fields populated.
+    rows = await conn.fetch(
         """
-        SELECT t.id, t.unit_id, t.name, t.email, u.hoa_id
+        SELECT t.id, t.unit_id, t.name, t.email,
+               u.hoa_id, u.unit_number, u.street_address, u.city, u.state,
+               h.name AS hoa_name
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
         WHERE t.supabase_user_id = $1 OR t.email = $2
-        ORDER BY t.supabase_user_id NULLS LAST
-        LIMIT 1
+        ORDER BY t.supabase_user_id NULLS LAST, h.name, u.unit_number
         """,
         user.sub,
         user.email,
     )
-    if not row:
+    if not rows:
         raise HTTPException(status_code=404, detail="Tenant profile not found")
+    first = rows[0]
     return {
-        "tenant_id": str(row["id"]),
-        "unit_id": str(row["unit_id"]),
-        "hoa_id": str(row["hoa_id"]),
-        "name": row["name"],
-        "email": row["email"],
+        "tenant_id": str(first["id"]),
+        "unit_id": str(first["unit_id"]),
+        "hoa_id": str(first["hoa_id"]),
+        "name": first["name"],
+        "email": first["email"],
+        "units": [
+            {
+                "tenant_id": str(r["id"]),
+                "unit_id": str(r["unit_id"]),
+                "hoa_id": str(r["hoa_id"]),
+                "hoa_name": r["hoa_name"],
+                "unit_number": r["unit_number"],
+                "street_address": r["street_address"],
+                "city": r["city"],
+                "state": r["state"],
+            }
+            for r in rows
+        ],
     }
 
 
@@ -513,13 +531,22 @@ async def create_tenant_record(
 
 @router.get("/tenant/me/policies")
 async def get_my_policies(
+    unit_id: str | None = None,
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    tenant = await conn.fetchrow(
-        "SELECT id FROM tenants WHERE supabase_user_id = $1 OR email = $2 ORDER BY supabase_user_id NULLS LAST LIMIT 1",
-        user.sub, user.email,
-    )
+    # Optional ?unit_id= scopes to one of the owner's units (multi-unit owners);
+    # without it, falls back to the owner's first unit as before
+    if unit_id:
+        tenant = await conn.fetchrow(
+            "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR email = $3)",
+            unit_id, user.sub, user.email,
+        )
+    else:
+        tenant = await conn.fetchrow(
+            "SELECT id FROM tenants WHERE supabase_user_id = $1 OR email = $2 ORDER BY supabase_user_id NULLS LAST LIMIT 1",
+            user.sub, user.email,
+        )
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant profile not found")
     rows = await conn.fetch(

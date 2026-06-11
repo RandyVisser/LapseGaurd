@@ -10,6 +10,10 @@ export function AuthProvider({ children }) {
   const [profileError, setProfileError] = useState(null)
   const [availableHoas, setAvailableHoas] = useState([])
   const [selectedHoaId, setSelectedHoaId] = useState(null)
+  // Multi-unit owners: which of their units is active in the tenant portal
+  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+    try { return localStorage.getItem('lapseguard.tenant.selectedUnit') } catch { return null }
+  })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,9 +50,20 @@ export function AuthProvider({ children }) {
     }
   }, [session?.user?.id, role])
 
+  // All units this owner holds (multi-unit / multi-association); falls back
+  // to the legacy single unit for older backend responses
+  const tenantUnits = tenantProfile?.units
+    || (tenantProfile ? [{ unit_id: tenantProfile.unit_id, hoa_id: tenantProfile.hoa_id }] : [])
+  const activeUnit = tenantUnits.find(u => u.unit_id === selectedUnitId) || tenantUnits[0] || null
+
+  function selectUnit(unitId) {
+    setSelectedUnitId(unitId)
+    try { localStorage.setItem('lapseguard.tenant.selectedUnit', unitId) } catch { /* ignore */ }
+  }
+
   const effectiveHoaId = (role === 'super_user' || role === 'property_manager')
     ? selectedHoaId
-    : (hoaId || tenantProfile?.hoa_id || null)
+    : (hoaId || activeUnit?.hoa_id || tenantProfile?.hoa_id || null)
 
   return (
     <AuthContext.Provider value={{
@@ -60,7 +75,9 @@ export function AuthProvider({ children }) {
       availableHoas,
       selectedHoaId,
       setSelectedHoaId,
-      unitId: tenantProfile?.unit_id || null,
+      unitId: activeUnit?.unit_id || null,
+      tenantUnits,
+      selectUnit,
       tenantProfile,
       profileError,
     }}>

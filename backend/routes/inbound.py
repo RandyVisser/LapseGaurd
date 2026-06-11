@@ -3,6 +3,10 @@ Resend inbound email webhook — owners forward their dec page to the intake
 address (e.g. docs@condo.insure) and it lands in their unit's policy pipeline
 automatically: attachment → Supabase storage → policy row → AI parse.
 
+Owners may hold multiple units (same association or several). Disambiguation
+order: single match → unit number in the subject line → property address on
+the parsed dec page → failure email with next steps.
+
 Setup (Resend dashboard):
 1. Enable inbound email for the domain and route it to POST {API_URL}/inbound/email
 2. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
@@ -13,17 +17,18 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
-from datetime import datetime, timezone
 from email.utils import parseaddr
 
 import asyncpg
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
-from models.db import get_conn
+from models.db import get_conn, get_pool
 from models.schemas import PolicyStatus
 from routes.units import _run_parsing
+from services.policy_parser import parse_dec_page
 from services.email import send_email
 
 router = APIRouter()
@@ -86,6 +91,127 @@ def _pick_attachment(attachments: list) -> dict | None:
     return (pdfs or images or [None])[0]
 
 
+def _match_by_subject(subject: str, candidates: list) -> list:
+    """Candidates whose unit number appears as a standalone token in the subject."""
+    tokens = set(re.split(r"[\s,#:()\-]+", (subject or "").lower()))
+    return [c for c in candidates
+            if c.get("unit_number") and str(c["unit_number"]).lower() in tokens]
+
+
+def _match_by_address(property_address: str, candidates: list) -> list:
+    """Score candidates against the dec page's property address: the unit
+    number and the street number each count. Returns the top scorers."""
+    if not property_address:
+        return []
+    tokens = set(re.split(r"[\s,#:()\-]+", property_address.lower()))
+    scored = []
+    for c in candidates:
+        score = 0
+        unit_no = str(c.get("unit_number") or "").lower()
+        if unit_no and unit_no in tokens:
+            score += 1
+        street = str(c.get("street_address") or "").lower().split()
+        if street and street[0] in tokens:
+            score += 1
+        if score:
+            scored.append((score, c))
+    if not scored:
+        return []
+    best = max(s for s, _ in scored)
+    return [c for s, c in scored if s == best]
+
+
+def _ext_for(content_type: str) -> str:
+    return "pdf" if "pdf" in content_type else content_type.split("/")[-1]
+
+
+def _build_submitted(match: dict, hoa_row) -> dict:
+    unit_address = None
+    if match.get("street_address"):
+        parts = [match["street_address"]]
+        if match.get("unit_number"):
+            parts.append(f"Unit {match['unit_number']}")
+        addr = ", ".join(parts)
+        cs = " ".join(filter(None, [match.get("city"), match.get("state")]))
+        if cs:
+            addr += f", {cs}"
+        if match.get("zip"):
+            addr += f" {match['zip']}"
+        unit_address = addr
+    return {
+        "insurer": None,
+        "policy_number": None,
+        "expiration_date": None,
+        "named_insured": match.get("owner_primary") or match.get("owner_secondary"),
+        "address": unit_address,
+        "ho6_coverage_a_min": hoa_row["ho6_coverage_a_min"] if hoa_row else None,
+        "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
+        "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
+    }
+
+
+async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: str):
+    """Create the policy for a resolved unit, kick off parsing, confirm by email."""
+    document_hash = hashlib.sha256(content).hexdigest()
+    dupe = await conn.fetchrow(
+        "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
+        match["tenant_id"], document_hash,
+    )
+    if dupe:
+        subject, html = _already_received_email(match.get("tenant_name"))
+        await send_email(sender, subject, html)
+        return
+
+    path = f"{match['unit_id']}/{int(time.time() * 1000)}-email.{_ext_for(content_type)}"
+    document_url = await _upload_to_storage(path, content, content_type)
+
+    row = await conn.fetchrow(
+        """INSERT INTO policies (tenant_id, status, document_url, document_hash)
+           VALUES ($1, $2, $3, $4) RETURNING id""",
+        match["tenant_id"], PolicyStatus.pending_review.value, document_url, document_hash,
+    )
+    hoa_row = await conn.fetchrow(
+        "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
+        match["hoa_id"],
+    )
+    await _run_parsing(str(row["id"]), document_url, _build_submitted(match, hoa_row))
+
+    subject, html = _received_email(match.get("tenant_name"), match.get("unit_number"))
+    await send_email(sender, subject, html)
+
+
+async def _ingest_task(sender: str, match: dict, content: bytes, content_type: str):
+    """Background wrapper — acquires its own connection (the request's is gone)."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await _ingest(conn, sender, match, content, content_type)
+    except Exception:
+        logger.exception("Inbound email ingest failed for %s", sender)
+
+
+async def _disambiguate_task(sender: str, candidates: list, content: bytes, content_type: str):
+    """Owner has multiple units and the subject didn't name one — parse the
+    dec page and match its property address against their units."""
+    try:
+        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
+        url = await _upload_to_storage(staging, content, content_type)
+        extracted = await parse_dec_page(url, {})
+        hits = _match_by_address((extracted or {}).get("property_address") or "", candidates)
+
+        if len(hits) == 1:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await _ingest(conn, sender, hits[0], content, content_type)
+            return
+
+        name = candidates[0].get("tenant_name") if candidates else None
+        subject, html = _which_unit_email(name, candidates)
+        await send_email(sender, subject, html)
+    except Exception:
+        logger.exception("Inbound email disambiguation failed for %s", sender)
+
+
 @router.post("/inbound/email")
 async def receive_inbound_email(
     request: Request,
@@ -108,10 +234,10 @@ async def receive_inbound_email(
     if not sender:
         return {"handled": False, "reason": "no sender"}
 
-    # Match the sender to a unit owner: tenants.email first, then the unit's
+    # Match the sender to unit owner(s): tenants.email first, then the unit's
     # owner email columns (owners often email from the address on file with
     # the HOA rather than their login email)
-    matches = await conn.fetch(
+    match_rows = await conn.fetch(
         """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
                   u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
                   u.city, u.state, u.zip, u.hoa_id
@@ -121,17 +247,19 @@ async def receive_inbound_email(
               OR lower(u.email_secondary) = lower($1)""",
         sender,
     )
-    if not matches:
+    if not match_rows:
         logger.info("Inbound email from unknown sender %s — ignoring", sender)
         return {"handled": False, "reason": "sender not recognized"}
-    if len(matches) > 1:
-        logger.info("Inbound email from %s matches %d units — ambiguous, ignoring", sender, len(matches))
-        return {"handled": False, "reason": "sender matches multiple units"}
-    match = matches[0]
+    # Plain dicts with string ids — these cross into background tasks
+    matches = [
+        {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
+         "hoa_id": str(r["hoa_id"])}
+        for r in match_rows
+    ]
 
     attachment = _pick_attachment(data.get("attachments") or [])
     if not attachment or not attachment.get("content"):
-        subject, html = _no_attachment_email(match["tenant_name"])
+        subject, html = _no_attachment_email(matches[0].get("tenant_name"))
         background_tasks.add_task(send_email, sender, subject, html)
         return {"handled": False, "reason": "no usable attachment"}
 
@@ -146,64 +274,21 @@ async def receive_inbound_email(
     if not any(content_type.startswith(t.split("/")[0]) for t in _ALLOWED_TYPES):
         content_type = "application/pdf"
 
-    # Dedupe on file hash, same as the upload route
-    document_hash = hashlib.sha256(content).hexdigest()
-    dupe = await conn.fetchrow(
-        "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
-        match["tenant_id"], document_hash,
-    )
-    if dupe:
-        subject, html = _already_received_email(match["tenant_name"])
-        background_tasks.add_task(send_email, sender, subject, html)
-        return {"handled": True, "duplicate": True}
+    # Resolve which unit this policy belongs to
+    if len(matches) == 1:
+        background_tasks.add_task(_ingest_task, sender, matches[0], content, content_type)
+        return {"handled": True}
 
-    ext = "pdf" if "pdf" in content_type else content_type.split("/")[-1]
-    path = f"{match['unit_id']}/{int(time.time() * 1000)}-email.{ext}"
-    document_url = await _upload_to_storage(path, content, content_type)
+    subject_hits = _match_by_subject(data.get("subject") or "", matches)
+    if len(subject_hits) == 1:
+        background_tasks.add_task(_ingest_task, sender, subject_hits[0], content, content_type)
+        return {"handled": True, "matched_by": "subject"}
 
-    row = await conn.fetchrow(
-        """INSERT INTO policies (tenant_id, status, document_url, document_hash)
-           VALUES ($1, $2, $3, $4) RETURNING id""",
-        match["tenant_id"], PolicyStatus.pending_review.value, document_url, document_hash,
-    )
-
-    hoa_row = await conn.fetchrow(
-        "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
-        match["hoa_id"],
-    )
-
-    unit_address = None
-    if match["street_address"]:
-        parts = [match["street_address"]]
-        if match["unit_number"]:
-            parts.append(f"Unit {match['unit_number']}")
-        addr = ", ".join(parts)
-        cs = " ".join(filter(None, [match["city"], match["state"]]))
-        if cs:
-            addr += f", {cs}"
-        if match["zip"]:
-            addr += f" {match['zip']}"
-        unit_address = addr
-
-    submitted = {
-        "insurer": None,
-        "policy_number": None,
-        "expiration_date": None,
-        "named_insured": match["owner_primary"] or match["owner_secondary"],
-        "address": unit_address,
-        "ho6_coverage_a_min": hoa_row["ho6_coverage_a_min"] if hoa_row else None,
-        "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
-        "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
-    }
-    background_tasks.add_task(_run_parsing, str(row["id"]), document_url, submitted)
-
-    subject, html = _received_email(match["tenant_name"], match["unit_number"])
-    background_tasks.add_task(send_email, sender, subject, html)
-
-    return {"handled": True, "policy_id": str(row["id"])}
+    background_tasks.add_task(_disambiguate_task, sender, matches, content, content_type)
+    return {"handled": True, "matched_by": "pending_address_parse"}
 
 
-def _received_email(name: str, unit_number: str | None):
+def _received_email(name: str | None, unit_number: str | None):
     subject = "We received your insurance document"
     html = f"""
     <p>Hi {name or 'there'},</p>
@@ -214,7 +299,7 @@ def _received_email(name: str, unit_number: str | None):
     return subject, html
 
 
-def _already_received_email(name: str):
+def _already_received_email(name: str | None):
     subject = "This document was already on file"
     html = f"""
     <p>Hi {name or 'there'},</p>
@@ -224,11 +309,33 @@ def _already_received_email(name: str):
     return subject, html
 
 
-def _no_attachment_email(name: str):
+def _no_attachment_email(name: str | None):
     subject = "We couldn't find a document in your email"
     html = f"""
     <p>Hi {name or 'there'},</p>
     <p>We received your email but couldn't find an attached insurance document.
     Please reply with your declaration page attached as a PDF or photo.</p>
+    """
+    return subject, html
+
+
+def _which_unit_email(name: str | None, candidates: list):
+    subject = "Which unit is this policy for?"
+    unit_lines = ""
+    for c in candidates:
+        line = f"Unit {c.get('unit_number') or '—'}"
+        if c.get("street_address"):
+            line += f" — {c['street_address']}"
+        unit_lines += f"<li>{line}</li>"
+    html = f"""
+    <p>Hi {name or 'there'},</p>
+    <p>You own more than one unit, and we couldn't tell which one this policy covers.
+    Here's how to fix it (either option works):</p>
+    <ol>
+      <li>Re-send the email with the unit number in the subject line — e.g. "Unit 1002"</li>
+      <li>Or log in at <a href="{APP_URL}">{APP_URL}</a>, pick the unit, and upload it there</li>
+    </ol>
+    <p>Your units:</p>
+    <ul>{unit_lines}</ul>
     """
     return subject, html
