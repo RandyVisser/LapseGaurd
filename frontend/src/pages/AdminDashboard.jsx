@@ -630,7 +630,9 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-4 py-3" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>
                     {u.assoc_title
-                      ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-100 text-green-800 border-green-300">{u.assoc_title}</span>
+                      ? (u.assoc_title || '').trim().toLowerCase() === 'property manager'
+                        ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-purple-100 text-purple-800 border-purple-300">{u.assoc_title}</span>
+                        : <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-100 text-green-800 border-green-300">{u.assoc_title}</span>
                       : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 font-medium" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.unit_number}</td>
