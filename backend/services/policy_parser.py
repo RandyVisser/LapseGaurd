@@ -68,12 +68,14 @@ def _dedupe_insured_lists(result: dict) -> dict:
         # Skip agents, brokers, producers — they are not coverage parties
         if any(kw in designation for kw in _IGNORE_KEYWORDS):
             continue
-        # Check designation against keyword sets
+        # Check designation against keyword sets — only classify if we get a positive match
         is_insured = any(kw in designation for kw in _INSURED_KEYWORDS)
+        is_interest = any(kw in designation for kw in _INTEREST_KEYWORDS)
         if is_insured:
             insureds.append(name)
-        else:
+        elif is_interest:
             interests.append(name)
+        # If designation doesn't match either set, skip — avoids false positives
 
     # Fall back to any existing arrays if listed_parties wasn't returned
     if not parties:
