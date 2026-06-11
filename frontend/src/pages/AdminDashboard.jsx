@@ -31,10 +31,10 @@ function StatCard({ label, value, sublabel, color, active, onClick, compact }) {
     return (
       <button
         onClick={onClick}
-        className={`bg-white rounded-lg border shadow-sm px-5 py-3.5 flex flex-col text-left transition-all min-w-[154px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+        className={`bg-white rounded-lg border shadow-sm px-3 py-2.5 sm:px-5 sm:py-3.5 flex flex-col text-left transition-all sm:min-w-[154px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
       >
-        <span className="text-3xl font-bold leading-tight">{value ?? '—'}</span>
-        <span className="text-sm text-slate-500 leading-tight whitespace-nowrap">{label}</span>
+        <span className="text-2xl sm:text-3xl font-bold leading-tight">{value ?? '—'}</span>
+        <span className="text-xs sm:text-sm text-slate-500 leading-tight sm:whitespace-nowrap">{label}</span>
       </button>
     )
   }
@@ -237,6 +237,7 @@ export default function AdminDashboard() {
   const [reportSent, setReportSent] = useState(false)
 
   const isMobile = useIsMobile()
+  const [expandedUnitId, setExpandedUnitId] = useState(null)
   const [visibleCols, setVisibleCols] = useState(loadVisibleColumns)
   useEffect(() => {
     try { localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleCols)) } catch { /* storage full/blocked */ }
@@ -484,9 +485,9 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 pt-3 pb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="sm:flex items-center justify-between mb-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-xl font-bold text-slate-800">Condo Association</h2>
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2">
@@ -532,12 +533,12 @@ export default function AdminDashboard() {
             </div>
             {summary && (
               <div className="flex flex-col gap-2 mt-2">
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                   <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => setActiveFilter('pm')} />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
                   <StatCard compact label="Active · Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
                   <StatCard compact label="Expired" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
@@ -680,26 +681,82 @@ export default function AdminDashboard() {
 
         {isMobile ? (
           <div className="space-y-2">
-            {filteredUnits.map(u => (
-              <button
-                key={u.unit_id}
-                onClick={() => openUnit(u)}
-                className="w-full bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex items-center justify-between gap-3 text-left active:bg-slate-50"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
-                    {u.assoc_title && <TitlePill title={u.assoc_title} />}
+            {filteredUnits.map(u => {
+              const expanded = expandedUnitId === u.unit_id
+              return (
+              <div key={u.unit_id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="flex items-stretch">
+                  <button
+                    onClick={() => openUnit(u)}
+                    className="flex-1 min-w-0 px-4 py-3 flex items-center justify-between gap-3 text-left active:bg-slate-50"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
+                        {u.assoc_title && <TitlePill title={u.assoc_title} />}
+                      </div>
+                      <p className="text-sm text-slate-500 truncate">
+                        {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <StatusBadge status={u.status} expirationDate={u.expiration_date} />
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setExpandedUnitId(expanded ? null : u.unit_id)}
+                    className="px-3 flex items-center text-slate-400 border-l border-slate-100 active:bg-slate-50"
+                    aria-label={expanded ? 'Hide details' : 'Show details'}
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                {expanded && (
+                  <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+                    <dl className="space-y-1.5 text-sm">
+                      {COLUMNS.filter(c => !['status', 'assoc_title', 'unit_number', 'owner_primary'].includes(c.key)).map(c => (
+                        <div key={c.key} className="flex items-start justify-between gap-3">
+                          <dt className="text-slate-400 flex-shrink-0">{c.label}</dt>
+                          <dd className="text-slate-700 text-right break-words min-w-0">{c.render(u)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-slate-200">
+                      {inviteSuccess === u.unit_id + '-primary' ? (
+                        <span className="text-xs text-green-600 font-medium py-1">Invite sent ✓</span>
+                      ) : (
+                        <button
+                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') }}
+                          className="text-xs bg-slate-700 active:bg-slate-800 text-white px-3 py-1.5 rounded-full"
+                        >
+                          Invite Primary
+                        </button>
+                      )}
+                      {inviteSuccess === u.unit_id + '-secondary' ? (
+                        <span className="text-xs text-green-600 font-medium py-1">Invite sent ✓</span>
+                      ) : (
+                        <button
+                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
+                          className="text-xs bg-slate-500 active:bg-slate-600 text-white px-3 py-1.5 rounded-full"
+                        >
+                          Invite Secondary
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteUnit(u.unit_id)}
+                        disabled={deletingUnit && deleteUnitId === u.unit_id}
+                        className="text-xs text-red-500 active:text-red-700 px-2 py-1.5 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm text-slate-500 truncate">
-                    {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
-                  </p>
-                </div>
-                <div className="flex-shrink-0">
-                  <StatusBadge status={u.status} expirationDate={u.expiration_date} />
-                </div>
-              </button>
-            ))}
+                )}
+              </div>
+              )
+            })}
             {filteredUnits.length === 0 && !error && (
               <p className="px-4 py-6 text-center text-slate-400 italic">No units found</p>
             )}
