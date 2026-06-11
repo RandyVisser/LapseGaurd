@@ -669,6 +669,18 @@ export default function AdminTenantDetail() {
 
   const newDraftRef = useRef(null)
 
+  // When a required policy is missing (e.g. HO-6 after a wind-only upload),
+  // scroll down so the Add Policy button is visible
+  const scrolledToAddRef = useRef(false)
+  useEffect(() => {
+    if ((needsHo6Policy || needsWindPolicy) && !scrolledToAddRef.current) {
+      scrolledToAddRef.current = true
+      setTimeout(() => {
+        document.getElementById('add-policy-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 300)
+    }
+  }, [needsHo6Policy, needsWindPolicy])
+
   function handleAddPolicy() {
     const id = `draft-${++_draftCounter}`
     setDrafts(ds => [...ds, {
@@ -1030,7 +1042,7 @@ export default function AdminTenantDetail() {
                 ))}
 
                 {/* Add policy */}
-                <button type="button" onClick={handleAddPolicy}
+                <button type="button" id="add-policy-btn" onClick={handleAddPolicy}
                   className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors ${
                     needsWindPolicy || needsHo6Policy
                       ? 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
