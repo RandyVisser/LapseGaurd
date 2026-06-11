@@ -340,6 +340,7 @@ async def compliance_summary(
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
+        property_managers=property_managers,
         compliant=compliant,
         expiring=expiring,
         lapsed=lapsed,
