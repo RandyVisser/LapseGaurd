@@ -644,15 +644,7 @@ export default function AdminTenantDetail() {
 
   useEffect(() => {
     if (drafts.length > 0) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const el = document.getElementById('new-draft-card')
-          if (el) {
-            const top = el.getBoundingClientRect().top + window.scrollY - 80
-            window.scrollTo({ top, behavior: 'smooth' })
-          }
-        })
-      })
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
     }
   }, [drafts.length])
 
