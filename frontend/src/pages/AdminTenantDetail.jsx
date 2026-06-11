@@ -650,7 +650,15 @@ export default function AdminTenantDetail() {
       named_insured: '', additional_insured: '', additional_interests: '',
       association_listed: false, document_url: '', uploaded_at: '',
     }])
-    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 400)
+    const scrollWhenReady = () => {
+      const el = document.getElementById('new-draft-card')
+      if (el) {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+      } else {
+        setTimeout(scrollWhenReady, 100)
+      }
+    }
+    setTimeout(scrollWhenReady, 100)
   }
 
   async function doSave(overridePolicyForms, overrideDrafts) {
