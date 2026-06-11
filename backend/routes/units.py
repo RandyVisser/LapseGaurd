@@ -155,11 +155,7 @@ def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str,
 
 async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
     try:
-        print(f"[_run_parsing] START policy={policy_id} url={document_url[:60]}", flush=True)
         extracted = await parse_dec_page(document_url, submitted)
-        print(f"[_run_parsing] parse_dec_page returned extracted={extracted is not None}", flush=True)
-        if extracted is None:
-            print(f"[_run_parsing] ABORT — parse_dec_page returned None for policy={policy_id}", flush=True)
         if extracted:
             coverage_type = extracted.get("coverage_type")
             if coverage_type not in ("ho6_with_wind", "ho6_wind_excluded", "wind_only", "unknown"):
@@ -207,13 +203,6 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 validation = extracted.get("validation") or {}
                 validation_passed = validation.get("passed", True)
                 validation_flags = validation.get("flags", [])
-                print(
-                    f"[_run_parsing] policy={policy_id} exp_str={exp_str!r} "
-                    f"validation_passed={validation_passed} flags={validation_flags} "
-                    f"a_min={submitted.get('ho6_coverage_a_min')} "
-                    f"dwelling={extracted.get('dwelling_coverage')}",
-                    flush=True,
-                )
                 if exp_str:
                     try:
                         exp_date = date.fromisoformat(str(exp_str)[:10])
@@ -231,7 +220,6 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                 elif not validation_passed:
                     # No expiration date extracted but validation still failed
                     extra_updates["status"] = PolicyStatus.non_compliant.value
-                print(f"[_run_parsing] policy={policy_id} extra_updates={extra_updates}", flush=True)
                 # Fill insurer / policy_number only if the column is currently blank
                 if extracted.get("insurer") and not existing_row["insurer"]:
                     extra_updates["insurer"] = extracted["insurer"]
@@ -249,8 +237,7 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                     *params,
                 )
     except Exception as e:
-        import traceback
-        print(f"[_run_parsing] FAILED for policy {policy_id}: {e}\n{traceback.format_exc()}", flush=True)
+        logger.error(f"Failed to parse dec page for policy {policy_id}: {e}")
 
 
 @router.post("/unit/{unit_id}/policy", response_model=PolicyOut)
@@ -607,9 +594,7 @@ async def run_ai_on_policy(
         "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
     }
 
-    print(f"[run-ai] Adding background task for policy={row['id']}", flush=True)
     background_tasks.add_task(_run_parsing, str(row["id"]), row["document_url"], submitted)
-    print(f"[run-ai] Background task added", flush=True)
 
     return PolicyOut(
         id=row["id"],

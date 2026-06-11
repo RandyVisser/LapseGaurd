@@ -54,41 +54,6 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/debug/policy/{policy_id}")
-async def debug_policy(policy_id: str):
-    import json as _json
-    from models.db import get_pool
-    from models.schemas import PolicyStatus
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        r = await conn.fetchrow(
-            """SELECT p.status, p.extracted_data,
-                      h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required
-               FROM policies p
-               JOIN tenants t ON t.id = p.tenant_id
-               JOIN units u ON u.id = t.unit_id
-               JOIN hoas h ON h.id = u.hoa_id
-               WHERE p.id = $1""",
-            policy_id,
-        )
-        if not r:
-            return {"error": "not found"}
-        ext = _json.loads(r["extracted_data"]) if isinstance(r["extracted_data"], str) else (r["extracted_data"] or {})
-        validation = ext.get("validation") or {}
-        dwelling = ext.get("dwelling_coverage")
-        a_min = r["ho6_coverage_a_min"]
-        return {
-            "db_status": r["status"],
-            "extracted_data_type": type(r["extracted_data"]).__name__,
-            "dwelling_coverage": dwelling,
-            "dwelling_coverage_type": type(dwelling).__name__,
-            "ho6_coverage_a_min": a_min,
-            "ho6_coverage_a_min_type": type(a_min).__name__,
-            "validation_passed": validation.get("passed"),
-            "validation_passed_type": type(validation.get("passed")).__name__,
-            "validation_passed_is_False": validation.get("passed") is False,
-            "coverage_check": float(dwelling) < float(a_min) if dwelling is not None and a_min is not None else "skipped",
-        }
 
 
 @app.get("/debug/routes")
