@@ -238,6 +238,7 @@ export default function AdminDashboard() {
 
   const isMobile = useIsMobile()
   const [expandedUnitId, setExpandedUnitId] = useState(null)
+  const [detailUnit, setDetailUnit] = useState(null)
   const [visibleCols, setVisibleCols] = useState(loadVisibleColumns)
   useEffect(() => {
     try { localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleCols)) } catch { /* storage full/blocked */ }
@@ -650,6 +651,37 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Unit details modal (⋯ button) */}
+        {detailUnit && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setDetailUnit(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-slate-800">Unit {detailUnit.unit_number}</h2>
+                  <StatusBadge status={detailUnit.status} expirationDate={detailUnit.expiration_date} />
+                </div>
+                <button onClick={() => setDetailUnit(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none" aria-label="Close">✕</button>
+              </div>
+              <dl className="px-5 py-4 space-y-2 text-sm overflow-y-auto">
+                {COLUMNS.filter(c => c.key !== 'status').map(c => (
+                  <div key={c.key} className="flex items-start justify-between gap-4">
+                    <dt className="text-slate-400 flex-shrink-0">{c.label}</dt>
+                    <dd className="text-slate-700 text-right break-words min-w-0">{c.render(detailUnit)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => { const u = detailUnit; setDetailUnit(null); openUnit(u) }}
+                  className="text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-4 py-1.5 rounded-lg"
+                >
+                  Open unit →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Invite modal */}
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -812,6 +844,13 @@ export default function AdminDashboard() {
                   ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-row gap-1 flex-wrap items-center">
+                      <button
+                        onClick={e => { e.stopPropagation(); setDetailUnit(u) }}
+                        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
+                        title="All unit details"
+                      >
+                        ⋯
+                      </button>
                       {inviteSuccess === u.unit_id + '-primary' ? (
                         <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
                       ) : (
