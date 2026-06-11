@@ -200,6 +200,7 @@ export default function AdminDashboard() {
   async function handleDeleteUnit(unitId) {
     if (!window.confirm('Delete this unit and all its data? This cannot be undone.')) return
     setDeletingUnit(true)
+    setDeleteUnitId(unitId)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token

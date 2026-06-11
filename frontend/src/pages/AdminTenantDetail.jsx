@@ -488,6 +488,7 @@ export default function AdminTenantDetail() {
   const [runningAiId, setRunningAiId] = useState(null)
   const [everCompliant, setEverCompliant] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [removingOwner, setRemovingOwner] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [notifying, setNotifying] = useState(false)
@@ -627,6 +628,23 @@ export default function AdminTenantDetail() {
   }
 
 
+
+  async function handleRemoveOwner() {
+    const who = tenant?.name || 'this owner'
+    const where = tenant?.unit_number ? `Unit ${tenant.unit_number}` : 'this unit'
+    if (!window.confirm(
+      `Remove ${who} from ${where}? Their policies and alert history will be deleted. ` +
+      `The unit itself stays and can be re-invited. This cannot be undone.`
+    )) return
+    setRemovingOwner(true)
+    try {
+      await apiDelete(`/tenant/${tenantId}`)
+      navigate('/admin/dashboard')
+    } catch (e) {
+      setError(e.message)
+      setRemovingOwner(false)
+    }
+  }
 
   async function handleDeletePolicy(policyId) {
     if (policyId.startsWith('draft-')) {
@@ -858,6 +876,12 @@ export default function AdminTenantDetail() {
               {formattedAddress && <p className="text-sm text-slate-500 mt-0.5">{formattedAddress}</p>}
             </div>
           </div>
+          {tenant && (
+            <button type="button" onClick={handleRemoveOwner} disabled={removingOwner}
+              className="flex items-center gap-1.5 text-sm font-medium text-red-600 border border-red-200 bg-white rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-50 mt-0.5">
+              {removingOwner ? 'Removing…' : 'Remove owner'}
+            </button>
+          )}
         </div>
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}

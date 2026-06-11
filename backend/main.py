@@ -52,14 +52,3 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-
-
-
-
-@app.get("/debug/routes")
-async def debug_routes():
-    routes = []
-    for route in app.routes:
-        if hasattr(route, "methods") and hasattr(route, "path"):
-            routes.append({"path": route.path, "methods": sorted(route.methods)})
-    return sorted(routes, key=lambda r: r["path"])
