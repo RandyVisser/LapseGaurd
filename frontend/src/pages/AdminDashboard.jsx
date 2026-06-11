@@ -153,13 +153,13 @@ function RowActionsMenu({ items }) {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={e => { e.stopPropagation(); setOpen(false) }} />
-          <div className="fixed z-40 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
+          <div className="fixed z-40 min-w-[180px] flex flex-col bg-white border border-slate-200 rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
             {items.map(item => (
               <button
                 key={item.label}
                 onClick={e => { e.stopPropagation(); setOpen(false); item.onClick() }}
                 disabled={item.disabled}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-red-600' : 'text-slate-700'}`}
+                className={`block w-full text-left whitespace-nowrap px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-red-600' : 'text-slate-700'}`}
               >
                 {item.label}
               </button>
@@ -606,18 +606,6 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setShowAllInfo(s => !s)}
-                className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
-                  showAllInfo
-                    ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-                title="Toggle between your column selection and every field"
-              >
-                {showAllInfo ? '✓ All info' : 'All info'}
-              </button>
-              {!showAllInfo && <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />}
-              <button
                 onClick={handleExport}
                 disabled={exporting || !hoaId || hoaId === '__all__'}
                 className="text-sm bg-slate-700 hover:bg-slate-800 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
@@ -826,6 +814,22 @@ export default function AdminDashboard() {
             )}
           </div>
         ) : (
+        <>
+        <div className="flex items-center justify-end gap-2 mb-2">
+          <span className="text-xs text-slate-400 mr-1">View:</span>
+          <button
+            onClick={() => setShowAllInfo(s => !s)}
+            className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
+              showAllInfo
+                ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
+                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+            }`}
+            title="Toggle between your column selection and every field"
+          >
+            {showAllInfo ? '✓ All info' : 'All info'}
+          </button>
+          {!showAllInfo && <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />}
+        </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
@@ -910,6 +914,7 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+        </>
         )}
       </main>
     </div>
