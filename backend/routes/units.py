@@ -155,7 +155,11 @@ def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str,
 
 async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
     try:
+        print(f"[_run_parsing] START policy={policy_id} url={document_url[:60]}", flush=True)
         extracted = await parse_dec_page(document_url, submitted)
+        print(f"[_run_parsing] parse_dec_page returned extracted={extracted is not None}", flush=True)
+        if extracted is None:
+            print(f"[_run_parsing] ABORT — parse_dec_page returned None for policy={policy_id}", flush=True)
         if extracted:
             coverage_type = extracted.get("coverage_type")
             if coverage_type not in ("ho6_with_wind", "ho6_wind_excluded", "wind_only", "unknown"):

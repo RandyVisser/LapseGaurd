@@ -217,8 +217,9 @@ def _validate(extracted: dict, submitted: dict) -> dict:
 
 
 async def parse_dec_page(document_url: str, submitted: dict | None = None) -> dict | None:
+    print(f"[parse_dec_page] START url={document_url[:60]} api_key_set={bool(ANTHROPIC_API_KEY)}", flush=True)
     if not ANTHROPIC_API_KEY:
-        logger.warning("ANTHROPIC_API_KEY not set — skipping dec page parsing")
+        print("[parse_dec_page] ABORT — ANTHROPIC_API_KEY not set", flush=True)
         return None
 
     try:
@@ -248,7 +249,8 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
         return result
 
     except Exception as e:
-        logger.error(f"Dec page parsing failed for {document_url}: {e}")
+        import traceback
+        print(f"[parse_dec_page] EXCEPTION: {e}\n{traceback.format_exc()}", flush=True)
         return None
 
 
