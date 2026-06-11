@@ -803,7 +803,7 @@ export default function AdminTenantDetail() {
   } else if (drafts.length > 0) {
     const hasDoc = drafts.some(d => d.document_url)
     nextSteps.push({ icon: '✅', text: 'Policy card added.', done: true })
-    if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Click "Upload dec page" to enable AI extraction.' })
+    if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Upload the declaration page by clicking on the yellow UPLOAD box in the policy card.' })
     else {
       nextSteps.push({ icon: '✅', text: 'Document uploaded.', done: true })
       nextSteps.push({ icon: '⏳', text: 'AI extraction starting automatically…' })
