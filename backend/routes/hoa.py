@@ -317,7 +317,7 @@ async def compliance_summary(
     total_units = board_members = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = 0
     for r in rows:
-        if r["assoc_title"] == "Property Manager":
+        if (r["assoc_title"] or "").strip().lower() == "property manager":
             property_managers += 1
             continue
         total_units += 1
@@ -523,7 +523,7 @@ async def send_board_report(
     total_units = compliant = expiring = lapsed = missing = 0
     lapsed_units = []
     for r in rows:
-        if r["assoc_title"] == "Property Manager":
+        if (r["assoc_title"] or "").strip().lower() == "property manager":
             continue
         total_units += 1
         status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
