@@ -640,6 +640,8 @@ export default function AdminTenantDetail() {
     finally { setDeletingId(null) }
   }
 
+  const newDraftRef = useRef(null)
+
   function handleAddPolicy() {
     const id = `draft-${++_draftCounter}`
     setDrafts(ds => [...ds, {
@@ -648,6 +650,10 @@ export default function AdminTenantDetail() {
       named_insured: '', additional_insured: '', additional_interests: '',
       association_listed: false, document_url: '', uploaded_at: '',
     }])
+    // Scroll to the new card after it renders
+    setTimeout(() => {
+      newDraftRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
   }
 
   async function doSave(overridePolicyForms, overrideDrafts) {
@@ -960,9 +966,9 @@ export default function AdminTenantDetail() {
                 ))}
 
                 {/* Draft (new) policies */}
-                {drafts.map(d => (
+                {drafts.map((d, i) => (
+                  <div key={d._draftId} ref={i === drafts.length - 1 ? newDraftRef : null}>
                   <PolicyEditCard
-                    key={d._draftId}
                     policyId={d._draftId}
                     form={d}
                     onChange={(key, val) => draftField(d._draftId, key, val)}
@@ -976,6 +982,7 @@ export default function AdminTenantDetail() {
                     onDocumentUploaded={handleDocumentUploaded}
                     windRequired={tenant.ho6_wind_required}
                   />
+                  </div>
                 ))}
 
                 {/* Add policy */}
