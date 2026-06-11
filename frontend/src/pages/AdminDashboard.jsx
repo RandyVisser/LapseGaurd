@@ -184,6 +184,51 @@ function RowActionsMenu({ items }) {
   )
 }
 
+// Quiet uniform style for the toolbar buttons — the old mix of solid
+// slate/blue/indigo buttons read as three unrelated alerts
+const TOOLBAR_BTN = 'text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg disabled:opacity-50'
+
+function RequirementsPopover({ hoa }) {
+  const [open, setOpen] = useState(false)
+  if (!hoa) return null
+  const fmt = v => v == null ? 'Not set' : `$${Number(v).toLocaleString()}`
+  const req = v => v ? 'Required' : '—'
+  const rows = [
+    ['Policy in-force', req(hoa.ho6_policy_in_force_required)],
+    ['Named insured matches', req(hoa.ho6_named_insured_match_required)],
+    ['Property address matches', req(hoa.ho6_property_address_match_required)],
+    ['Coverage A (Dwelling) min', fmt(hoa.ho6_coverage_a_min)],
+    ['Coverage E (Liability) min', fmt(hoa.ho6_coverage_e_min)],
+    ['Wind coverage', req(hoa.ho6_wind_required)],
+    ['Association listed as Additional Interest', req(hoa.ho6_additional_interest_required)],
+  ]
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)} className={TOOLBAR_BTN}>
+        HO-6 Requirements ▾
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-80">
+            <ul className="space-y-1.5 text-sm text-slate-600">
+              {rows.map(([label, value]) => (
+                <li key={label} className="flex items-center justify-between gap-4">
+                  <span>{label}</span>
+                  <span className="font-medium text-slate-800 flex-shrink-0">{value}</span>
+                </li>
+              ))}
+            </ul>
+            <a href="/admin/settings" className="block text-xs text-blue-600 hover:underline mt-3 pt-3 border-t border-slate-100">
+              Edit in Settings →
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function ColumnsPicker({ visible, setVisible }) {
   const [open, setOpen] = useState(false)
   const groups = [...new Set(COLUMNS.map(c => c.group || 'Core'))]
@@ -298,6 +343,7 @@ export default function AdminDashboard() {
 
   const isMobile = useIsMobile()
   const [expandedUnitId, setExpandedUnitId] = useState(null)
+  const [trendOpen, setTrendOpen] = useState(false)
   const [visibleCols, setVisibleCols] = useState(loadVisibleColumns)
   const [showAllInfo, setShowAllInfo] = useState(() => {
     try { return localStorage.getItem(SHOW_ALL_STORAGE_KEY) === 'true' } catch { return false }
@@ -551,12 +597,17 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 pt-3 pb-8">
-        <div className="sm:flex items-center justify-between mb-4">
+        {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
+        <div className="sm:flex items-start justify-between gap-4 mb-4">
           <div>
-            <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-xl font-bold text-slate-800">Condo Association</h2>
+            <h2 className="text-xl font-bold text-slate-800">
+              {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
+            </h2>
+            {selectedHoa?.corp_name && hoaId !== ALL_HOAS && (
+              <p className="text-xs text-slate-400 mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
+            )}
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-2">
                 <select
                   value={hoaFieldType}
                   onChange={e => {
@@ -582,23 +633,39 @@ export default function AdminDashboard() {
                 </select>
               </div>
             )}
-            </div>
-            <div className="flex items-center mt-2">
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name or unit…"
-                className="w-56 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">
-                  ✕ Clear
+          </div>
+          {!isMobile && (
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <div className="flex gap-2 flex-wrap justify-end">
+                <RequirementsPopover hoa={hoaId !== ALL_HOAS ? selectedHoa : null} />
+                <button
+                  onClick={handleExport}
+                  disabled={exporting || !hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  {exporting ? 'Exporting…' : 'Export CSV'}
                 </button>
-              )}
+                <label className={`${TOOLBAR_BTN} cursor-pointer ${importing || !hoaId || hoaId === '__all__' ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {importing ? 'Importing…' : 'Import CSV'}
+                  <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+                </label>
+                <button
+                  onClick={handleSendBoardReport}
+                  disabled={sendingReport || !hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
+                </button>
+              </div>
+              {importResult && <p className="text-xs text-green-600">{importResult}</p>}
+              {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
             </div>
-            {summary && (
-              <div className="flex flex-col gap-2 mt-2">
+          )}
+        </div>
+        ) })()}
+
+        {summary && (
+              <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
@@ -613,85 +680,21 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-          </div>
-          {!isMobile && (
-          <div className="flex items-start gap-3 flex-wrap">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleExport}
-                disabled={exporting || !hoaId || hoaId === '__all__'}
-                className="text-sm bg-slate-700 hover:bg-slate-800 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
-              >
-                {exporting ? 'Exporting…' : 'Export CSV'}
-              </button>
-              <label className={`text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-3 py-1.5 rounded-lg cursor-pointer ${importing || !hoaId || hoaId === '__all__' ? 'opacity-50 pointer-events-none' : ''}`}>
-                {importing ? 'Importing…' : 'Import CSV'}
-                <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-              </label>
-              <button
-                onClick={handleSendBoardReport}
-                disabled={sendingReport || !hoaId || hoaId === '__all__'}
-                className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
-              >
-                {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
-              </button>
-            </div>
-            {importResult && <p className="text-xs text-green-600">{importResult}</p>}
-            {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
-          </div>
-          {(() => {
-            const selectedHoa = availableHoas.find(h => h.id === hoaId)
-            if (!selectedHoa) return null
-            const { ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required, ho6_named_insured_match_required, ho6_property_address_match_required } = selectedHoa
-            const fmt = v => v == null ? 'Not Selected' : `$${Number(v).toLocaleString()}`
-            const req = v => v ? 'Required' : 'Not Required'
-            return (
-              <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
-                {selectedHoa.corp_name && (
-                  <p className="text-slate-600 mb-2">
-                    <span className="font-semibold text-slate-700">Corp Name (SunBiz):</span> <span className="text-orange-500 font-semibold">{selectedHoa.corp_name}</span>
-                  </p>
-                )}
-                <p className="font-semibold text-slate-700 mb-1">HO-6 Requirements</p>
-                <ul className="text-slate-600 space-y-0.5">
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Policy In-Force</span>
-                    <span className="font-medium text-slate-800">{req(ho6_policy_in_force_required)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Named Insured Matches</span>
-                    <span className="font-medium text-slate-800">{req(ho6_named_insured_match_required)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Property Address Matches</span>
-                    <span className="font-medium text-slate-800">{req(ho6_property_address_match_required)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Coverage A (Dwelling) min</span>
-                    <span className="font-medium text-slate-800">{fmt(ho6_coverage_a_min)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Coverage E (Liability) min</span>
-                    <span className="font-medium text-slate-800">{fmt(ho6_coverage_e_min)}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Wind Coverage</span>
-                    <span className="font-medium text-slate-800">{ho6_wind_required ? 'Required' : 'Not Required'}</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-6">
-                    <span>Association Listed as Additional Interest</span>
-                    <span className="font-medium text-slate-800">{ho6_additional_interest_required ? 'Required' : 'Not Required'}</span>
-                  </li>
-                </ul>
-              </div>
-            )
-          })()}
-          </div>
-          )}
-        </div>
 
-        {!isMobile && trendData.length > 0 && <TrendChart data={trendData} />}
+        {!isMobile && trendData.length > 0 && (
+          <div className="mb-4">
+            <button
+              onClick={() => setTrendOpen(o => !o)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 mb-1"
+            >
+              Compliance trend
+              <svg className={`w-3.5 h-3.5 transition-transform ${trendOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {trendOpen && <TrendChart data={trendData} />}
+          </div>
+        )}
 
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
@@ -743,6 +746,39 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* List toolbar — search + view controls, right above what they act on */}
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center flex-1 max-w-xs">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or unit…"
+              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">✕</button>
+            )}
+          </div>
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 mr-1">View:</span>
+              <button
+                onClick={() => setShowAllInfo(s => !s)}
+                className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
+                  showAllInfo
+                    ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+                title="Toggle between your column selection and every field"
+              >
+                {showAllInfo ? '✓ All info' : 'All info'}
+              </button>
+              {!showAllInfo && <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />}
+            </div>
+          )}
+        </div>
 
         {isMobile ? (
           <div className="space-y-2">
@@ -828,21 +864,6 @@ export default function AdminDashboard() {
           </div>
         ) : (
         <>
-        <div className="flex items-center justify-end gap-2 mb-2">
-          <span className="text-xs text-slate-400 mr-1">View:</span>
-          <button
-            onClick={() => setShowAllInfo(s => !s)}
-            className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
-              showAllInfo
-                ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
-                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-            }`}
-            title="Toggle between your column selection and every field"
-          >
-            {showAllInfo ? '✓ All info' : 'All info'}
-          </button>
-          {!showAllInfo && <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />}
-        </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
