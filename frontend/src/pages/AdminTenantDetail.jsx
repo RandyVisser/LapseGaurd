@@ -822,7 +822,7 @@ export default function AdminTenantDetail() {
   if (!tenant) {
     // loading
   } else if (aiRunning) {
-    nextSteps.push({ icon: '⏳', text: 'AI is extracting policy details — this usually takes 10–20 seconds…' })
+    nextSteps.push({ icon: '⏳', text: 'AI is extracting policy details — this usually takes 10–20 seconds…', wait: true })
   } else if (currentPolicies.length === 0 && drafts.length === 0) {
     nextSteps.push({ icon: '📋', text: 'Click "+ Add policy" to upload the unit owner\'s insurance policy.' })
   } else if (hasLapsedPolicy && !drafts.length) {
@@ -833,7 +833,7 @@ export default function AdminTenantDetail() {
     if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Upload the declaration page by clicking on the yellow UPLOAD box in the policy card.' })
     else {
       nextSteps.push({ icon: '✅', text: 'Document uploaded.', done: true })
-      nextSteps.push({ icon: '⏳', text: 'AI extraction starting automatically…' })
+      nextSteps.push({ icon: '⏳', text: 'AI extraction starting automatically…', wait: true })
     }
     const hasAllFields = drafts.every(d => d.insurer && d.policy_number && d.expiration_date && d.named_insured)
     if (hasDoc && hasAllFields) nextSteps.push({ icon: '💾', text: 'Review the extracted fields then click "Save" to confirm.' })
@@ -860,7 +860,7 @@ export default function AdminTenantDetail() {
               <li key={i} className={`flex items-start gap-3 text-sm ${s.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                 <span className="text-base leading-snug">{s.icon}</span>
                 <span>
-                  {!s.done && !s.success && <span className="font-semibold text-blue-700">Next: </span>}
+                  {!s.done && !s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
                   {s.text}
                 </span>
               </li>
