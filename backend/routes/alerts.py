@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 import asyncpg
+import hmac
 import os
 
 from models.db import get_conn
@@ -14,7 +15,7 @@ async def run_alerts(
     x_api_key: str | None = Header(default=None),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    if not INTERNAL_API_KEY or x_api_key != INTERNAL_API_KEY:
+    if not INTERNAL_API_KEY or not x_api_key or not hmac.compare_digest(x_api_key, INTERNAL_API_KEY):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     # Delegate actual work to the alert script logic — this endpoint is a thin wrapper

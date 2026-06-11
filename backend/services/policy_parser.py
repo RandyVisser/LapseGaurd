@@ -16,6 +16,7 @@ import anthropic
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 
 EXTRACT_PROMPT = """Extract the following fields from this insurance declaration page.
 Return a JSON object only — no explanation, no markdown, just the JSON.
@@ -221,6 +222,12 @@ def _validate(extracted: dict, submitted: dict) -> dict:
 async def parse_dec_page(document_url: str, submitted: dict | None = None) -> dict | None:
     if not ANTHROPIC_API_KEY:
         logger.warning("ANTHROPIC_API_KEY not set — skipping dec page parsing")
+        return None
+
+    # SSRF guard: this fetch runs server-side, so only our own storage is allowed
+    storage_base = f"{SUPABASE_URL}/storage/v1/object"
+    if not SUPABASE_URL or not document_url.startswith(storage_base):
+        logger.warning("Refusing to fetch document URL outside Supabase storage: %s", document_url)
         return None
 
     try:

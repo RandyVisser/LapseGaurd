@@ -14,6 +14,7 @@ from models.db import get_conn, get_pool
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
 from services.email import send_email, policy_upload_notification_html
+from routes.hoa import _assert_hoa_access
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 APP_URL = os.environ.get("APP_URL", "https://condo.insure")
@@ -21,6 +22,16 @@ APP_URL = os.environ.get("APP_URL", "https://condo.insure")
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+def _require_storage_url(url: str | None):
+    """Reject document URLs outside our Supabase storage — the backend fetches
+    these URLs server-side (hashing + AI parsing), so arbitrary URLs are an SSRF vector."""
+    if url is None:
+        return
+    storage_base = f"{SUPABASE_URL}/storage/v1/object"
+    if not SUPABASE_URL or not url.startswith(storage_base):
+        raise HTTPException(status_code=422, detail="document_url must point to Supabase storage")
 
 
 def _compute_status(expiration_date: date | None) -> PolicyStatus:
@@ -40,10 +51,17 @@ async def get_policy(
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    tenant = await conn.fetchrow(
-        "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR $3 IN ('hoa_admin','super_user','property_manager'))",
-        unit_id, user.sub, user.role,
-    )
+    if user.role in ("hoa_admin", "super_user", "property_manager"):
+        unit = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+        if unit is None:
+            raise HTTPException(status_code=404, detail="Unit not found")
+        await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
+        tenant = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
+    else:
+        tenant = await conn.fetchrow(
+            "SELECT id FROM tenants WHERE unit_id = $1 AND supabase_user_id = $2",
+            unit_id, user.sub,
+        )
     if tenant is None:
         raise HTTPException(status_code=403, detail="Not your unit")
 
@@ -248,6 +266,8 @@ async def upload_policy(
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
+    _require_storage_url(body.document_url)
+
     # Verify tenant belongs to this unit
     tenant = await conn.fetchrow(
         "SELECT id FROM tenants WHERE unit_id = $1 AND supabase_user_id = $2",
@@ -257,8 +277,12 @@ async def upload_policy(
     if tenant is None and user.role not in ("hoa_admin", "super_user", "property_manager"):
         raise HTTPException(status_code=403, detail="Not your unit")
 
-    # For admin posting on behalf of tenant, find tenant for unit
+    # For admin posting on behalf of tenant, verify the unit is in their HOA first
     if tenant is None:
+        unit_scope = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+        if unit_scope is None:
+            raise HTTPException(status_code=404, detail="Unit not found")
+        await _assert_hoa_access(user, str(unit_scope["hoa_id"]), conn)
         tenant = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="No tenant found for this unit")
@@ -397,6 +421,7 @@ async def edit_policy(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Admin edits policy fields directly (carrier, dates, coverage amounts, etc.)."""
+    _require_storage_url(body.document_url)
     row = await conn.fetchrow(
         """SELECT p.*, u.hoa_id FROM policies p
            JOIN tenants t ON t.id = p.tenant_id
