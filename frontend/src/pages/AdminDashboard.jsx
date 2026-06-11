@@ -568,9 +568,9 @@ export default function AdminDashboard() {
             {(() => {
               const filtered = units.filter(u => {
                 if (activeFilter === 'all') {
-                  if (u.assoc_title === 'Property Manager') return false
+                  if ((u.assoc_title || '').trim().toLowerCase() === 'property manager') return false
                 } else {
-                  if (activeFilter === 'board') { if (!u.assoc_title) return false }
+                  if (activeFilter === 'board') { if (!u.assoc_title || u.assoc_title.trim().toLowerCase() === 'property manager') return false }
                   else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
                   else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
                   else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
