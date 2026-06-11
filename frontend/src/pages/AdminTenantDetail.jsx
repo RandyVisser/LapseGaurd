@@ -819,7 +819,7 @@ export default function AdminTenantDetail() {
     fails.forEach(f => nextSteps.push({ icon: '⚠️', text: f.text }))
   } else if (overallStatus === 'pending_review') {
     nextSteps.push({ icon: '🔍', text: 'Policy is pending review — verify the extracted fields and save to confirm compliance.' })
-  } else if (['active', 'expiring', 'non_compliant', 'pending_review'].includes(overallStatus) && currentPolicies.length > 0 && complianceChecks.length > 0 && !complianceChecks.some(c => c.type === 'fail')) {
+  } else if (currentPolicies.length > 0 && !complianceChecks.some(c => c.type === 'fail')) {
     nextSteps.push({ icon: '🎉', text: 'All set! The declaration page has been uploaded and all association requirements are met.', success: true })
   }
 
