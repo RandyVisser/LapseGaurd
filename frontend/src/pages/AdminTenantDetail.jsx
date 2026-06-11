@@ -79,7 +79,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
 
   // Wind-only coverage never satisfies the HO-6 requirement on its own
   if (wind && !ho6) {
-    items.push({ type: 'fail', text: 'Add an HO-6 policy (wind excluded is fine) — the wind-only policy on file covers wind but not dwelling or liability' })
+    items.push({ type: 'fail', text: 'Add an HO-6 policy (excluding wind)' })
   }
 
   for (const [p, label] of [[ho6, 'HO-6'], [wind, 'Wind only']]) {
