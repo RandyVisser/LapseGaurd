@@ -777,9 +777,14 @@ export default function AdminTenantDetail() {
   const headerUnit = tenant?.unit_number ? `Unit ${tenant.unit_number}` : ''
 
   // ── Next-steps panel ────────────────────────────────────────────────────────
+  const unparsedPolicies = (tenant?.policies || []).filter(p => p.document_url && !p.parsed_at && p.is_current)
+  const aiRunning = !!runningAiId
+
   const nextSteps = []
   if (!tenant) {
     // loading
+  } else if (aiRunning) {
+    nextSteps.push({ icon: '⏳', text: 'AI is extracting policy details — this usually takes 10–20 seconds…' })
   } else if (currentPolicies.length === 0 && drafts.length === 0) {
     nextSteps.push({ icon: '📋', text: 'Click "+ Add policy" to upload the unit owner\'s insurance policy.' })
   } else if (hasLapsedPolicy && !drafts.length) {
@@ -787,9 +792,11 @@ export default function AdminTenantDetail() {
   } else if (drafts.length > 0) {
     const hasDoc = drafts.some(d => d.document_url)
     if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Upload the declaration page document to the policy card.' })
-    else nextSteps.push({ icon: '🤖', text: 'Click "Extract with AI" to auto-fill policy details from the document.' })
+    else nextSteps.push({ icon: '⏳', text: 'Document uploaded — AI extraction will start automatically.' })
     const hasAllFields = drafts.every(d => d.insurer && d.policy_number && d.expiration_date && d.named_insured)
     if (hasDoc && hasAllFields) nextSteps.push({ icon: '💾', text: 'Review the extracted fields then click "Save" to confirm.' })
+  } else if (unparsedPolicies.length > 0) {
+    nextSteps.push({ icon: '🤖', text: 'Document uploaded — click "Extract with AI" to auto-fill policy details.' })
   } else if (needsWindPolicy) {
     nextSteps.push({ icon: '💨', text: 'Association requires wind coverage — click "+ Add wind policy" to upload a separate wind-only policy.' })
   } else if (overallStatus === 'non_compliant') {
