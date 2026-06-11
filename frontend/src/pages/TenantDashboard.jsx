@@ -399,6 +399,18 @@ export default function TenantDashboard() {
           </form>
         </section>
 
+        {/* Quote cross-sell for covered owners — quiet, below the fold */}
+        {QUOTE_FORM_URL && !needsQuote && (
+          <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-5 py-4 mb-5 hover:border-blue-300 transition-colors">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Shopping for a better rate?</p>
+              <p className="text-xs text-slate-400 mt-0.5">Get a free quote in minutes</p>
+            </div>
+            <span className="text-blue-600 font-semibold text-sm flex-shrink-0">Request a quote →</span>
+          </a>
+        )}
+
         {/* ── History, collapsed ──────────────────────────────────────── */}
         {history.length > 0 && (
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

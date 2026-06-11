@@ -250,7 +250,7 @@ function FieldSelect({ label, value, onChange, options, highlighted, danger, cla
 
 // ─── Policy edit card ────────────────────────────────────────────────────────
 
-function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded, windRequired }) {
+function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded, windRequired, validationFlags = [] }) {
   const fileInputRef = useRef()
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
@@ -262,7 +262,6 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
   const days = daysUntil(form.expiration_date)
   const isExpiringSoon = days !== null && days >= 0 && days <= 30
   const aiCount = aiUpdated?.length || 0
-  const typLabel = COVERAGE_TYPE_OPTIONS.find(o => o.value === form.coverage_type)?.label || form.coverage_type || 'Policy'
   const fileName = fileNameFromUrl(form.document_url)
 
   async function handleFileChange(e) {
@@ -314,8 +313,6 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
           >
             {COVERAGE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          {/* Type chip */}
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">{typLabel}</span>
           {/* Expiry chip */}
           {isExpiringSoon && (
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1 whitespace-nowrap">
@@ -344,6 +341,75 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
       </div>
 
       <div className="p-5 space-y-6">
+
+        {/* POLICY DOCUMENT — the admin's first move: upload, let AI fill the rest */}
+        <div>
+          <SectionLabel>Policy document</SectionLabel>
+          {form.document_url ? (
+            <div className="border border-slate-200 rounded-xl bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <svg className="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div className="min-w-0">
+                  <a href={form.document_url} target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline font-medium block truncate">
+                    {fileName}
+                  </a>
+                  {form.uploaded_at && (
+                    <p className="text-xs text-slate-400">Uploaded {fmtDate(String(form.uploaded_at).slice(0, 10))}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  disabled={runningAiId === policyId || isDraft}
+                  onClick={() => onRunAi(policyId)}
+                  className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <span>✦</span>
+                  {runningAiId === policyId ? 'Extracting…' : 'Re-extract'}
+                </button>
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 bg-white hover:bg-slate-50">
+                  Replace
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="border-2 border-dashed border-amber-300 rounded-xl bg-amber-50 px-5 py-7 flex flex-col items-center gap-1 cursor-pointer hover:bg-amber-100 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading
+                ? <p className="text-sm text-amber-700">Uploading…</p>
+                : <>
+                    <svg className="w-7 h-7 text-amber-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <p className="text-sm text-amber-700 font-semibold">Upload dec page — AI fills the fields below</p>
+                    <p className="text-xs text-amber-500">PDF, JPG, PNG</p>
+                  </>
+              }
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
+          {uploadErr && <p className="text-xs text-red-600 mt-1">{uploadErr}</p>}
+          {isDraft && form.document_url && <p className="text-xs text-slate-400 mt-1.5">Save the policy first, then extract</p>}
+        </div>
+
+        {/* AI review findings for this policy */}
+        {validationFlags.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+            <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1.5">✦ AI review found issues</p>
+            <ul className="space-y-1 text-sm text-red-700">
+              {validationFlags.map((flag, i) => (
+                <li key={i} className="flex gap-2"><span className="flex-shrink-0">→</span><span>{flag}</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* AI extraction banner */}
         {aiCount > 0 && (
@@ -402,63 +468,6 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
                 danger={windRequired && form.coverage_type === 'ho6_wind_excluded'}
               />
             )}
-          </div>
-        </div>
-
-        {/* POLICY DOCUMENT */}
-        <div>
-          <SectionLabel>Policy document</SectionLabel>
-          {form.document_url ? (
-            <div
-              className="border border-dashed border-slate-300 rounded-xl bg-slate-50 px-5 py-6 flex flex-col items-center gap-1 cursor-pointer hover:bg-slate-100 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-              title="Click to replace document"
-            >
-              <svg className="w-7 h-7 text-blue-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <a href={form.document_url} target="_blank" rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="text-sm text-blue-600 hover:underline font-medium text-center break-all max-w-xs">
-                {fileName}
-              </a>
-              {form.uploaded_at && (
-                <p className="text-xs text-slate-400">Uploaded {fmtDate(String(form.uploaded_at).slice(0, 10))}</p>
-              )}
-            </div>
-          ) : (
-            <div
-              className="border-2 border-dashed border-amber-300 rounded-xl bg-amber-50 px-5 py-8 flex flex-col items-center gap-1 cursor-pointer hover:bg-amber-100 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploading
-                ? <p className="text-sm text-amber-700">Uploading…</p>
-                : <>
-                    <svg className="w-7 h-7 text-amber-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <p className="text-sm text-amber-700 font-semibold">Upload dec page to enable AI extraction</p>
-                    <p className="text-xs text-amber-500">PDF, JPG, PNG</p>
-                  </>
-              }
-            </div>
-          )}
-          <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
-          {uploadErr && <p className="text-xs text-red-600 mt-1">{uploadErr}</p>}
-
-          {/* AI extract button */}
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              disabled={!form.document_url || runningAiId === policyId || isDraft}
-              onClick={() => onRunAi(policyId)}
-              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <span className="text-base">✦</span>
-              {runningAiId === policyId ? 'Extracting…' : (form.document_url ? 'Re-extract with AI' : 'Extract with AI')}
-            </button>
-            {isDraft && <p className="text-xs text-slate-400">Save the policy first, then extract</p>}
-            {aiCount > 0 && <p className="text-xs text-slate-500">{aiCount} field{aiCount !== 1 ? 's' : ''} updated — changed fields highlighted</p>}
           </div>
         </div>
 
@@ -1028,6 +1037,7 @@ export default function AdminTenantDetail() {
                     unitId={tenant.unit_id}
                     onDocumentUploaded={handleDocumentUploaded}
                     windRequired={tenant.ho6_wind_required}
+                    validationFlags={p.extracted_data?.validation?.passed === false ? (p.extracted_data.validation.flags || []) : []}
                   />
                 ))}
 
@@ -1102,8 +1112,8 @@ export default function AdminTenantDetail() {
               </div>
             </div>
 
-            {/* ── Footer ───────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between gap-4 py-2">
+            {/* ── Footer — sticky so Save is always reachable on long pages ── */}
+            <div className="sticky bottom-0 z-40 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-t border-slate-200 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button type="submit" disabled={saving}
                   className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60">
