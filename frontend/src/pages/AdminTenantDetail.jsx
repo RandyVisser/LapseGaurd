@@ -680,8 +680,10 @@ export default function AdminTenantDetail() {
         }
       }
 
-      // 3. Save edits to existing policies
+      // 3. Save edits to existing policies (skip stale IDs not in current tenant data)
+      const knownPolicyIds = new Set((tenant?.policies || []).map(p => p.id))
       for (const [policyId, pfItem] of Object.entries(pf)) {
+        if (!knownPolicyIds.has(policyId)) continue
         try {
           await apiPatch(`/policy/${policyId}`, {
             insurer: pfItem.insurer || null,
