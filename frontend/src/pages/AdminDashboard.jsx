@@ -382,8 +382,8 @@ export default function AdminDashboard() {
             </div>
             {summary && (
               <div className="flex flex-wrap gap-2 mt-2">
-                <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                 <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                 <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
                 <StatCard compact label="Active · Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
                 <StatCard compact label="Expired" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
