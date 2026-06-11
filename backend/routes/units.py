@@ -607,7 +607,9 @@ async def run_ai_on_policy(
         "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
     }
 
+    print(f"[run-ai] Adding background task for policy={row['id']}", flush=True)
     background_tasks.add_task(_run_parsing, str(row["id"]), row["document_url"], submitted)
+    print(f"[run-ai] Background task added", flush=True)
 
     return PolicyOut(
         id=row["id"],
