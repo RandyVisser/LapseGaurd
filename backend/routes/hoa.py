@@ -317,8 +317,8 @@ async def compliance_summary(
     total_units = board_members = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = 0
     for r in rows:
-        # Property Manager units are hidden entirely — skip them
         if r["assoc_title"] == "Property Manager":
+            property_managers += 1
             continue
         total_units += 1
         if r["assoc_title"]:

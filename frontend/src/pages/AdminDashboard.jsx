@@ -308,7 +308,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing']) {
+            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -385,6 +385,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-wrap gap-2">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-slate-600" active={activeFilter === 'pm'} onClick={() => setActiveFilter('pm')} />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
