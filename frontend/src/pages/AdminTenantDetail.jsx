@@ -79,7 +79,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
 
   // Wind-only coverage never satisfies the HO-6 requirement on its own
   if (wind && !ho6) {
-    items.push({ type: 'fail', text: 'HO-6 policy required — only a wind-only policy is on file (no dwelling/liability coverage)' })
+    items.push({ type: 'fail', text: 'Add an HO-6 policy (wind excluded is fine) — the wind-only policy on file covers wind but not dwelling or liability' })
   }
 
   for (const [p, label] of [[ho6, 'HO-6'], [wind, 'Wind only']]) {
@@ -575,6 +575,9 @@ export default function AdminTenantDetail() {
     currentPolicies.some(p => p.coverage_type === 'ho6_wind_excluded') &&
     !currentPolicies.some(p => p.coverage_type === 'wind_only')
 
+  const needsHo6Policy = currentPolicies.some(p => p.coverage_type === 'wind_only') &&
+    !currentPolicies.some(p => ['ho6_with_wind', 'ho6_wind_excluded'].includes(p.coverage_type))
+
   const lastUpdated = tenant?.policies?.reduce((latest, p) => {
     const t = p.parsed_at || p.uploaded_at
     return !latest || (t && t > latest) ? t : latest
@@ -1029,13 +1032,13 @@ export default function AdminTenantDetail() {
                 {/* Add policy */}
                 <button type="button" onClick={handleAddPolicy}
                   className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors ${
-                    needsWindPolicy
+                    needsWindPolicy || needsHo6Policy
                       ? 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
                       : (currentPolicies.length === 0 && drafts.length === 0) || hasLapsedPolicy
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                       : 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}>
-                  {needsWindPolicy ? '+ Add wind policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ Add policy'}
+                  {needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ Add policy'}
                 </button>
 
                 {/* History */}
