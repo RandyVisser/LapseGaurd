@@ -185,15 +185,16 @@ function CurrencyInput({ label, value, onChange, placeholder, className = '' }) 
 
 // ─── Input components ────────────────────────────────────────────────────────
 
-function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, className = '' }) {
+function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, danger, className = '' }) {
   const isEmpty = !value && value !== 0
   const showMissing = missing && isEmpty && !highlighted
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${danger ? 'text-red-700' : highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
         {label}
         {highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
         {showMissing && <span className="ml-1.5 text-red-400 font-semibold">— required</span>}
+        {danger && <span className="ml-1.5 text-red-600 font-semibold">— expired</span>}
       </label>
       {readOnly
         ? <p className="text-sm text-slate-700 py-2">{value || '—'}</p>
@@ -204,7 +205,9 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
             placeholder={placeholder || (showMissing ? 'Enter value…' : undefined)}
             maxLength={maxLength}
             className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-              highlighted
+              danger
+                ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
+                : highlighted
                 ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
                 : showMissing
                 ? 'border border-red-300 bg-red-50 focus:ring-red-400'
@@ -373,7 +376,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
             <FieldInput label="Carrier" value={form.insurer} onChange={f('insurer')} highlighted={hi('insurer')} missing={true} />
             <FieldInput label="Policy #" value={form.policy_number} onChange={f('policy_number')} highlighted={hi('policy_number')} missing={true} />
             <FieldInput label="Effective date" value={toDateInputValue(form.effective_date)} onChange={f('effective_date')} type="date" highlighted={hi('effective_date')} />
-            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} missing={true} />
+            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} missing={true} danger={isLapsed} />
           </div>
         </div>
 
