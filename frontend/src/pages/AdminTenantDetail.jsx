@@ -562,6 +562,8 @@ export default function AdminTenantDetail() {
   const overallStatus   = worstStatus(currentPolicies)
   const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
 
+  const hasLapsedPolicy = currentPolicies.some(p => p.status === 'lapsed')
+
   const needsWindPolicy = tenant?.ho6_wind_required &&
     currentPolicies.some(p => p.coverage_type === 'ho6_wind_excluded') &&
     !currentPolicies.some(p => p.coverage_type === 'wind_only')
@@ -926,11 +928,11 @@ export default function AdminTenantDetail() {
                   className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors ${
                     needsWindPolicy
                       ? 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
-                      : currentPolicies.length === 0 && drafts.length === 0
+                      : (currentPolicies.length === 0 && drafts.length === 0) || hasLapsedPolicy
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                       : 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}>
-                  {needsWindPolicy ? '+ Add wind policy' : '+ Add policy'}
+                  {needsWindPolicy ? '+ Add wind policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ Add policy'}
                 </button>
 
                 {/* History */}
