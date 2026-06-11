@@ -731,23 +731,31 @@ export default function AdminTenantDetail() {
     await doSave()
   }
 
-  // Called by PolicyEditCard after a file is uploaded — autosaves with the new document_url baked in
+  // Called by PolicyEditCard after a file is uploaded — autosaves then auto-triggers AI extraction
   async function handleDocumentUploaded(policyId, documentUrl, isDraft) {
+    let updatedForms = policyForms
+    let updatedDrafts = drafts
+
     if (isDraft) {
-      // Update draft and autosave with updated drafts list
-      const updatedDrafts = drafts.map(d =>
+      updatedDrafts = drafts.map(d =>
         d._draftId === policyId ? { ...d, document_url: documentUrl } : d
       )
       setDrafts(updatedDrafts)
-      await doSave(policyForms, updatedDrafts)
     } else {
-      // Update existing policy form and autosave with updated policyForms
-      const updatedForms = {
+      updatedForms = {
         ...policyForms,
         [policyId]: { ...policyForms[policyId], document_url: documentUrl },
       }
       setPolicyForms(updatedForms)
-      await doSave(updatedForms, drafts)
+    }
+
+    await doSave(updatedForms, updatedDrafts)
+
+    // After save, find any policies that now have a document but no parsed_at and auto-run AI
+    const fresh = await apiGet(`/tenant/${tenantId}`)
+    const toExtract = (fresh.policies || []).filter(p => p.document_url && !p.parsed_at)
+    for (const p of toExtract) {
+      handleRunAi(p.id)
     }
   }
 
