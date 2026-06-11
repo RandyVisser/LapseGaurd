@@ -181,16 +181,39 @@ async def get_tenant_detail(
     activity.sort(key=lambda x: x.timestamp, reverse=True)
 
     def _effective_status(r) -> str:
-        """Override DB status with non_compliant if validation flags exist and policy isn't already lapsed/expired."""
+        """Override DB status with non_compliant if the policy fails any HOA requirement check."""
         db_status = r["status"]
         if db_status in (PolicyStatus.lapsed.value, PolicyStatus.missing.value):
             return db_status
+        if db_status not in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value):
+            return db_status
+
         ext = json.loads(r["extracted_data"]) if isinstance(r["extracted_data"], str) else (r["extracted_data"] or {})
+        if not ext:
+            return db_status
+
+        # 1. Stored validation flags (populated by background task when it works)
         validation = ext.get("validation") or {}
-        if validation.get("passed") is False and db_status in (
-            PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value
-        ):
+        if validation.get("passed") is False:
             return PolicyStatus.non_compliant.value
+
+        # 2. Live check against current HOA requirements (catches stale extractions)
+        try:
+            a_min = row["ho6_coverage_a_min"]
+            dwelling = ext.get("dwelling_coverage")
+            if a_min is not None and dwelling is not None and float(dwelling) < float(a_min):
+                return PolicyStatus.non_compliant.value
+
+            e_min = row["ho6_coverage_e_min"]
+            liability = ext.get("liability_coverage")
+            if e_min is not None and liability is not None and float(liability) < float(e_min):
+                return PolicyStatus.non_compliant.value
+
+            if row["ho6_wind_required"] and ext.get("coverage_type") == "ho6_wind_excluded":
+                return PolicyStatus.non_compliant.value
+        except (TypeError, ValueError):
+            pass
+
         return db_status
 
     policies = [
