@@ -5,6 +5,7 @@ import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import useIsMobile from '../hooks/useIsMobile'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -75,6 +76,101 @@ function TrendChart({ data }) {
   )
 }
 
+function TitlePill({ title }) {
+  if (!title) return <span className="text-slate-400">—</span>
+  const isPm = (title || '').trim().toLowerCase() === 'property manager'
+  return (
+    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${isPm ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-green-100 text-green-800 border-green-300'}`}>
+      {title}
+    </span>
+  )
+}
+
+// All available table columns. `group` drives the picker layout; columns
+// without a group are the always-sensible core set shown by default.
+const COLUMNS = [
+  { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
+  { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
+  { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
+  { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
+  { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—' },
+  { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-slate-400">—</span> },
+  { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
+  { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
+  { key: 'purchase_date',          label: 'Purchase Date',         group: 'Owner details', render: u => u.purchase_date || '—' },
+  { key: 'city',                   label: 'City',                  group: 'Address', render: u => u.city || '—' },
+  { key: 'state',                  label: 'St',                    group: 'Address', render: u => u.state || '—' },
+  { key: 'zip',                    label: 'Zip',                   group: 'Address', render: u => u.zip || '—' },
+  { key: 'radar_id',               label: 'RadarID',               group: 'Property data', render: u => u.radar_id || '—' },
+  { key: 'assessor_parcel_number', label: 'APN',                   group: 'Property data', render: u => u.assessor_parcel_number || '—' },
+  { key: 'type',                   label: 'Type',                  group: 'Property data', render: u => u.type || '—' },
+  { key: 'subdivision',            label: 'Subdivision (PropRadar)', group: 'Property data', render: u => u.subdivision || '—' },
+  { key: 'corp_name',              label: 'Corp Name (SunBiz)',    group: 'Corporate', render: u => u.corp_name || '—' },
+  { key: 'sunbiz_doc_number',      label: 'Sunbiz DOC #',          group: 'Corporate', render: u => u.sunbiz_doc_number || '—' },
+  { key: 'fein',                   label: 'Assoc FEIN',            group: 'Corporate', render: u => u.fein || '—' },
+]
+
+const DEFAULT_COLUMNS = COLUMNS.filter(c => !c.group).map(c => c.key)
+const COLUMNS_STORAGE_KEY = 'lapseguard.dashboard.columns.v1'
+
+function loadVisibleColumns() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLUMNS_STORAGE_KEY))
+    if (Array.isArray(saved) && saved.length) {
+      const valid = saved.filter(k => COLUMNS.some(c => c.key === k))
+      if (valid.length) return valid
+    }
+  } catch { /* corrupted storage — fall through to defaults */ }
+  return DEFAULT_COLUMNS
+}
+
+function ColumnsPicker({ visible, setVisible }) {
+  const [open, setOpen] = useState(false)
+  const groups = [...new Set(COLUMNS.map(c => c.group || 'Core'))]
+
+  function toggle(key) {
+    setVisible(v => v.includes(key) ? v.filter(k => k !== key) : [...v, key])
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg"
+      >
+        Columns ({visible.length}/{COLUMNS.length}) ▾
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 max-h-[60vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => setVisible(COLUMNS.map(c => c.key))} className="text-xs text-blue-600 hover:underline">Show all</button>
+              <button onClick={() => setVisible(DEFAULT_COLUMNS)} className="text-xs text-slate-500 hover:underline">Reset to defaults</button>
+            </div>
+            {groups.map(group => (
+              <div key={group} className="mb-3 last:mb-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{group}</p>
+                {COLUMNS.filter(c => (c.group || 'Core') === group).map(c => (
+                  <label key={c.key} className="flex items-center gap-2 py-1 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={visible.includes(c.key)}
+                      onChange={() => toggle(c.key)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { hoaId, role, availableHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
@@ -139,6 +235,23 @@ export default function AdminDashboard() {
   // Board report state
   const [sendingReport, setSendingReport] = useState(false)
   const [reportSent, setReportSent] = useState(false)
+
+  const isMobile = useIsMobile()
+  const [visibleCols, setVisibleCols] = useState(loadVisibleColumns)
+  useEffect(() => {
+    try { localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleCols)) } catch { /* storage full/blocked */ }
+  }, [visibleCols])
+  const activeColumns = COLUMNS.filter(c => visibleCols.includes(c.key))
+
+  async function openUnit(u) {
+    if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
+    if (u.status === 'missing') {
+      try {
+        const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
+        navigate(`/admin/tenant/${res.id}`)
+      } catch (err) { setError(err.message) }
+    }
+  }
 
   function handleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -331,6 +444,42 @@ export default function AdminDashboard() {
       .catch(e => setError(e.message))
   }, [hoaId, availableHoas])
 
+  // Filter + sort shared by the desktop table and the mobile card list
+  const filteredUnits = (() => {
+    const filtered = units.filter(u => {
+      if (activeFilter === 'all') {
+        if ((u.assoc_title || '').trim().toLowerCase() === 'property manager') return false
+      } else {
+        if (activeFilter === 'board') { if (!u.assoc_title || u.assoc_title.trim().toLowerCase() === 'property manager') return false }
+        else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
+        else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
+        else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
+        else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
+        else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
+        else if (activeFilter === 'missing') { if (u.status !== 'missing') return false }
+        else { if (u.status !== activeFilter) return false }
+      }
+      if (search) {
+        const q = search.toLowerCase()
+        return (
+          (u.unit_number || '').toLowerCase().includes(q) ||
+          (u.owner_primary || '').toLowerCase().includes(q) ||
+          (u.owner_secondary || '').toLowerCase().includes(q) ||
+          (u.tenant_name || '').toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+    if (sortCol) {
+      filtered.sort((a, b) => {
+        const av = (a[sortCol] || '').toString().toLowerCase()
+        const bv = (b[sortCol] || '').toString().toLowerCase()
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    }
+    return filtered
+  })()
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
@@ -398,9 +547,11 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+          {!isMobile && (
           <div className="flex items-start gap-3 flex-wrap">
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 flex-wrap">
+              <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />
               <button
                 onClick={handleExport}
                 disabled={exporting || !hoaId || hoaId === '__all__'}
@@ -471,9 +622,10 @@ export default function AdminDashboard() {
             )
           })()}
           </div>
+          )}
         </div>
 
-        {trendData.length > 0 && <TrendChart data={trendData} />}
+        {!isMobile && trendData.length > 0 && <TrendChart data={trendData} />}
 
         {error && <p className="text-red-600 mb-4">{error}</p>}
 
@@ -526,6 +678,33 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {isMobile ? (
+          <div className="space-y-2">
+            {filteredUnits.map(u => (
+              <button
+                key={u.unit_id}
+                onClick={() => openUnit(u)}
+                className="w-full bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex items-center justify-between gap-3 text-left active:bg-slate-50"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
+                    {u.assoc_title && <TitlePill title={u.assoc_title} />}
+                  </div>
+                  <p className="text-sm text-slate-500 truncate">
+                    {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <StatusBadge status={u.status} expirationDate={u.expiration_date} />
+                </div>
+              </button>
+            ))}
+            {filteredUnits.length === 0 && !error && (
+              <p className="px-4 py-6 text-center text-slate-400 italic">No units found</p>
+            )}
+          </div>
+        ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
@@ -544,63 +723,14 @@ export default function AdminDashboard() {
                     </th>
                   )
                 })()}
-                <SortTh label="Status"            col="status"                sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Board"             col="assoc_title"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Unit"              col="unit_number"           sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Primary Name"      col="owner_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Email (Primary)"   col="email_primary"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Secondary Name"    col="owner_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Email (Secondary)" col="email_secondary"       sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Purchase Date"     col="purchase_date"         sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Street Address"    col="street_address"        sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="City"              col="city"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="St"                col="state"                 sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Zip"               col="zip"                   sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="RadarID"           col="radar_id"              sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="APN"               col="assessor_parcel_number" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Type"              col="type"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Subdivision (PropRadar)" col="subdivision"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Corp Name (SunBiz)" col="corp_name"            sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Sunbiz DOC #"      col="sunbiz_doc_number"     sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                <SortTh label="Assoc FEIN"        col="fein"                  sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                {activeColumns.map(c => (
+                  <SortTh key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                ))}
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
               </tr>
             </thead>
-            {(() => {
-              const filtered = units.filter(u => {
-                if (activeFilter === 'all') {
-                  if ((u.assoc_title || '').trim().toLowerCase() === 'property manager') return false
-                } else {
-                  if (activeFilter === 'board') { if (!u.assoc_title || u.assoc_title.trim().toLowerCase() === 'property manager') return false }
-                  else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
-                  else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
-                  else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
-                  else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
-                  else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
-                  else if (activeFilter === 'missing') { if (u.status !== 'missing') return false }
-                  else { if (u.status !== activeFilter) return false }
-                }
-                if (search) {
-                  const q = search.toLowerCase()
-                  return (
-                    (u.unit_number || '').toLowerCase().includes(q) ||
-                    (u.owner_primary || '').toLowerCase().includes(q) ||
-                    (u.owner_secondary || '').toLowerCase().includes(q) ||
-                    (u.tenant_name || '').toLowerCase().includes(q)
-                  )
-                }
-                return true
-              })
-              if (sortCol) {
-                filtered.sort((a, b) => {
-                  const av = (a[sortCol] || '').toString().toLowerCase()
-                  const bv = (b[sortCol] || '').toString().toLowerCase()
-                  return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
-                })
-              }
-              return (
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(u => {
+              {filteredUnits.map(u => {
                 const tenantIdStr = u.tenant_id ? String(u.tenant_id) : null
                 const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
                 return (
@@ -618,41 +748,11 @@ export default function AdminDashboard() {
                       />
                     ) : null}
                   </td>
-                  <td className="px-4 py-3" onClick={async () => {
-                    if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
-                    if (u.status === 'missing') {
-                      try {
-                        const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
-                        navigate(`/admin/tenant/${res.id}`)
-                      } catch (err) { setError(err.message) }
-                    }
-                  }}>
-                    <StatusBadge status={u.status} expirationDate={u.expiration_date} />
-                  </td>
-                  <td className="px-4 py-3" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>
-                    {u.assoc_title
-                      ? (u.assoc_title || '').trim().toLowerCase() === 'property manager'
-                        ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-purple-100 text-purple-800 border-purple-300">{u.assoc_title}</span>
-                        : <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-100 text-green-800 border-green-300">{u.assoc_title}</span>
-                      : <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3 font-medium" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.unit_number}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.owner_secondary || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{displayEmail(u.email_secondary) || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.purchase_date || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.street_address || <span className="italic text-slate-400">—</span>}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.city || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.state || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.zip || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.radar_id || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.assessor_parcel_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.type || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.subdivision || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.corp_name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.sunbiz_doc_number || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600" onClick={() => u.tenant_id && navigate(`/admin/tenant/${u.tenant_id}`)}>{u.fein || '—'}</td>
+                  {activeColumns.map(c => (
+                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => openUnit(u)}>
+                      {c.render(u)}
+                    </td>
+                  ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex flex-row gap-1 flex-wrap items-center">
                       {inviteSuccess === u.unit_id + '-primary' ? (
@@ -687,16 +787,15 @@ export default function AdminDashboard() {
                 </tr>
                 )
               })}
-              {filtered.length === 0 && !error && (
+              {filteredUnits.length === 0 && !error && (
                 <tr>
-                  <td colSpan={21} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={activeColumns.length + 2} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
                 </tr>
               )}
             </tbody>
-              )
-            })()}
           </table>
         </div>
+        )}
       </main>
     </div>
   )

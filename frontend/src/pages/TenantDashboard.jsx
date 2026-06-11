@@ -160,7 +160,7 @@ export default function TenantDashboard() {
             {policyLoading ? (
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-20 animate-pulse" />
             ) : policy ? (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center justify-between">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Current status</p>
                   <div className="mt-1 flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function TenantDashboard() {
                 )}
               </div>
             ) : (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex items-center justify-between">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="font-semibold text-red-700">No policy on file</p>
                   <p className="text-sm text-red-600 mt-1">Your condo association requires proof of insurance.</p>
@@ -303,10 +303,12 @@ export default function TenantDashboard() {
                       </div>
                     ) : (
                       <div>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-slate-500 hidden sm:block">
                           {dragOver ? 'Drop to upload' : 'Drag & drop your dec page here'}
                         </p>
-                        <p className="text-xs text-slate-400 mt-1">or click to browse · PDF, PNG, JPG</p>
+                        <p className="text-xs text-slate-400 mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
+                        <p className="text-sm text-slate-500 sm:hidden">Tap to take a photo or choose a file</p>
+                        <p className="text-xs text-slate-400 mt-1 sm:hidden">PDF, PNG, JPG</p>
                       </div>
                     )}
                     <input

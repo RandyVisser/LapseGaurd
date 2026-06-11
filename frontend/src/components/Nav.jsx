@@ -1,36 +1,69 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Nav({ role, title }) {
   const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/login')
   }
 
+  const links = role === 'hoa_admin'
+    ? [
+        { to: '/admin/dashboard', label: 'Dashboard' },
+        { to: '/admin/documents', label: 'Documents' },
+        { to: '/admin/settings', label: 'Settings' },
+      ]
+    : role === 'tenant'
+      ? [{ to: '/tenant/dashboard', label: 'My Policy' }]
+      : []
+
   return (
-    <nav className="bg-blue-800 text-white px-6 py-3 flex items-center justify-between relative">
-      <span className="font-bold text-lg tracking-tight">condo.insure</span>
-      {title && <span className="font-bold text-xl text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
-      <div className="flex items-center gap-4 text-sm">
-        {role === 'hoa_admin' && (
-          <>
-            <Link to="/admin/dashboard" className="hover:underline">Dashboard</Link>
-            <Link to="/admin/documents" className="hover:underline">Documents</Link>
-            <Link to="/admin/settings" className="hover:underline">Settings</Link>
-          </>
-        )}
-        {role === 'tenant' && (
-          <Link to="/tenant/dashboard" className="hover:underline">My Policy</Link>
-        )}
+    <nav className="bg-blue-800 text-white px-4 sm:px-6 py-3 relative">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-lg tracking-tight">condo.insure</span>
+        {title && <span className="hidden md:block font-bold text-xl text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
+
+        {/* Desktop links */}
+        <div className="hidden sm:flex items-center gap-4 text-sm">
+          {links.map(l => (
+            <Link key={l.to} to={l.to} className="hover:underline">{l.label}</Link>
+          ))}
+          <button onClick={handleLogout} className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded">
+            Sign out
+          </button>
+        </div>
+
+        {/* Mobile hamburger */}
         <button
-          onClick={handleLogout}
-          className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded"
+          className="sm:hidden p-1 -mr-1"
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label="Menu"
         >
-          Sign out
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {menuOpen
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+          </svg>
         </button>
       </div>
+
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div className="sm:hidden mt-3 pb-1 flex flex-col gap-1 text-sm border-t border-blue-700 pt-3">
+          {links.map(l => (
+            <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
+              className="px-2 py-2 rounded hover:bg-blue-700">{l.label}</Link>
+          ))}
+          <button onClick={handleLogout}
+            className="text-left px-2 py-2 rounded hover:bg-blue-700">
+            Sign out
+          </button>
+        </div>
+      )}
     </nav>
   )
 }
