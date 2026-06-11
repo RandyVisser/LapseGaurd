@@ -650,7 +650,7 @@ export default function AdminTenantDetail() {
       named_insured: '', additional_insured: '', additional_interests: '',
       association_listed: false, document_url: '', uploaded_at: '',
     }])
-    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200)
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 400)
   }
 
   async function doSave(overridePolicyForms, overrideDrafts) {
