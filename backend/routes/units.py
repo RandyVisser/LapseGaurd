@@ -66,7 +66,7 @@ async def get_policy(
         raise HTTPException(status_code=403, detail="Not your unit")
 
     row = await conn.fetchrow(
-        """SELECT * FROM policies WHERE tenant_id = $1
+        """SELECT * FROM policies WHERE tenant_id = $1 AND superseded_by IS NULL
            ORDER BY
                CASE status WHEN 'active' THEN 0 WHEN 'expiring' THEN 1 WHEN 'pending_review' THEN 2 WHEN 'lapsed' THEN 3 ELSE 4 END,
                expiration_date DESC NULLS LAST,
@@ -254,8 +254,45 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
                     f"UPDATE policies SET {set_parts} WHERE id = ${len(params)}",
                     *params,
                 )
+
+                await _resolve_superseded(conn, policy_id)
     except Exception as e:
         logger.error(f"Failed to parse dec page for policy {policy_id}: {e}")
+
+
+async def _resolve_superseded(conn, policy_id: str):
+    """After a document parses, work out which policy is authoritative for its
+    coverage type. Owners upload renewals, endorsements, and duplicates — the
+    doc with the latest expiration date wins; the rest become history."""
+    new_row = await conn.fetchrow(
+        "SELECT tenant_id, coverage_type, policy_number, expiration_date FROM policies WHERE id = $1",
+        policy_id,
+    )
+    if not new_row or not new_row["expiration_date"] or new_row["coverage_type"] in (None, "unknown"):
+        return
+
+    # Mark older docs for the same coverage (or same policy number) as superseded
+    await conn.execute(
+        """UPDATE policies SET superseded_by = $1
+           WHERE tenant_id = $2 AND id != $1 AND superseded_by IS NULL
+             AND (coverage_type = $3 OR (policy_number IS NOT NULL AND policy_number = $4))
+             AND expiration_date IS NOT NULL AND expiration_date < $5""",
+        policy_id, new_row["tenant_id"], new_row["coverage_type"],
+        new_row["policy_number"], new_row["expiration_date"],
+    )
+
+    # If a newer doc already exists for this coverage, this upload is the superseded one
+    newer = await conn.fetchrow(
+        """SELECT id FROM policies
+           WHERE tenant_id = $2 AND id != $1 AND superseded_by IS NULL
+             AND coverage_type = $3 AND expiration_date > $4
+           ORDER BY expiration_date DESC LIMIT 1""",
+        policy_id, new_row["tenant_id"], new_row["coverage_type"], new_row["expiration_date"],
+    )
+    if newer:
+        await conn.execute(
+            "UPDATE policies SET superseded_by = $1 WHERE id = $2", newer["id"], policy_id
+        )
 
 
 @router.post("/unit/{unit_id}/policy", response_model=PolicyOut)

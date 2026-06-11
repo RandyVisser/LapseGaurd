@@ -1062,7 +1062,7 @@ export default function AdminTenantDetail() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Expired</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{p.superseded_by ? 'Superseded' : 'Expired'}</span>
                             {p.document_url && (
                               <a href={p.document_url} target="_blank" rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline text-xs">View</a>

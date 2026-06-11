@@ -63,6 +63,8 @@ def evaluate_compliance(policies: list[dict]) -> dict:
                              standalone wind policy is on file
     }
     """
+    # Superseded policies (replaced by a newer doc for the same coverage) are history
+    policies = [p for p in policies if not p.get("superseded_by")]
     if not policies:
         return {"status": PolicyStatus.missing.value, "current_ids": set(), "needs_wind_policy": False}
 

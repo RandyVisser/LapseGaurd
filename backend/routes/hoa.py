@@ -504,22 +504,13 @@ async def update_hoa(
     )
 
 
-@router.post("/hoa/{hoa_id}/report/send")
-async def send_board_report(
-    hoa_id: str,
-    user: AuthUser = Depends(require_hoa_admin),
-    conn: asyncpg.Connection = Depends(get_conn),
-    background_tasks: BackgroundTasks = None,
-):
-    await _assert_hoa_access(user, hoa_id, conn)
-
+async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | None:
+    """Build the compliance board report for one HOA. Returns
+    {"to_email", "subject", "html"} or None if the HOA doesn't exist.
+    Shared by the manual send route and the scheduled cron run."""
     hoa_row = await conn.fetchrow("SELECT name, admin_email FROM hoas WHERE id = $1", hoa_id)
     if not hoa_row:
-        raise HTTPException(status_code=404, detail="HOA not found")
-
-    to_email = hoa_row["admin_email"] or user.email
-    if not to_email:
-        raise HTTPException(status_code=422, detail="No admin email on file for this HOA")
+        return None
 
     rows = await conn.fetch(
         """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
@@ -562,8 +553,28 @@ async def send_board_report(
         lapsed_unit_list=lapsed_units,
     )
 
+    return {"to_email": hoa_row["admin_email"], "subject": subject, "html": html}
+
+
+@router.post("/hoa/{hoa_id}/report/send")
+async def send_board_report(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+    background_tasks: BackgroundTasks = None,
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    report = await build_board_report(conn, hoa_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="HOA not found")
+
+    to_email = report["to_email"] or user.email
+    if not to_email:
+        raise HTTPException(status_code=422, detail="No admin email on file for this HOA")
+
     async def _send():
-        await send_email(to_email, subject, html)
+        await send_email(to_email, report["subject"], report["html"])
         await log_audit(conn, hoa_id, user.sub, user.email, "board_report_sent", {"to": to_email})
 
     if background_tasks:

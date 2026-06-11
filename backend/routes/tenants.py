@@ -250,6 +250,7 @@ async def get_tenant_detail(
             coverage_type=r["coverage_type"],
             is_current=r["id"] in current_ids,
             review_overrides=json.loads(r["review_overrides"]) if isinstance(r["review_overrides"], str) else (r["review_overrides"] or {}),
+            superseded_by=r["superseded_by"],
         )
         for r in policy_rows
     ]

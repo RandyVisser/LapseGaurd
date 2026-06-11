@@ -35,6 +35,7 @@ class PolicyOut(BaseModel):
     coverage_type: Optional[str] = None
     is_current: bool = False
     review_overrides: dict = {}
+    superseded_by: Optional[uuid.UUID] = None
 
 
 class ActivityLogEntry(BaseModel):
