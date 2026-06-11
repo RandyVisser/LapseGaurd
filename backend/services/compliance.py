@@ -79,7 +79,7 @@ def evaluate_compliance(policies: list[dict]) -> dict:
                 "current_ids": {excluded["id"], wind["id"]},
                 "needs_wind_policy": False,
             }
-        return {"status": PolicyStatus.lapsed.value, "current_ids": {excluded["id"]}, "needs_wind_policy": True}
+        return {"status": excluded["status"], "current_ids": {excluded["id"]}, "needs_wind_policy": True}
 
     best = _best_overall(policies)
     return {"status": best["status"], "current_ids": {best["id"]}, "needs_wind_policy": False}
