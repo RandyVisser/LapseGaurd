@@ -315,7 +315,7 @@ async def compliance_summary(
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = 0
-    compliant = expiring = lapsed = non_compliant = pending_review = missing = 0
+    compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = 0
     for r in rows:
         if r["assoc_title"] == "Property Manager":
             property_managers += 1
