@@ -24,7 +24,7 @@ Fields:
 - insurer (string — the full legal name of the insurance company/carrier issuing the policy; look in the page header, footer, "Insured by", "Underwritten by", "A policy of", or company logo area; do NOT use the agent or agency name)
 - policy_number (string)
 - named_insured (string — the primary named insured(s) on the policy)
-- listed_parties (array of objects — every person, company, or entity listed on the dec page other than the named insured; for each entry include: "name" (string) and "designation" (string — copy the EXACT label printed on the document next to or above their name, e.g. "Additional Insured", "Additional Interest", "Mortgagee", "Loss Payee", "Certificate Holder", "ATIMA"); empty array if none)
+- listed_parties (array of objects — every person, company, or entity listed on the dec page other than the named insured; for each entry include: "name" (string) and "designation" (string — copy the EXACT label printed on the document next to or above their name, e.g. "Additional Insured", "Additional Interest", "Mortgagee", "Loss Payee", "Certificate Holder", "ATIMA", "Agent", "Producer", "Broker"); empty array if none; include agents and brokers with their designation so they can be identified)
 - property_address (string — the insured property's address as shown on the dec page)
 - effective_date (YYYY-MM-DD or null — the policy START date; look for "Effective Date", "Policy Effective", "Coverage Begins", or the first date in a "Policy Period" range such as "04/09/2026 to 04/09/2027")
 - expiration_date (YYYY-MM-DD or null — the policy END date; look for "Expiration Date", "Policy Expiry", "Coverage Ends", "Renewal Date", or the SECOND/last date in a "Policy Period" range; this is the date the coverage lapses if not renewed)
@@ -45,6 +45,9 @@ Use null for any field not found."""
 _INSURED_KEYWORDS = {"additional insured", "addl insured", "addl. insured", "add'l insured", " ai "}
 _INTEREST_KEYWORDS = {"additional interest", "addl interest", "certificate holder", "mortgagee",
                       "loss payee", "atima", "lienholder", "lender"}
+# Parties with these designations are administrative contacts on the policy, not coverage parties — skip them
+_IGNORE_KEYWORDS = {"agent", "agency", "producer", "broker", "servicing agent", "writing agent",
+                    "authorized representative", "countersignature"}
 
 
 def _dedupe_insured_lists(result: dict) -> dict:
@@ -61,6 +64,9 @@ def _dedupe_insured_lists(result: dict) -> dict:
         name = (party.get("name") or "").strip()
         designation = (party.get("designation") or "").lower()
         if not name:
+            continue
+        # Skip agents, brokers, producers — they are not coverage parties
+        if any(kw in designation for kw in _IGNORE_KEYWORDS):
             continue
         # Check designation against keyword sets
         is_insured = any(kw in designation for kw in _INSURED_KEYWORDS)
