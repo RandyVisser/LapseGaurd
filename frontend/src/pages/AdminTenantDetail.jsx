@@ -557,6 +557,10 @@ export default function AdminTenantDetail() {
   const overallStatus   = worstStatus(currentPolicies)
   const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
 
+  const needsWindPolicy = tenant?.ho6_wind_required &&
+    currentPolicies.some(p => p.coverage_type === 'ho6_wind_excluded') &&
+    !currentPolicies.some(p => p.coverage_type === 'wind_only')
+
   const lastUpdated = tenant?.policies?.reduce((latest, p) => {
     const t = p.parsed_at || p.uploaded_at
     return !latest || (t && t > latest) ? t : latest
@@ -915,11 +919,13 @@ export default function AdminTenantDetail() {
                 {/* Add policy */}
                 <button type="button" onClick={handleAddPolicy}
                   className={`flex items-center gap-2 text-sm font-medium rounded-xl px-5 py-3 w-full justify-center border-2 border-dashed transition-colors ${
-                    currentPolicies.length === 0 && drafts.length === 0
+                    needsWindPolicy
+                      ? 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                      : currentPolicies.length === 0 && drafts.length === 0
                       ? 'border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100'
                       : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}>
-                  + Add policy
+                  {needsWindPolicy ? '+ Add wind policy' : '+ Add policy'}
                 </button>
 
                 {/* History */}
