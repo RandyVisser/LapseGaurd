@@ -321,7 +321,7 @@ async def compliance_summary(
             property_managers += 1
             continue
         total_units += 1
-        if r["assoc_title"]:
+        if r["assoc_title"] and (r["assoc_title"] or "").strip().lower() != "property manager":
             board_members += 1
         status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
         if status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
