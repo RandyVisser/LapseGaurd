@@ -130,6 +130,17 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const meets = Number(covE) >= tenant.ho6_coverage_e_min
     items.push({ type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
   }
+  if (tenant.ho6_wind_required) {
+    const hasWind = ho6?.coverage_type === 'ho6_with_wind' || wind != null
+    items.push({
+      type: hasWind ? 'pass' : 'fail',
+      text: hasWind
+        ? 'Wind coverage present'
+        : ho6?.coverage_type === 'ho6_wind_excluded'
+          ? 'Association requires wind coverage — HO-6 excludes wind (separate wind policy required)'
+          : 'Association requires wind coverage — not found on policy',
+    })
+  }
   if (tenant.ho6_additional_interest_required) {
     const v = ho6?.review_overrides?.association_additional_interest?.value
     if (v === 'pass' || v === 'override') items.push({ type: 'pass', text: 'Association listed on HO-6' })
