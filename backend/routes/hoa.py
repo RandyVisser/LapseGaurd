@@ -56,7 +56,22 @@ async def _compliance_status_by_tenant(conn: asyncpg.Connection, tenant_ids: lis
     exp_dates = {}
     for tid, policies in by_tenant.items():
         result = evaluate_compliance(policies)
-        statuses[tid] = result["status"]
+        status = result["status"]
+        # Override to non_compliant if any current policy has failed validation
+        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value):
+            current_ids = result.get("current_ids", set())
+            for p in policies:
+                if p["id"] not in current_ids:
+                    continue
+                ext = p.get("extracted_data") or {}
+                if isinstance(ext, str):
+                    import json as _json
+                    try: ext = _json.loads(ext)
+                    except Exception: ext = {}
+                if (ext.get("validation") or {}).get("passed") is False:
+                    status = PolicyStatus.non_compliant.value
+                    break
+        statuses[tid] = status
         # Pick expiration date from the current policy set
         current_ids = result.get("current_ids", set())
         current = [p for p in policies if p["id"] in current_ids]

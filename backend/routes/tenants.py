@@ -94,6 +94,7 @@ async def get_tenant_detail(
                COALESCE(t.phone, '') AS phone,
                u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
+               u.owner_primary, u.owner_secondary,
                h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
                h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required
@@ -179,6 +180,19 @@ async def get_tenant_detail(
                 ))
     activity.sort(key=lambda x: x.timestamp, reverse=True)
 
+    def _effective_status(r) -> str:
+        """Override DB status with non_compliant if validation flags exist and policy isn't already lapsed/expired."""
+        db_status = r["status"]
+        if db_status in (PolicyStatus.lapsed.value, PolicyStatus.missing.value):
+            return db_status
+        ext = json.loads(r["extracted_data"]) if isinstance(r["extracted_data"], str) else (r["extracted_data"] or {})
+        validation = ext.get("validation") or {}
+        if validation.get("passed") is False and db_status in (
+            PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value
+        ):
+            return PolicyStatus.non_compliant.value
+        return db_status
+
     policies = [
         PolicyOut(
             id=r["id"],
@@ -186,7 +200,7 @@ async def get_tenant_detail(
             insurer=r["insurer"],
             policy_number=r["policy_number"],
             expiration_date=r["expiration_date"],
-            status=r["status"],
+            status=_effective_status(r),
             document_url=r["document_url"],
             uploaded_at=r["uploaded_at"],
             extracted_data=json.loads(r["extracted_data"]) if r["extracted_data"] else None,
@@ -211,6 +225,8 @@ async def get_tenant_detail(
         city=row["city"],
         state=row["state"],
         zip=row["zip"],
+        owner_primary=row["owner_primary"],
+        owner_secondary=row["owner_secondary"],
         policies=policies,
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
