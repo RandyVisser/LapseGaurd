@@ -644,7 +644,8 @@ export default function AdminTenantDetail() {
 
   useEffect(() => {
     if (drafts.length > 0) {
-      newDraftRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const el = document.getElementById('new-draft-card')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [drafts.length])
 
@@ -969,7 +970,7 @@ export default function AdminTenantDetail() {
 
                 {/* Draft (new) policies */}
                 {drafts.map((d, i) => (
-                  <div key={d._draftId} ref={i === drafts.length - 1 ? newDraftRef : null}>
+                  <div key={d._draftId} id={i === drafts.length - 1 ? 'new-draft-card' : undefined}>
                   <PolicyEditCard
                     policyId={d._draftId}
                     form={d}
