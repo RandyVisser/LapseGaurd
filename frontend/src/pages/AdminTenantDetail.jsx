@@ -859,6 +859,16 @@ export default function AdminTenantDetail() {
     nextSteps.push({ icon: '🎉', text: "You're all done! This unit is now compliant.", success: true })
   }
 
+  // When the unit transitions to compliant, scroll to the top so the green status card is visible
+  const isCompliantNow = !!nextSteps[0]?.success
+  const wasCompliantRef = useRef(isCompliantNow)
+  useEffect(() => {
+    if (isCompliantNow && !wasCompliantRef.current) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    wasCompliantRef.current = isCompliantNow
+  }, [isCompliantNow])
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
