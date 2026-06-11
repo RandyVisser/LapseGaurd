@@ -802,8 +802,12 @@ export default function AdminTenantDetail() {
     nextSteps.push({ icon: '🔄', text: 'Policy is expired — click "+ Add renewal policy" to upload the new term.' })
   } else if (drafts.length > 0) {
     const hasDoc = drafts.some(d => d.document_url)
-    if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Upload the declaration page document to the policy card.' })
-    else nextSteps.push({ icon: '⏳', text: 'Document uploaded — AI extraction will start automatically.' })
+    nextSteps.push({ icon: '✅', text: 'Policy card added.', done: true })
+    if (!hasDoc) nextSteps.push({ icon: '📄', text: 'Click "Upload dec page" to enable AI extraction.' })
+    else {
+      nextSteps.push({ icon: '✅', text: 'Document uploaded.', done: true })
+      nextSteps.push({ icon: '⏳', text: 'AI extraction starting automatically…' })
+    }
     const hasAllFields = drafts.every(d => d.insurer && d.policy_number && d.expiration_date && d.named_insured)
     if (hasDoc && hasAllFields) nextSteps.push({ icon: '💾', text: 'Review the extracted fields then click "Save" to confirm.' })
   } else if (unparsedPolicies.length > 0) {
@@ -827,9 +831,12 @@ export default function AdminTenantDetail() {
           </div>
           <ul className="p-4 space-y-3">
             {nextSteps.map((s, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+              <li key={i} className={`flex items-start gap-3 text-sm ${s.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                 <span className="text-base leading-snug">{s.icon}</span>
-                <span><span className="font-semibold text-blue-700">Step {i + 1}:</span> {s.text}</span>
+                <span>
+                  {!s.done && <span className="font-semibold text-blue-700">Step {i + 1}: </span>}
+                  {s.text}
+                </span>
               </li>
             ))}
           </ul>
