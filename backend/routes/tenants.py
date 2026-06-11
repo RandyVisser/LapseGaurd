@@ -180,9 +180,13 @@ async def get_tenant_detail(
                 ))
     activity.sort(key=lambda x: x.timestamp, reverse=True)
 
-    # Check if a wind-only policy is in the current coverage set
+    # Check what coverage types are in the current coverage set
     has_wind_policy = any(
         r["coverage_type"] == "wind_only" and r["id"] in current_ids
+        for r in policy_rows
+    )
+    has_ho6_policy = any(
+        r["coverage_type"] in ("ho6_with_wind", "ho6_wind_excluded") and r["id"] in current_ids
         for r in policy_rows
     )
 
@@ -195,6 +199,10 @@ async def get_tenant_detail(
             return db_status
         if db_status not in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value, PolicyStatus.non_compliant.value):
             return db_status
+
+        # A wind-only policy with no HO-6 on file never satisfies the HO6 requirement
+        if r["coverage_type"] == "wind_only" and not has_ho6_policy:
+            return PolicyStatus.non_compliant.value
 
         ext = json.loads(r["extracted_data"]) if isinstance(r["extracted_data"], str) else (r["extracted_data"] or {})
         if not ext:

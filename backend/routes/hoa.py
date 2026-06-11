@@ -98,7 +98,7 @@ async def _compliance_status_by_tenant(
                             break
                     except (TypeError, ValueError):
                         pass
-            if found_non_compliant:
+            if found_non_compliant or result.get("needs_ho6_policy"):
                 status = PolicyStatus.non_compliant.value
             elif status == PolicyStatus.non_compliant.value:
                 # Was non-compliant but all issues are now resolved — revert to active/expiring from DB

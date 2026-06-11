@@ -77,6 +77,11 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const wind = currentPolicies.find(p => p.coverage_type === 'wind_only')
   const items = []
 
+  // Wind-only coverage never satisfies the HO-6 requirement on its own
+  if (wind && !ho6) {
+    items.push({ type: 'fail', text: 'HO-6 policy required — only a wind-only policy is on file (no dwelling/liability coverage)' })
+  }
+
   for (const [p, label] of [[ho6, 'HO-6'], [wind, 'Wind only']]) {
     if (!p) continue
     const d = daysUntil(p.expiration_date)

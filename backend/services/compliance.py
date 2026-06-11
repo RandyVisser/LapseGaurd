@@ -81,5 +81,13 @@ def evaluate_compliance(policies: list[dict]) -> dict:
             }
         return {"status": excluded["status"], "current_ids": {excluded["id"]}, "needs_wind_policy": True}
 
+    # Wind-only with no HO6 at all — wind alone never satisfies the HO6 requirement
+    wind = _pick_current(policies, "wind_only")
+    if wind and wind["status"] in _COVERAGE_STATUSES:
+        status = wind["status"]
+        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
+            status = PolicyStatus.non_compliant.value
+        return {"status": status, "current_ids": {wind["id"]}, "needs_wind_policy": False, "needs_ho6_policy": True}
+
     best = _best_overall(policies)
     return {"status": best["status"], "current_ids": {best["id"]}, "needs_wind_policy": False}
