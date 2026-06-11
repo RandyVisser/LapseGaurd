@@ -642,12 +642,6 @@ export default function AdminTenantDetail() {
 
   const newDraftRef = useRef(null)
 
-  useEffect(() => {
-    if (drafts.length > 0) {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
-    }
-  }, [drafts.length])
-
   function handleAddPolicy() {
     const id = `draft-${++_draftCounter}`
     setDrafts(ds => [...ds, {
@@ -656,6 +650,7 @@ export default function AdminTenantDetail() {
       named_insured: '', additional_insured: '', additional_interests: '',
       association_listed: false, document_url: '', uploaded_at: '',
     }])
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200)
   }
 
   async function doSave(overridePolicyForms, overrideDrafts) {
