@@ -180,22 +180,33 @@ async def get_tenant_detail(
                 ))
     activity.sort(key=lambda x: x.timestamp, reverse=True)
 
+    # Check if a wind-only policy is in the current coverage set
+    has_wind_policy = any(
+        r["coverage_type"] == "wind_only" and r["id"] in current_ids
+        for r in policy_rows
+    )
+
+    _WIND_PHRASES = ("wind coverage", "wind policy", "wind-only", "windstorm")
+
     def _effective_status(r) -> str:
         """Override DB status with non_compliant if the policy fails any HOA requirement check."""
         db_status = r["status"]
         if db_status in (PolicyStatus.lapsed.value, PolicyStatus.missing.value):
             return db_status
-        if db_status not in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value):
+        if db_status not in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value, PolicyStatus.non_compliant.value):
             return db_status
 
         ext = json.loads(r["extracted_data"]) if isinstance(r["extracted_data"], str) else (r["extracted_data"] or {})
         if not ext:
             return db_status
 
-        # 1. Stored validation flags (populated by background task when it works)
+        # 1. Stored validation flags — skip wind-only flags if a wind policy is now present
         validation = ext.get("validation") or {}
         if validation.get("passed") is False:
-            return PolicyStatus.non_compliant.value
+            flags = validation.get("flags") or []
+            non_wind_flags = [f for f in flags if not any(w in f.lower() for w in _WIND_PHRASES)]
+            if non_wind_flags or (flags and not has_wind_policy):
+                return PolicyStatus.non_compliant.value
 
         # 2. Live check against current HOA requirements (catches stale extractions)
         try:
@@ -209,12 +220,12 @@ async def get_tenant_detail(
             if e_min is not None and liability is not None and float(liability) < float(e_min):
                 return PolicyStatus.non_compliant.value
 
-            if row["ho6_wind_required"] and ext.get("coverage_type") == "ho6_wind_excluded":
+            if row["ho6_wind_required"] and ext.get("coverage_type") == "ho6_wind_excluded" and not has_wind_policy:
                 return PolicyStatus.non_compliant.value
         except (TypeError, ValueError):
             pass
 
-        return db_status
+        return db_status if db_status != PolicyStatus.non_compliant.value else PolicyStatus.active.value
 
     policies = [
         PolicyOut(

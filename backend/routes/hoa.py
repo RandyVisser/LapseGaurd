@@ -61,37 +61,50 @@ async def _compliance_status_by_tenant(
         result = evaluate_compliance(policies)
         status = result["status"]
         # Override to non_compliant if any current policy fails validation
-        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value):
+        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value, PolicyStatus.non_compliant.value):
             current_ids = result.get("current_ids", set())
-            for p in policies:
-                if p["id"] not in current_ids:
-                    continue
+            current_policies = [p for p in policies if p["id"] in current_ids]
+            has_wind_policy = any(p.get("coverage_type") == "wind_only" for p in current_policies)
+            found_non_compliant = False
+            for p in current_policies:
                 raw = p.get("extracted_data")
                 ext = _json.loads(raw) if isinstance(raw, str) else (raw or {})
                 if not ext:
                     continue
-                # Check stored validation flags
-                if (ext.get("validation") or {}).get("passed") is False:
-                    status = PolicyStatus.non_compliant.value
-                    break
+                # Check stored validation flags — but skip wind-only flags if wind is now covered
+                validation = ext.get("validation") or {}
+                if validation.get("passed") is False:
+                    flags = validation.get("flags") or []
+                    _WIND_PHRASES = ("wind coverage", "wind policy", "wind-only", "windstorm")
+                    non_wind_flags = [f for f in flags if not any(w in f.lower() for w in _WIND_PHRASES)]
+                    if non_wind_flags or (flags and not has_wind_policy):
+                        found_non_compliant = True
+                        break
                 # Live coverage check against HOA requirements
                 if hoa_reqs:
                     try:
                         a_min = hoa_reqs.get("ho6_coverage_a_min")
                         dwelling = ext.get("dwelling_coverage")
                         if a_min and dwelling and float(dwelling) < float(a_min):
-                            status = PolicyStatus.non_compliant.value
+                            found_non_compliant = True
                             break
                         e_min = hoa_reqs.get("ho6_coverage_e_min")
                         liability = ext.get("liability_coverage")
                         if e_min and liability and float(liability) < float(e_min):
-                            status = PolicyStatus.non_compliant.value
+                            found_non_compliant = True
                             break
-                        if hoa_reqs.get("ho6_wind_required") and ext.get("coverage_type") == "ho6_wind_excluded":
-                            status = PolicyStatus.non_compliant.value
+                        if hoa_reqs.get("ho6_wind_required") and ext.get("coverage_type") == "ho6_wind_excluded" and not has_wind_policy:
+                            found_non_compliant = True
                             break
                     except (TypeError, ValueError):
                         pass
+            if found_non_compliant:
+                status = PolicyStatus.non_compliant.value
+            elif status == PolicyStatus.non_compliant.value:
+                # Was non-compliant but all issues are now resolved — revert to active/expiring from DB
+                best = min(current_policies, key=lambda p: (p.get("expiration_date") or "9999"), default=None)
+                if best:
+                    status = best["status"] if best["status"] not in (PolicyStatus.non_compliant.value,) else PolicyStatus.active.value
         statuses[tid] = status
         # Pick expiration date from the current policy set
         current_ids = result.get("current_ids", set())
