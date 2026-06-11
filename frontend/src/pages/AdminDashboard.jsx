@@ -112,6 +112,7 @@ const COLUMNS = [
 
 const DEFAULT_COLUMNS = COLUMNS.filter(c => !c.group).map(c => c.key)
 const COLUMNS_STORAGE_KEY = 'lapseguard.dashboard.columns.v1'
+const SHOW_ALL_STORAGE_KEY = 'lapseguard.dashboard.showAll.v1'
 
 function loadVisibleColumns() {
   try {
@@ -122,6 +123,52 @@ function loadVisibleColumns() {
     }
   } catch { /* corrupted storage — fall through to defaults */ }
   return DEFAULT_COLUMNS
+}
+
+function RowActionsMenu({ items }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef(null)
+
+  function toggle(e) {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      // fixed positioning so the menu isn't clipped by the table's scroll container
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 176) })
+    }
+    setOpen(o => !o)
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={toggle}
+        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
+        title="Actions"
+      >
+        ⋯
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={e => { e.stopPropagation(); setOpen(false) }} />
+          <div className="fixed z-40 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
+            {items.map(item => (
+              <button
+                key={item.label}
+                onClick={e => { e.stopPropagation(); setOpen(false); item.onClick() }}
+                disabled={item.disabled}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-red-600' : 'text-slate-700'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
 }
 
 function ColumnsPicker({ visible, setVisible }) {
@@ -238,12 +285,17 @@ export default function AdminDashboard() {
 
   const isMobile = useIsMobile()
   const [expandedUnitId, setExpandedUnitId] = useState(null)
-  const [detailUnit, setDetailUnit] = useState(null)
   const [visibleCols, setVisibleCols] = useState(loadVisibleColumns)
+  const [showAllInfo, setShowAllInfo] = useState(() => {
+    try { return localStorage.getItem(SHOW_ALL_STORAGE_KEY) === 'true' } catch { return false }
+  })
   useEffect(() => {
     try { localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(visibleCols)) } catch { /* storage full/blocked */ }
   }, [visibleCols])
-  const activeColumns = COLUMNS.filter(c => visibleCols.includes(c.key))
+  useEffect(() => {
+    try { localStorage.setItem(SHOW_ALL_STORAGE_KEY, String(showAllInfo)) } catch { /* storage full/blocked */ }
+  }, [showAllInfo])
+  const activeColumns = showAllInfo ? COLUMNS : COLUMNS.filter(c => visibleCols.includes(c.key))
 
   async function openUnit(u) {
     if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
@@ -553,7 +605,18 @@ export default function AdminDashboard() {
           <div className="flex items-start gap-3 flex-wrap">
           <div className="flex flex-col gap-2">
             <div className="flex gap-2 flex-wrap">
-              <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />
+              <button
+                onClick={() => setShowAllInfo(s => !s)}
+                className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
+                  showAllInfo
+                    ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+                title="Toggle between your column selection and every field"
+              >
+                {showAllInfo ? '✓ All info' : 'All info'}
+              </button>
+              {!showAllInfo && <ColumnsPicker visible={visibleCols} setVisible={setVisibleCols} />}
               <button
                 onClick={handleExport}
                 disabled={exporting || !hoaId || hoaId === '__all__'}
@@ -648,37 +711,6 @@ export default function AdminDashboard() {
             >
               Clear
             </button>
-          </div>
-        )}
-
-        {/* Unit details modal (⋯ button) */}
-        {detailUnit && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setDetailUnit(null)}>
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-800">Unit {detailUnit.unit_number}</h2>
-                  <StatusBadge status={detailUnit.status} expirationDate={detailUnit.expiration_date} />
-                </div>
-                <button onClick={() => setDetailUnit(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none" aria-label="Close">✕</button>
-              </div>
-              <dl className="px-5 py-4 space-y-2 text-sm overflow-y-auto">
-                {COLUMNS.filter(c => c.key !== 'status').map(c => (
-                  <div key={c.key} className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400 flex-shrink-0">{c.label}</dt>
-                    <dd className="text-slate-700 text-right break-words min-w-0">{c.render(detailUnit)}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="px-5 py-3 border-t border-slate-100 flex justify-end">
-                <button
-                  onClick={() => { const u = detailUnit; setDetailUnit(null); openUnit(u) }}
-                  className="text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-4 py-1.5 rounded-lg"
-                >
-                  Open unit →
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -843,41 +875,28 @@ export default function AdminDashboard() {
                     </td>
                   ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex flex-row gap-1 flex-wrap items-center">
-                      <button
-                        onClick={e => { e.stopPropagation(); setDetailUnit(u) }}
-                        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
-                        title="All unit details"
-                      >
-                        ⋯
-                      </button>
-                      {inviteSuccess === u.unit_id + '-primary' ? (
-                        <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') }}
-                          className="text-xs bg-slate-700 hover:bg-slate-800 text-white px-3 py-1 rounded-full text-left"
-                        >
-                          Invite Primary
-                        </button>
+                    <div className="flex items-center gap-1.5">
+                      {(inviteSuccess === u.unit_id + '-primary' || inviteSuccess === u.unit_id + '-secondary') && (
+                        <span className="text-xs text-green-600 font-medium whitespace-nowrap">Invite sent ✓</span>
                       )}
-                      {inviteSuccess === u.unit_id + '-secondary' ? (
-                        <span className="text-xs text-green-600 font-medium">Invite sent ✓</span>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
-                          className="text-xs bg-slate-500 hover:bg-slate-600 text-white px-3 py-1 rounded-full text-left"
-                        >
-                          Invite Secondary
-                        </button>
-                      )}
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteUnit(u.unit_id) }}
-                        disabled={deletingUnit && deleteUnitId === u.unit_id}
-                        className="text-xs text-red-500 hover:text-red-700 hover:underline px-1 disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
+                      <RowActionsMenu
+                        items={[
+                          {
+                            label: 'Invite Primary Owner',
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') },
+                          },
+                          {
+                            label: 'Invite Secondary Owner',
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                          },
+                          {
+                            label: 'Delete unit…',
+                            danger: true,
+                            disabled: deletingUnit && deleteUnitId === u.unit_id,
+                            onClick: () => handleDeleteUnit(u.unit_id),
+                          },
+                        ]}
+                      />
                     </div>
                   </td>
                 </tr>
