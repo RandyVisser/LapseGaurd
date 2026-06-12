@@ -1,9 +1,21 @@
 import os
 import asyncpg
+import sentry_sdk
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# Error monitoring — no-op locally when SENTRY_DSN is unset.
+# send_default_pii stays off: requests carry owner names/addresses.
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "production"),
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
 
 from models.db import get_pool
 from routes.hoa import router as hoa_router
@@ -46,6 +58,7 @@ app.include_router(inbound_router)
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     import logging
+    sentry_sdk.capture_exception(exc)
     logging.getLogger("uvicorn.error").exception("Unhandled error on %s %s", request.method, request.url.path)
     # Include CORS headers manually — responses from exception handlers bypass
     # CORSMiddleware, and without them the browser masks the 500 as a CORS error
