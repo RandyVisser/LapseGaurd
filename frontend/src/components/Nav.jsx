@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Nav({ role, title }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleLogout() {
@@ -33,7 +34,12 @@ export default function Nav({ role, title }) {
         {/* Desktop links */}
         <div className="hidden sm:flex items-center gap-4 text-sm">
           {links.map(l => (
-            <Link key={l.to} to={l.to} className="hover:underline">{l.label}</Link>
+            <Link key={l.to} to={l.to}
+              className={location.pathname === l.to
+                ? 'bg-white text-blue-800 font-semibold px-3 py-1 rounded'
+                : 'hover:underline'}>
+              {l.label}
+            </Link>
           ))}
           <button onClick={handleLogout} className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded">
             Sign out
@@ -59,7 +65,9 @@ export default function Nav({ role, title }) {
         <div className="sm:hidden mt-3 pb-1 flex flex-col gap-1 text-sm border-t border-blue-700 pt-3">
           {links.map(l => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-              className="px-2 py-2 rounded hover:bg-blue-700">{l.label}</Link>
+              className={`px-2 py-2 rounded ${location.pathname === l.to ? 'bg-white text-blue-800 font-semibold' : 'hover:bg-blue-700'}`}>
+              {l.label}
+            </Link>
           ))}
           <button onClick={handleLogout}
             className="text-left px-2 py-2 rounded hover:bg-blue-700">
