@@ -35,7 +35,7 @@ const STATUS_HERO = {
   },
   missing: {
     icon: '!', title: 'No policy on file',
-    blurb: 'Your association requires proof of insurance — upload your declaration page in the YELLOW box below. If you need insurance, click Request a HO-6 quote below.',
+    blurb: 'Your association requires proof of insurance — upload your declaration page in the YELLOW box below.',
     card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
   },
 }
