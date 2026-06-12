@@ -232,6 +232,16 @@ export default function TenantDashboard() {
           {activeUnit?.hoa_name && (
             <p className="text-sm text-slate-500 mt-0.5">{activeUnit.hoa_name}</p>
           )}
+          {activeUnit?.street_address && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {[activeUnit.street_address, activeUnit.city, [activeUnit.state, activeUnit.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+            </p>
+          )}
+          {(activeUnit?.owner_primary || activeUnit?.owner_secondary) && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {[activeUnit.owner_primary, activeUnit.owner_secondary].filter(Boolean).join(' & ')}
+            </p>
+          )}
           {tenantUnits.length > 1 && (
             <div className="flex gap-2 flex-wrap mt-3">
               {tenantUnits.map(u => (

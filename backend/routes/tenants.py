@@ -64,7 +64,8 @@ async def get_my_tenant(
     rows = await conn.fetch(
         """
         SELECT t.id, t.unit_id, t.name, t.email,
-               u.hoa_id, u.unit_number, u.street_address, u.city, u.state,
+               u.hoa_id, u.unit_number, u.street_address, u.city, u.state, u.zip,
+               u.owner_primary, u.owner_secondary,
                h.name AS hoa_name
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
@@ -94,6 +95,9 @@ async def get_my_tenant(
                 "street_address": r["street_address"],
                 "city": r["city"],
                 "state": r["state"],
+                "zip": r["zip"],
+                "owner_primary": r["owner_primary"],
+                "owner_secondary": r["owner_secondary"],
             }
             for r in rows
         ],
