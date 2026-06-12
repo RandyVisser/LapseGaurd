@@ -45,9 +45,19 @@ app.include_router(inbound_router)
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    import logging
+    logging.getLogger("uvicorn.error").exception("Unhandled error on %s %s", request.method, request.url.path)
+    # Include CORS headers manually — responses from exception handlers bypass
+    # CORSMiddleware, and without them the browser masks the 500 as a CORS error
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin and (origin in _allowed_origins or "*" in _allowed_origins):
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
+        headers=headers,
     )
 
 
