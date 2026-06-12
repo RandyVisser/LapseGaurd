@@ -104,9 +104,43 @@ export default function AdminDocuments() {
     }
   }
 
+  // ── Next-steps helper box ─────────────────────────────────────────────
+  const nextSteps = []
+  if (uploading) {
+    nextSteps.push({ icon: '⏳', text: 'Uploading your document…', wait: true })
+  } else if (success) {
+    nextSteps.push({ icon: '🎉', text: 'Document uploaded and shared with all unit owners.', success: true })
+  } else if (!docType) {
+    nextSteps.push({ icon: '📋', text: 'Select a Document Type to get started.' })
+  } else if (docType === 'Wind Mitigation' && (!windFields.inspection_date || !windFields.address || !windFields.building)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the Inspection Date, Address, and Building # or Name.' })
+  } else if (!file) {
+    nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
+  } else {
+    nextSteps.push({ icon: '💾', text: 'Click Upload Document to share it with all unit owners.' })
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
+      {nextSteps.length > 0 && (
+        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'}`}>
+          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+            <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Done' : 'Next Steps'}</span>
+          </div>
+          <ul className="p-4 space-y-3">
+            {nextSteps.map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                <span className="text-base leading-snug">{s.icon}</span>
+                <span>
+                  {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                  {s.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <main className="max-w-3xl mx-auto px-4 py-8">
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
           <header className="mb-6">
