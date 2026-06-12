@@ -521,7 +521,8 @@ export default function AdminTenantDetail() {
     setTenant(data)
     setForm({
       name: data.name || '',
-      email: data.email || '',
+      // Placeholder @condo.insure emails are internal — don't show them
+      email: (data.email || '').toLowerCase().endsWith('@condo.insure') ? '' : (data.email || ''),
       phone: data.phone || '',
       street_address: [
         // Strip any existing embedded "Unit XXXX" occurrences from the stored address
@@ -722,7 +723,10 @@ export default function AdminTenantDetail() {
         ? form.street_address.replace(new RegExp(`\\s*Unit\\s+${unitNumber}`, 'gi'), '').trim()
         : form.street_address
       try {
-        await apiPatch(`/tenant/${tenantId}`, { ...form, street_address: cleanStreetAddress })
+        const tenantPayload = { ...form, street_address: cleanStreetAddress }
+        // Empty email field means a hidden placeholder @condo.insure address — don't overwrite it
+        if (!tenantPayload.email) delete tenantPayload.email
+        await apiPatch(`/tenant/${tenantId}`, tenantPayload)
       } catch (e) { throw new Error(`[tenant] ${e.message}`) }
 
       // 2. Save HOA requirements if changed
