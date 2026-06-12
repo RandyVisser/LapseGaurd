@@ -42,7 +42,6 @@ export default function AdminDocuments() {
     const match = availableHoas.find(h => h[key] === value)
     if (match) setSelectedHoaId(match.id)
   }
-  const [name, setName] = useState('')
   const [docType, setDocType] = useState('')
   const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
   const [file, setFile] = useState(null)
@@ -84,13 +83,12 @@ export default function AdminDocuments() {
         ? [docType, windFields.building, windFields.inspection_date].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
-        name: name.trim() || autoName,
+        name: autoName,
         file_url: data.publicUrl,
         doc_type: docType || null,
         metadata: metadata && Object.keys(metadata).length ? metadata : null,
       })
 
-      setName('')
       setDocType('')
       setWindFields({ inspection_date: '', address: '', building: '' })
       setFile(null)
@@ -233,15 +231,6 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Document Name <span className="font-normal text-slate-400">(optional — auto-named from type)</span></label>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Wind Mitigation Report 2024"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">File</label>
               <input
