@@ -78,7 +78,7 @@ export default function TenantDocuments() {
 
         <h2 className="text-base font-semibold text-slate-700 mb-3">
           Building Documents
-          <span className="font-normal text-slate-500"> — posted by {activeUnit?.hoa_name || 'your association'}</span>
+          <span className="font-normal text-slate-500"> — {activeUnit?.hoa_name || 'your association'}</span>
         </h2>
 
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
