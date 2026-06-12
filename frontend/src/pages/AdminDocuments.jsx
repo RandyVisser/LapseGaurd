@@ -3,9 +3,35 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
+const HOA_FIELD_OPTIONS = {
+  subdivision: { label: 'Subdivision', key: 'subdivision' },
+  corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
+  sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
+}
+
 export default function AdminDocuments() {
-  const { hoaId } = useAuth()
+  const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
   const [docs, setDocs] = useState([])
+  const [hoaFieldType, setHoaFieldType] = useState('subdivision')
+  const [hoaFieldValue, setHoaFieldValue] = useState('')
+
+  const hoaFieldValues = (() => {
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const seen = new Set()
+    const vals = []
+    for (const h of availableHoas) {
+      const v = h[key]
+      if (v && !seen.has(v)) { seen.add(v); vals.push(v) }
+    }
+    return vals
+  })()
+
+  function handleHoaFieldValueChange(value) {
+    setHoaFieldValue(value)
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const match = availableHoas.find(h => h[key] === value)
+    if (match) setSelectedHoaId(match.id)
+  }
   const [name, setName] = useState('')
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -56,7 +82,43 @@ export default function AdminDocuments() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-xl font-bold text-slate-800 mb-6">Shared Documents</h1>
+        {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
+          <header className="mb-6">
+            <h1 className="text-xl font-bold text-slate-800">
+              {selectedHoa?.name || 'Shared Documents'}
+            </h1>
+            {selectedHoa?.corp_name && (
+              <p className="text-xs text-slate-400 mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
+            )}
+            {selectedHoa?.sunbiz_doc_number && (
+              <p className="text-xs text-slate-400 mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
+            )}
+            {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
+              <div className="flex items-center gap-2 mt-2">
+                <select
+                  value={hoaFieldType}
+                  onChange={e => { setHoaFieldType(e.target.value); setHoaFieldValue('') }}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
+                    <option key={key} value={key}>{opt.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={hoaFieldValue}
+                  onChange={e => handleHoaFieldValueChange(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
+                  {hoaFieldValues.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <h2 className="text-base font-semibold text-slate-700 mt-4">Shared Documents</h2>
+          </header>
+        ) })()}
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
           <h2 className="font-semibold text-slate-700 mb-4">Upload New Document</h2>
