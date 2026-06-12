@@ -344,6 +344,7 @@ export default function AdminDocuments() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Inspection Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
@@ -358,15 +359,11 @@ export default function AdminDocuments() {
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 font-medium">
                     {d.name}
-                    {d.metadata && (
-                      <p className="text-xs text-slate-400 font-normal mt-0.5">
-                        {[
-                          d.metadata.inspection_date && `Inspected ${d.metadata.inspection_date}`,
-                          d.metadata.eoi_date && `EOI ${d.metadata.eoi_date}`,
-                        ].filter(Boolean).join(' · ')}
-                      </p>
+                    {d.metadata?.eoi_date && (
+                      <p className="text-xs text-slate-400 font-normal mt-0.5">EOI {d.metadata.eoi_date}</p>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.inspection_date ? new Date(d.metadata.inspection_date + 'T00:00:00').toLocaleDateString() : '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
@@ -399,7 +396,7 @@ export default function AdminDocuments() {
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>
