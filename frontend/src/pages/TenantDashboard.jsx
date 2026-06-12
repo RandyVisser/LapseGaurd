@@ -426,7 +426,7 @@ export default function TenantDashboard() {
               <p className="text-sm font-semibold text-slate-700">Compare your rate</p>
               <p className="text-xs text-slate-400 mt-0.5">Get a free HO-6 insurance quote sent via email</p>
             </div>
-            <span className="text-blue-600 font-semibold text-sm flex-shrink-0">Request a HO-6 quote →</span>
+            <span className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>
           </a>
         )}
 
