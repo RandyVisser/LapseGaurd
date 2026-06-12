@@ -121,6 +121,8 @@ export default function TenantDocuments() {
                               d.doc_type,
                               d.metadata?.inspection_date && `Inspected ${d.metadata.inspection_date}`,
                               d.metadata?.building && `Building: ${d.metadata.building}`,
+                              d.metadata?.eoi_date && `EOI ${d.metadata.eoi_date}`,
+                              d.metadata?.expiration_date && `Expires ${d.metadata.expiration_date}`,
                               new Date(d.created_at).toLocaleDateString(),
                             ].filter(Boolean).join(' · ')}
                           </p>

@@ -44,6 +44,7 @@ export default function AdminDocuments() {
   }
   const [docType, setDocType] = useState('')
   const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
+  const [eoiFields, setEoiFields] = useState({ eoi_date: '', expiration_date: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -78,10 +79,14 @@ export default function AdminDocuments() {
       const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
       const metadata = docType === 'Wind Mitigation'
         ? Object.fromEntries(Object.entries(windFields).filter(([, v]) => v))
+        : docType === 'Association Evidence of Insurance'
+        ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
         : null
       // Auto-generate a name when left blank — type + building/date qualifiers
       const autoName = docType === 'Wind Mitigation'
         ? [docType, windFields.building, windFields.inspection_date].filter(Boolean).join(' — ')
+        : docType === 'Association Evidence of Insurance'
+        ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
         name: autoName,
@@ -92,6 +97,7 @@ export default function AdminDocuments() {
 
       setDocType('')
       setWindFields({ inspection_date: '', address: '', building: '' })
+      setEoiFields({ eoi_date: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -126,6 +132,8 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '📋', text: 'Select a Document Type to get started.' })
   } else if (docType === 'Wind Mitigation' && (!windFields.inspection_date || !windFields.address)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Inspection Date and Address (Building # or Name is optional).' })
+  } else if (docType === 'Association Evidence of Insurance' && (!eoiFields.eoi_date || !eoiFields.expiration_date)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the EOI Date and Expiration Date.' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
   } else {
@@ -244,6 +252,30 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
+            {docType === 'Association Evidence of Insurance' && (
+              <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">EOI Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={eoiFields.eoi_date}
+                    onChange={e => setEoiFields(f => ({ ...f, eoi_date: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Expiration Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={eoiFields.expiration_date}
+                    onChange={e => setEoiFields(f => ({ ...f, expiration_date: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">File</label>
               <input
@@ -293,6 +325,8 @@ export default function AdminDocuments() {
                           d.metadata.inspection_date && `Inspected ${d.metadata.inspection_date}`,
                           d.metadata.address,
                           d.metadata.building && `Building: ${d.metadata.building}`,
+                          d.metadata.eoi_date && `EOI ${d.metadata.eoi_date}`,
+                          d.metadata.expiration_date && `Expires ${d.metadata.expiration_date}`,
                         ].filter(Boolean).join(' · ')}
                       </p>
                     )}
