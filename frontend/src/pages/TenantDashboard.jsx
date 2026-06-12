@@ -423,7 +423,7 @@ export default function TenantDashboard() {
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-5 py-4 mb-5 hover:border-blue-300 transition-colors">
             <div>
-              <p className="text-sm font-semibold text-slate-700">Compare your rate</p>
+              <p className="text-sm font-semibold text-slate-700">Get a new HO-6 Quote</p>
               <p className="text-xs text-slate-400 mt-0.5">Get a free HO-6 insurance quote sent via email</p>
             </div>
             <span className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>
