@@ -418,8 +418,8 @@ export default function TenantDashboard() {
           </form>
         </section>
 
-        {/* Quote cross-sell for covered owners — quiet, below the fold */}
-        {QUOTE_FORM_URL && !needsQuote && (
+        {/* Quote card — shown for covered owners and those with no policy yet */}
+        {QUOTE_FORM_URL && (
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-5 py-4 mb-5 hover:border-blue-300 transition-colors">
             <div>
