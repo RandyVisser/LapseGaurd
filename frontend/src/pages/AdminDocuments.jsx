@@ -265,9 +265,9 @@ export default function AdminDocuments() {
           </form>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200">
-            <h2 className="font-semibold text-slate-700">Documents Available to Unit-Owners</h2>
+        <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-blue-600">
+            <h2 className="font-semibold text-white">Documents Available to Unit-Owners</h2>
           </div>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
