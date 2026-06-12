@@ -38,6 +38,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
         WHERE p.expiration_date IS NOT NULL
+          AND p.superseded_by IS NULL
           AND p.expiration_date <= CURRENT_DATE + (COALESCE(h.alert_lead_days, 30) * INTERVAL '1 day')
         """,
     )
@@ -47,20 +48,26 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         exp = row["expiration_date"]
         threshold = today + timedelta(days=row["alert_lead_days"])
 
+        # Lapsed always wins; "expiring" only upgrades an active policy so we
+        # never stomp non_compliant / pending_review set by AI validation
         if exp < today:
             new_status = "lapsed"
+            alert_type = "lapsed"
         elif exp <= threshold:
-            new_status = "expiring"
+            new_status = "expiring" if row["status"] == "active" else row["status"]
+            alert_type = "expiring"
         else:
             new_status = row["status"]
+            alert_type = None
 
-        await conn.execute(
-            "UPDATE policies SET status = $1 WHERE id = $2",
-            new_status,
-            row["policy_id"],
-        )
+        if new_status != row["status"]:
+            await conn.execute(
+                "UPDATE policies SET status = $1 WHERE id = $2",
+                new_status,
+                row["policy_id"],
+            )
 
-        if new_status not in ("lapsed", "expiring"):
+        if alert_type is None:
             continue
 
         already_sent = await conn.fetchval(
@@ -71,7 +78,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             LIMIT 1
             """,
             row["tenant_id"],
-            new_status,
+            alert_type,
         )
         if already_sent:
             continue
@@ -81,17 +88,17 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             row["unit_number"],
             row["hoa_name"],
             row["expiration_date"],
-            new_status,
+            alert_type,
         )
         sent = await send_email(row["tenant_email"], subject, html)
         if sent:
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
                 row["tenant_id"],
-                new_status,
+                alert_type,
             )
             count += 1
-            print(f"[alerts] Sent {new_status} alert to {row['tenant_email']}")
+            print(f"[alerts] Sent {alert_type} alert to {row['tenant_email']}")
 
     return count
 

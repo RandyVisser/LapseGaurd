@@ -197,11 +197,14 @@ async def accept_invite(
             user_id, body.name, row["unit_id"], row["email"],
         )
         if not updated:
+            # Conflict target matches the partial unique index from migration 004
+            # (one row per user per unit — owners may hold multiple units)
             await conn.execute(
                 """
                 INSERT INTO tenants (unit_id, supabase_user_id, name, email)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (supabase_user_id) DO NOTHING
+                ON CONFLICT (supabase_user_id, unit_id) WHERE supabase_user_id IS NOT NULL
+                DO NOTHING
                 """,
                 row["unit_id"], user_id, body.name, row["email"],
             )
