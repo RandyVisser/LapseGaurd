@@ -45,7 +45,7 @@ export default function AdminDocuments() {
   const [docType, setDocType] = useState('')
   const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
   const [eoiFields, setEoiFields] = useState({ eoi_date: '', expiration_date: '' })
-  const [floodFields, setFloodFields] = useState({ building_address: '', expiration_date: '' })
+  const [floodFields, setFloodFields] = useState({ building_address: '', building: '', expiration_date: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -95,7 +95,7 @@ export default function AdminDocuments() {
         : docType === 'Association Evidence of Insurance'
         ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
         : docType === 'Association Flood Dec Page'
-        ? [docType, floodFields.building_address].filter(Boolean).join(' — ')
+        ? [docType, floodFields.building, floodFields.building_address].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
         name: autoName,
@@ -107,7 +107,7 @@ export default function AdminDocuments() {
       setDocType('')
       setWindFields({ inspection_date: '', address: '', building: '' })
       setEoiFields({ eoi_date: '', expiration_date: '' })
-      setFloodFields({ building_address: '', expiration_date: '' })
+      setFloodFields({ building_address: '', building: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -265,7 +265,7 @@ export default function AdminDocuments() {
               </div>
             )}
             {docType === 'Association Flood Dec Page' && (
-              <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Building Address</label>
                   <input
@@ -273,6 +273,15 @@ export default function AdminDocuments() {
                     value={floodFields.building_address}
                     onChange={e => setFloodFields(f => ({ ...f, building_address: e.target.value }))}
                     placeholder="123 Ocean Dr"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    value={floodFields.building}
+                    onChange={e => setFloodFields(f => ({ ...f, building: e.target.value }))}
+                    placeholder="e.g. Building 3 or Seaside Tower"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
