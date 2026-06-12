@@ -79,8 +79,12 @@ export default function AdminDocuments() {
       const metadata = docType === 'Wind Mitigation'
         ? Object.fromEntries(Object.entries(windFields).filter(([, v]) => v))
         : null
+      // Auto-generate a name when left blank — type + building/date qualifiers
+      const autoName = docType === 'Wind Mitigation'
+        ? [docType, windFields.building, windFields.inspection_date].filter(Boolean).join(' — ')
+        : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
-        name,
+        name: name.trim() || autoName,
         file_url: data.publicUrl,
         doc_type: docType || null,
         metadata: metadata && Object.keys(metadata).length ? metadata : null,
@@ -192,9 +196,8 @@ export default function AdminDocuments() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Document Name</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Document Name <span className="font-normal text-slate-400">(optional — auto-named from type)</span></label>
               <input
-                required
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Wind Mitigation Report 2024"
