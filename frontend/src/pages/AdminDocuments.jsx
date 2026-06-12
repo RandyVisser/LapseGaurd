@@ -343,7 +343,6 @@ export default function AdminDocuments() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Document Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
@@ -357,12 +356,6 @@ export default function AdminDocuments() {
               {docs.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {d.name}
-                    {d.metadata?.eoi_date && (
-                      <p className="text-xs text-slate-400 font-normal mt-0.5">EOI {d.metadata.eoi_date}</p>
-                    )}
-                  </td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date
                     return date ? new Date(date + 'T00:00:00').toLocaleDateString() : '—'
@@ -399,7 +392,7 @@ export default function AdminDocuments() {
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>
