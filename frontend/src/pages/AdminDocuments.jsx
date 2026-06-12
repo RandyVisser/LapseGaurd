@@ -46,6 +46,7 @@ export default function AdminDocuments() {
   const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
   const [eoiFields, setEoiFields] = useState({ eoi_date: '', expiration_date: '' })
   const [floodFields, setFloodFields] = useState({ building_address: '', building: '', expiration_date: '' })
+  const [fireFields, setFireFields] = useState({ date_signed: '', address: '', building: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -78,16 +79,23 @@ export default function AdminDocuments() {
       if (uploadErr) throw new Error(uploadErr.message)
 
       const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
+      const addYears = (dateStr, years) => {
+        if (!dateStr) return ''
+        const d = new Date(dateStr + 'T00:00:00'); d.setFullYear(d.getFullYear() + years)
+        return d.toISOString().slice(0, 10)
+      }
       // Wind mitigation inspections are valid for 5 years
-      const windExpiration = windFields.inspection_date
-        ? (() => { const d = new Date(windFields.inspection_date + 'T00:00:00'); d.setFullYear(d.getFullYear() + 5); return d.toISOString().slice(0, 10) })()
-        : ''
+      const windExpiration = addYears(windFields.inspection_date, 5)
+      // Fire alarm forms are valid for 1 year from signing
+      const fireExpiration = addYears(fireFields.date_signed, 1)
       const metadata = docType === 'Wind Mitigation'
         ? Object.fromEntries(Object.entries({ ...windFields, expiration_date: windExpiration }).filter(([, v]) => v))
         : docType === 'Association Evidence of Insurance'
         ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
         : docType === 'Association Flood Dec Page'
         ? Object.fromEntries(Object.entries(floodFields).filter(([, v]) => v))
+        : docType === 'Fire Alarm Form'
+        ? Object.fromEntries(Object.entries({ ...fireFields, expiration_date: fireExpiration }).filter(([, v]) => v))
         : null
       // Auto-generate a name when left blank — type + building/date qualifiers
       const autoName = docType === 'Wind Mitigation'
@@ -96,6 +104,8 @@ export default function AdminDocuments() {
         ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
         : docType === 'Association Flood Dec Page'
         ? [docType, floodFields.building, floodFields.building_address].filter(Boolean).join(' — ')
+        : docType === 'Fire Alarm Form'
+        ? [docType, fireFields.building, fireFields.date_signed].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
         name: autoName,
@@ -108,6 +118,7 @@ export default function AdminDocuments() {
       setWindFields({ inspection_date: '', address: '', building: '' })
       setEoiFields({ eoi_date: '', expiration_date: '' })
       setFloodFields({ building_address: '', building: '', expiration_date: '' })
+      setFireFields({ date_signed: '', address: '', building: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -146,6 +157,8 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '📝', text: 'Fill in the EOI Date and Expiration Date.' })
   } else if (docType === 'Association Flood Dec Page' && (!floodFields.building_address || !floodFields.expiration_date)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Building Address and Expiration Date.' })
+  } else if (docType === 'Fire Alarm Form' && (!fireFields.date_signed || !fireFields.address)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
   } else {
@@ -297,6 +310,39 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
+            {docType === 'Fire Alarm Form' && (
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
+                  <input
+                    type="date"
+                    required
+                    value={fireFields.date_signed}
+                    onChange={e => setFireFields(f => ({ ...f, date_signed: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <input
+                    required
+                    value={fireFields.address}
+                    onChange={e => setFireFields(f => ({ ...f, address: e.target.value }))}
+                    placeholder="123 Ocean Dr"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    value={fireFields.building}
+                    onChange={e => setFireFields(f => ({ ...f, building: e.target.value }))}
+                    placeholder="e.g. Building 3 or Seaside Tower"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
             {docType === 'Association Evidence of Insurance' && (
               <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <div>
@@ -366,7 +412,7 @@ export default function AdminDocuments() {
                 <tr key={d.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
-                    const date = d.metadata?.inspection_date || d.metadata?.eoi_date
+                    const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
                     return date ? new Date(date + 'T00:00:00').toLocaleDateString() : '—'
                   })()}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
