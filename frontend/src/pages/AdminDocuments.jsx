@@ -111,7 +111,7 @@ export default function AdminDocuments() {
       }
       // Wind mitigation inspections are valid for 5 years
       const windExpiration = addYears(windFields.inspection_date, 5)
-      // Fire alarm forms are valid for 1 year from signing
+      // Fire and sprinkler alarm forms are valid for 1 year from signing
       const fireExpiration = addYears(fireFields.date_signed, 1)
       const metadata = docType === 'Wind Mitigation'
         ? Object.fromEntries(Object.entries({ ...windFields, expiration_date: windExpiration }).filter(([, v]) => v))
@@ -119,7 +119,7 @@ export default function AdminDocuments() {
         ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
         : docType === 'Association Flood Dec Page'
         ? Object.fromEntries(Object.entries(floodFields).filter(([, v]) => v))
-        : docType === 'Fire Alarm Form'
+        : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
         ? Object.fromEntries(Object.entries({ ...fireFields, expiration_date: fireExpiration }).filter(([, v]) => v))
         : null
       // Auto-generate a name when left blank — type + building/date qualifiers
@@ -129,7 +129,7 @@ export default function AdminDocuments() {
         ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
         : docType === 'Association Flood Dec Page'
         ? [docType, floodFields.building, floodFields.building_address].filter(Boolean).join(' — ')
-        : docType === 'Fire Alarm Form'
+        : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
         ? [docType, fireFields.building, fireFields.date_signed].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
@@ -183,7 +183,7 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '📝', text: 'Fill in the EOI Date and Expiration Date.' })
   } else if (docType === 'Association Flood Dec Page' && (!floodFields.building_address || !floodFields.expiration_date)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Building Address and Expiration Date.' })
-  } else if (docType === 'Fire Alarm Form' && (!fireFields.date_signed || !fireFields.address)) {
+  } else if ((docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form') && (!fireFields.date_signed || !fireFields.address)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
@@ -336,7 +336,7 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
-            {docType === 'Fire Alarm Form' && (
+            {(docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form') && (
               <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
