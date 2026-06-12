@@ -350,6 +350,11 @@ async def compliance_summary(
         else:
             missing += 1
 
+    invites_sent = await conn.fetchval(
+        "SELECT COUNT(*) FROM unit_invites i JOIN units u ON u.id = i.unit_id WHERE u.hoa_id = $1",
+        hoa_id,
+    ) or 0
+
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
@@ -360,6 +365,7 @@ async def compliance_summary(
         non_compliant=non_compliant,
         pending_review=pending_review,
         missing=missing,
+        invites_sent=invites_sent,
     )
 
 

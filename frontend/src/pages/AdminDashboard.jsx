@@ -125,6 +125,84 @@ function loadVisibleColumns() {
   return DEFAULT_COLUMNS
 }
 
+const GETTING_STARTED_DISMISSED_KEY = 'lapseguard.gettingStarted.dismissed.v1'
+
+// First-run checklist for a brand-new association. Steps check themselves off
+// against live data; the panel disappears once everything is done (or dismissed).
+function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile }) {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(GETTING_STARTED_DISMISSED_KEY) === 'true' } catch { return false }
+  })
+
+  if (!summary || dismissed) return null
+
+  const policiesReceived = summary.total_units - summary.missing
+  const steps = [
+    {
+      title: 'Add your units',
+      detail: 'Import your unit list from a CSV, or add units one at a time.',
+      done: summary.total_units > 0,
+      action: !isMobile && { label: 'Import CSV', onClick: onImportClick },
+    },
+    {
+      title: 'Set your insurance requirements',
+      detail: 'Coverage minimums, wind, and matching rules — the AI checks every uploaded policy against these.',
+      done: requirementsSet,
+      action: { label: 'Open Settings', href: '/admin/settings' },
+    },
+    {
+      title: 'Invite unit owners',
+      detail: 'Use the ⋯ menu on a unit row to email owners a secure signup link.',
+      done: summary.invites_sent > 0,
+    },
+    {
+      title: 'Watch policies roll in',
+      detail: 'Owners upload dec pages, the AI verifies them, and statuses update here automatically.',
+      done: policiesReceived > 0,
+    },
+  ]
+  const doneCount = steps.filter(s => s.done).length
+  if (doneCount === steps.length) return null
+
+  function dismiss() {
+    setDismissed(true)
+    try { localStorage.setItem(GETTING_STARTED_DISMISSED_KEY, 'true') } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-blue-200 shadow-sm mb-4 overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 bg-blue-50 border-b border-blue-100">
+        <p className="text-sm font-semibold text-blue-900">
+          Getting started <span className="font-normal text-blue-600">— {doneCount} of {steps.length} done</span>
+        </p>
+        <button onClick={dismiss} className="text-xs text-blue-500 hover:text-blue-700">Dismiss</button>
+      </div>
+      <ol className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+        {steps.map((step, i) => (
+          <li key={step.title} className={`px-5 py-4 ${step.done ? 'bg-slate-50/50' : ''}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
+                step.done ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
+              }`}>
+                {step.done ? '✓' : i + 1}
+              </span>
+              <p className={`text-sm font-semibold ${step.done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                {step.title}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">{step.detail}</p>
+            {!step.done && step.action && (
+              step.action.href
+                ? <a href={step.action.href} className="inline-block mt-2 text-xs font-semibold text-blue-600 hover:underline">{step.action.label} →</a>
+                : <button onClick={step.action.onClick} className="mt-2 text-xs font-semibold text-blue-600 hover:underline">{step.action.label} →</button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 function RowActionsMenu({ items }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
@@ -666,6 +744,18 @@ export default function AdminDashboard() {
           )}
         </div>
         ) })()}
+
+        {hoaId !== ALL_HOAS && (
+          <GettingStartedPanel
+            summary={summary}
+            requirementsSet={(() => {
+              const h = availableHoas.find(x => x.id === hoaId)
+              return h ? (h.ho6_coverage_a_min != null || h.ho6_coverage_e_min != null) : false
+            })()}
+            onImportClick={() => importFileRef.current?.click()}
+            isMobile={isMobile}
+          />
+        )}
 
         {summary && (
               <div className="flex flex-col gap-2 mb-4">

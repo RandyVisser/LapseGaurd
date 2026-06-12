@@ -117,6 +117,7 @@ class ComplianceSummary(BaseModel):
     non_compliant: int = 0
     pending_review: int = 0
     missing: int
+    invites_sent: int = 0  # invites issued for this HOA's units (getting-started checklist)
 
 
 class DocumentCreate(BaseModel):
