@@ -116,7 +116,9 @@ export default function TenantDocuments() {
                         </span>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-slate-700 truncate">{d.name}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{new Date(d.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {[d.doc_type, new Date(d.created_at).toLocaleDateString()].filter(Boolean).join(' · ')}
+                          </p>
                         </div>
                       </div>
                       <span className="text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">

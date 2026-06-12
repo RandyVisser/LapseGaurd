@@ -65,14 +65,15 @@ async def upload_hoa_document(
 
     row = await conn.fetchrow(
         """
-        INSERT INTO documents (hoa_id, name, file_url, uploaded_by)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO documents (hoa_id, name, file_url, uploaded_by, doc_type)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         hoa_id,
         body.name,
         body.file_url,
         user.sub,
+        body.doc_type,
     )
 
     return DocumentOut(**dict(row))

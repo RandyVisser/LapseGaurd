@@ -3,6 +3,16 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
+const DOC_TYPES = [
+  'Wind Mitigation',
+  'Association Evidence of Insurance',
+  'Association Flood Dec Page',
+  'Fire Alarm Form',
+  'Sprinkler Alarm Form',
+  'Elevation Certificate',
+  'Other',
+]
+
 const HOA_FIELD_OPTIONS = {
   subdivision: { label: 'Subdivision', key: 'subdivision' },
   corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
@@ -33,6 +43,7 @@ export default function AdminDocuments() {
     if (match) setSelectedHoaId(match.id)
   }
   const [name, setName] = useState('')
+  const [docType, setDocType] = useState('')
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -64,9 +75,10 @@ export default function AdminDocuments() {
       if (uploadErr) throw new Error(uploadErr.message)
 
       const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
-      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: data.publicUrl })
+      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: data.publicUrl, doc_type: docType || null })
 
       setName('')
+      setDocType('')
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -124,6 +136,18 @@ export default function AdminDocuments() {
           <h2 className="font-semibold text-slate-700 mb-4">Upload New Document</h2>
           <form onSubmit={handleUpload} className="space-y-3">
             <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Document Type</label>
+              <select
+                required
+                value={docType}
+                onChange={e => setDocType(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Select a document type…</option>
+                {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Document Name</label>
               <input
                 required
@@ -160,6 +184,7 @@ export default function AdminDocuments() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
@@ -168,6 +193,7 @@ export default function AdminDocuments() {
             <tbody className="divide-y divide-slate-100">
               {docs.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 font-medium">{d.name}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
@@ -180,7 +206,7 @@ export default function AdminDocuments() {
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>

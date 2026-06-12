@@ -122,6 +122,7 @@ class ComplianceSummary(BaseModel):
 class DocumentCreate(BaseModel):
     name: str
     file_url: str
+    doc_type: Optional[str] = None
 
 
 class DocumentOut(BaseModel):
@@ -129,5 +130,6 @@ class DocumentOut(BaseModel):
     hoa_id: uuid.UUID
     name: str
     file_url: str
+    doc_type: Optional[str] = None
     uploaded_by: Optional[uuid.UUID]
     created_at: datetime
