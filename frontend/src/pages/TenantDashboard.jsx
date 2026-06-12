@@ -356,7 +356,7 @@ export default function TenantDashboard() {
                   ? 'border-blue-400 bg-blue-50'
                   : file
                   ? 'border-green-400 bg-green-50'
-                  : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'
+                  : 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:bg-amber-100'
               }`}
             >
               {file ? (
