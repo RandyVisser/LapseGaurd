@@ -78,8 +78,12 @@ export default function AdminDocuments() {
       if (uploadErr) throw new Error(uploadErr.message)
 
       const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
+      // Wind mitigation inspections are valid for 5 years
+      const windExpiration = windFields.inspection_date
+        ? (() => { const d = new Date(windFields.inspection_date + 'T00:00:00'); d.setFullYear(d.getFullYear() + 5); return d.toISOString().slice(0, 10) })()
+        : ''
       const metadata = docType === 'Wind Mitigation'
-        ? Object.fromEntries(Object.entries(windFields).filter(([, v]) => v))
+        ? Object.fromEntries(Object.entries({ ...windFields, expiration_date: windExpiration }).filter(([, v]) => v))
         : docType === 'Association Evidence of Insurance'
         ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
         : docType === 'Association Flood Dec Page'
