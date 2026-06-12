@@ -189,7 +189,11 @@ export default function AdminDocuments() {
                 required
                 value={docType}
                 onChange={e => setDocType(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                  docType
+                    ? 'border-slate-300 bg-white focus:ring-blue-500'
+                    : 'border-amber-300 bg-amber-50 focus:ring-amber-400'
+                }`}
               >
                 <option value="">Select a document type…</option>
                 {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
