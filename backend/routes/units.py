@@ -59,8 +59,8 @@ async def get_policy(
         tenant = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
     else:
         tenant = await conn.fetchrow(
-            "SELECT id FROM tenants WHERE unit_id = $1 AND supabase_user_id = $2",
-            unit_id, user.sub,
+            "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR email = $3)",
+            unit_id, user.sub, user.email,
         )
     if tenant is None:
         raise HTTPException(status_code=403, detail="Not your unit")
@@ -305,11 +305,12 @@ async def upload_policy(
 ):
     _require_storage_url(body.document_url)
 
-    # Verify tenant belongs to this unit
+    # Verify tenant belongs to this unit (match by user id or email, like /tenant/me)
     tenant = await conn.fetchrow(
-        "SELECT id FROM tenants WHERE unit_id = $1 AND supabase_user_id = $2",
+        "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR email = $3)",
         unit_id,
         user.sub,
+        user.email,
     )
     if tenant is None and user.role not in ("hoa_admin", "super_user", "property_manager"):
         raise HTTPException(status_code=403, detail="Not your unit")

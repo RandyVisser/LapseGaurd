@@ -23,9 +23,10 @@ async def list_unit_documents(
 
     if user.role == "tenant":
         tenant = await conn.fetchrow(
-            "SELECT id FROM tenants WHERE unit_id = $1 AND supabase_user_id = $2",
+            "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR email = $3)",
             unit_id,
             user.sub,
+            user.email,
         )
         if tenant is None:
             raise HTTPException(status_code=403, detail="Not your unit")
