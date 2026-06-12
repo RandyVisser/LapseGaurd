@@ -147,7 +147,8 @@ export default function AdminDocuments() {
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
-      load()
+      // Full reload so expiration highlighting and all derived state start fresh
+      setTimeout(() => window.location.reload(), 800)
     } catch (e) {
       setError(e.message)
     } finally {
