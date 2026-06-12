@@ -231,9 +231,10 @@ export default function TenantDashboard() {
               {activeUnit?.unit_number ? `Unit ${activeUnit.unit_number}` : 'My Policy'}
             </h1>
             {(activeUnit?.owner_primary || activeUnit?.owner_secondary) && (
-              <h1 className="text-xl font-bold text-slate-800 text-right">
-                {[activeUnit.owner_primary, activeUnit.owner_secondary].filter(Boolean).join(' & ')}
-              </h1>
+              <div className="text-right">
+                {activeUnit.owner_primary && <h1 className="text-xl font-bold text-slate-800">{activeUnit.owner_primary}</h1>}
+                {activeUnit.owner_secondary && <h1 className="text-xl font-bold text-slate-800">{activeUnit.owner_secondary}</h1>}
+              </div>
             )}
           </div>
           {activeUnit?.street_address && (
