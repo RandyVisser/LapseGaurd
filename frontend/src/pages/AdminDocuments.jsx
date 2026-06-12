@@ -45,6 +45,7 @@ export default function AdminDocuments() {
   const [docType, setDocType] = useState('')
   const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
   const [eoiFields, setEoiFields] = useState({ eoi_date: '', expiration_date: '' })
+  const [floodFields, setFloodFields] = useState({ building_address: '', expiration_date: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -81,12 +82,16 @@ export default function AdminDocuments() {
         ? Object.fromEntries(Object.entries(windFields).filter(([, v]) => v))
         : docType === 'Association Evidence of Insurance'
         ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
+        : docType === 'Association Flood Dec Page'
+        ? Object.fromEntries(Object.entries(floodFields).filter(([, v]) => v))
         : null
       // Auto-generate a name when left blank — type + building/date qualifiers
       const autoName = docType === 'Wind Mitigation'
         ? [docType, windFields.building, windFields.inspection_date].filter(Boolean).join(' — ')
         : docType === 'Association Evidence of Insurance'
         ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
+        : docType === 'Association Flood Dec Page'
+        ? [docType, floodFields.building_address].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
         name: autoName,
@@ -98,6 +103,7 @@ export default function AdminDocuments() {
       setDocType('')
       setWindFields({ inspection_date: '', address: '', building: '' })
       setEoiFields({ eoi_date: '', expiration_date: '' })
+      setFloodFields({ building_address: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -134,6 +140,8 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '📝', text: 'Fill in the Inspection Date and Address (Building # or Name is optional).' })
   } else if (docType === 'Association Evidence of Insurance' && (!eoiFields.eoi_date || !eoiFields.expiration_date)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the EOI Date and Expiration Date.' })
+  } else if (docType === 'Association Flood Dec Page' && (!floodFields.building_address || !floodFields.expiration_date)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the Building Address and Expiration Date.' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
   } else {
@@ -252,6 +260,30 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
+            {docType === 'Association Flood Dec Page' && (
+              <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building Address</label>
+                  <input
+                    required
+                    value={floodFields.building_address}
+                    onChange={e => setFloodFields(f => ({ ...f, building_address: e.target.value }))}
+                    placeholder="123 Ocean Dr"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Expiration Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={floodFields.expiration_date}
+                    onChange={e => setFloodFields(f => ({ ...f, expiration_date: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
             {docType === 'Association Evidence of Insurance' && (
               <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <div>
@@ -326,6 +358,7 @@ export default function AdminDocuments() {
                           d.metadata.address,
                           d.metadata.building && `Building: ${d.metadata.building}`,
                           d.metadata.eoi_date && `EOI ${d.metadata.eoi_date}`,
+                          d.metadata.building_address,
                           d.metadata.expiration_date && `Expires ${d.metadata.expiration_date}`,
                         ].filter(Boolean).join(' · ')}
                       </p>
