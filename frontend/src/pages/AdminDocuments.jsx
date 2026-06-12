@@ -72,6 +72,7 @@ export default function AdminDocuments() {
   const [eoiFields, setEoiFields] = useState({ eoi_date: '', expiration_date: '' })
   const [floodFields, setFloodFields] = useState({ building_address: '', building: '', expiration_date: '' })
   const [fireFields, setFireFields] = useState({ date_signed: '', address: '', building: '' })
+  const [elevFields, setElevFields] = useState({ date_signed: '', address: '', building: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -121,6 +122,8 @@ export default function AdminDocuments() {
         ? Object.fromEntries(Object.entries(floodFields).filter(([, v]) => v))
         : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
         ? Object.fromEntries(Object.entries({ ...fireFields, expiration_date: fireExpiration }).filter(([, v]) => v))
+        : docType === 'Elevation Certificate'
+        ? Object.fromEntries(Object.entries(elevFields).filter(([, v]) => v))
         : null
       // Auto-generate a name when left blank — type + building/date qualifiers
       const autoName = docType === 'Wind Mitigation'
@@ -131,6 +134,8 @@ export default function AdminDocuments() {
         ? [docType, floodFields.building, floodFields.building_address].filter(Boolean).join(' — ')
         : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
         ? [docType, fireFields.building, fireFields.date_signed].filter(Boolean).join(' — ')
+        : docType === 'Elevation Certificate'
+        ? [docType, elevFields.building, elevFields.date_signed].filter(Boolean).join(' — ')
         : docType
       await apiPost(`/hoa/${hoaId}/documents`, {
         name: autoName,
@@ -144,6 +149,7 @@ export default function AdminDocuments() {
       setEoiFields({ eoi_date: '', expiration_date: '' })
       setFloodFields({ building_address: '', building: '', expiration_date: '' })
       setFireFields({ date_signed: '', address: '', building: '' })
+      setElevFields({ date_signed: '', address: '', building: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -184,6 +190,8 @@ export default function AdminDocuments() {
   } else if (docType === 'Association Flood Dec Page' && (!floodFields.building_address || !floodFields.expiration_date)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Building Address and Expiration Date.' })
   } else if ((docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form') && (!fireFields.date_signed || !fireFields.address)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
+  } else if (docType === 'Elevation Certificate' && (!elevFields.date_signed || !elevFields.address)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
@@ -363,6 +371,39 @@ export default function AdminDocuments() {
                   <input
                     value={fireFields.building}
                     onChange={e => setFireFields(f => ({ ...f, building: e.target.value }))}
+                    placeholder="e.g. Building 3 or Seaside Tower"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+            {docType === 'Elevation Certificate' && (
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
+                  <input
+                    type="date"
+                    required
+                    value={elevFields.date_signed}
+                    onChange={e => setElevFields(f => ({ ...f, date_signed: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <input
+                    required
+                    value={elevFields.address}
+                    onChange={e => setElevFields(f => ({ ...f, address: e.target.value }))}
+                    placeholder="123 Ocean Dr"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    value={elevFields.building}
+                    onChange={e => setElevFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
