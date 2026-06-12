@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
-import { apiGet, apiPost, supabase } from '../supabase'
+import { apiGet, apiPost, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
 const DOC_TYPES = [
@@ -47,6 +47,7 @@ export default function AdminDocuments() {
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -99,6 +100,19 @@ export default function AdminDocuments() {
       setError(e.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleDelete(docId) {
+    if (!window.confirm('Delete this document? Unit owners will no longer see it.')) return
+    setDeletingId(docId)
+    try {
+      await apiDelete(`/hoa/${hoaId}/documents/${docId}`)
+      setDocs(ds => ds.filter(d => d.id !== docId))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -265,6 +279,7 @@ export default function AdminDocuments() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -290,11 +305,20 @@ export default function AdminDocuments() {
                       View
                     </a>
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDelete(d.id)}
+                      disabled={deletingId === d.id}
+                      className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline disabled:opacity-50"
+                    >
+                      {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>

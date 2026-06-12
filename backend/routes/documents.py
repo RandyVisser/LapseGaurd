@@ -87,3 +87,21 @@ async def upload_hoa_document(
     )
 
     return _doc_out(row)
+
+
+@router.delete("/hoa/{hoa_id}/documents/{doc_id}")
+async def delete_hoa_document(
+    hoa_id: str,
+    doc_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    row = await conn.fetchrow(
+        "DELETE FROM documents WHERE id = $1 AND hoa_id = $2 RETURNING id",
+        doc_id, hoa_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"deleted": True}
