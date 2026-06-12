@@ -370,7 +370,16 @@ export default function AdminDocuments() {
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.expiration_date ? new Date(d.metadata.expiration_date + 'T00:00:00').toLocaleDateString() : '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{(() => {
+                    // Wind mits without a stored expiration: inspection date + 5 years
+                    let exp = d.metadata?.expiration_date
+                    if (!exp && d.metadata?.inspection_date) {
+                      const dt = new Date(d.metadata.inspection_date + 'T00:00:00')
+                      dt.setFullYear(dt.getFullYear() + 5)
+                      exp = dt.toISOString().slice(0, 10)
+                    }
+                    return exp ? new Date(exp + 'T00:00:00').toLocaleDateString() : '—'
+                  })()}</td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"
                       className="text-blue-600 hover:underline text-xs">
