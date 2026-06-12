@@ -13,6 +13,23 @@ const DOC_TYPES = [
   'Other',
 ]
 
+// Effective expiration for a document — stored date, or inspection date + 5 years for wind mits
+function docExpiration(d) {
+  let exp = d.metadata?.expiration_date
+  if (!exp && d.metadata?.inspection_date) {
+    const dt = new Date(d.metadata.inspection_date + 'T00:00:00')
+    dt.setFullYear(dt.getFullYear() + 5)
+    exp = dt.toISOString().slice(0, 10)
+  }
+  return exp || null
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000)
+}
+
 const HOA_FIELD_OPTIONS = {
   subdivision: { label: 'Subdivision', key: 'subdivision' },
   corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
@@ -408,8 +425,16 @@ export default function AdminDocuments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {docs.map(d => (
-                <tr key={d.id} className="hover:bg-slate-50">
+              {docs.map(d => {
+                const exp = docExpiration(d)
+                const days = daysUntil(exp)
+                const rowColor = days !== null && days < 0
+                  ? 'bg-red-50 hover:bg-red-100'
+                  : days !== null && days <= 30
+                  ? 'bg-amber-50 hover:bg-amber-100'
+                  : 'hover:bg-slate-50'
+                return (
+                <tr key={d.id} className={rowColor}>
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
@@ -418,16 +443,10 @@ export default function AdminDocuments() {
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-slate-500">{(() => {
-                    // Wind mits without a stored expiration: inspection date + 5 years
-                    let exp = d.metadata?.expiration_date
-                    if (!exp && d.metadata?.inspection_date) {
-                      const dt = new Date(d.metadata.inspection_date + 'T00:00:00')
-                      dt.setFullYear(dt.getFullYear() + 5)
-                      exp = dt.toISOString().slice(0, 10)
-                    }
-                    return exp ? new Date(exp + 'T00:00:00').toLocaleDateString() : '—'
-                  })()}</td>
+                  <td className={`px-4 py-3 ${days !== null && days < 0 ? 'text-red-700 font-semibold' : days !== null && days <= 30 ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>
+                    {exp ? new Date(exp + 'T00:00:00').toLocaleDateString() : '—'}
+                    {days !== null && days < 0 && <span className="ml-1.5 text-xs">(expired)</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"
                       className="text-blue-600 hover:underline text-xs">
@@ -444,7 +463,7 @@ export default function AdminDocuments() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
               {docs.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
