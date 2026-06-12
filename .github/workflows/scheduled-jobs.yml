@@ -1,0 +1,32 @@
+name: Scheduled jobs
+
+on:
+  schedule:
+    # Daily insurance alerts — 13:00 UTC ≈ 9am ET
+    - cron: '0 13 * * *'
+    # Monthly board reports — 13:30 UTC on the 1st
+    - cron: '30 13 1 * *'
+  workflow_dispatch: # allow manual runs from the Actions tab for testing
+
+jobs:
+  alerts:
+    name: Run renewal/lapse alerts
+    if: github.event.schedule == '0 13 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /alerts/run
+        run: |
+          curl -fsS -X POST \
+            -H "x-api-key: ${{ secrets.INTERNAL_API_KEY }}" \
+            "${{ secrets.BACKEND_URL }}/alerts/run"
+
+  board-reports:
+    name: Send monthly board reports
+    if: github.event.schedule == '30 13 1 * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /reports/board/run
+        run: |
+          curl -fsS -X POST \
+            -H "x-api-key: ${{ secrets.INTERNAL_API_KEY }}" \
+            "${{ secrets.BACKEND_URL }}/reports/board/run"
