@@ -227,9 +227,19 @@ export default function TenantDashboard() {
         {/* Unit context */}
         <header className="mb-5">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-xl font-bold text-slate-800">
-              {activeUnit?.unit_number ? `Unit ${activeUnit.unit_number}` : 'My Policy'}
-            </h1>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800">
+                {activeUnit?.unit_number ? `Unit ${activeUnit.unit_number}` : 'My Policy'}
+              </h1>
+              {activeUnit?.street_address && (
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {[activeUnit.street_address, activeUnit.city, [activeUnit.state, activeUnit.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {activeUnit?.hoa_name && (
+                <p className="text-sm text-slate-500 mt-0.5">{activeUnit.hoa_name}</p>
+              )}
+            </div>
             {(activeUnit?.owner_primary || activeUnit?.owner_secondary) && (
               <div className="text-right">
                 {activeUnit.owner_primary && <h1 className="text-xl font-bold text-slate-800">{activeUnit.owner_primary}</h1>}
@@ -237,14 +247,6 @@ export default function TenantDashboard() {
               </div>
             )}
           </div>
-          {activeUnit?.street_address && (
-            <p className="text-sm text-slate-500 mt-0.5">
-              {[activeUnit.street_address, activeUnit.city, [activeUnit.state, activeUnit.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-            </p>
-          )}
-          {activeUnit?.hoa_name && (
-            <p className="text-sm text-slate-500 mt-0.5">{activeUnit.hoa_name}</p>
-          )}
           {tenantUnits.length > 1 && (
             <div className="flex gap-2 flex-wrap mt-3">
               {tenantUnits.map(u => (
