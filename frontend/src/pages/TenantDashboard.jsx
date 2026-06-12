@@ -189,7 +189,7 @@ export default function TenantDashboard() {
     if (parsing) {
       nextSteps.push({ icon: '⏳', text: 'We\'re reading your document — this usually takes 10–20 seconds…', wait: true })
     } else if (!policy || status === 'missing') {
-      nextSteps.push({ icon: '📄', text: 'Upload your insurance declaration page below.' })
+      nextSteps.push({ icon: '📄', text: 'Upload your insurance declaration page by clicking in the YELLOW Upload box.' })
     } else if (status === 'lapsed') {
       nextSteps.push({ icon: '🔄', text: 'Your policy is expired — upload your renewal declaration page below.' })
     } else if (flags.length > 0) {
