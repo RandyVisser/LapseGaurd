@@ -341,6 +341,7 @@ export default function AdminDocuments() {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Expires</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -359,12 +360,12 @@ export default function AdminDocuments() {
                           d.metadata.building && `Building: ${d.metadata.building}`,
                           d.metadata.eoi_date && `EOI ${d.metadata.eoi_date}`,
                           d.metadata.building_address,
-                          d.metadata.expiration_date && `Expires ${d.metadata.expiration_date}`,
                         ].filter(Boolean).join(' · ')}
                       </p>
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.expiration_date ? new Date(d.metadata.expiration_date + 'T00:00:00').toLocaleDateString() : '—'}</td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"
                       className="text-blue-600 hover:underline text-xs">
@@ -384,7 +385,7 @@ export default function AdminDocuments() {
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>
