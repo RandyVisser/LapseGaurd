@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 import asyncpg
@@ -8,6 +10,13 @@ from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from routes.hoa import _assert_hoa_access
 
 router = APIRouter()
+
+
+def _doc_out(row) -> DocumentOut:
+    d = dict(row)
+    if isinstance(d.get("metadata"), str):
+        d["metadata"] = json.loads(d["metadata"])
+    return DocumentOut(**d)
 
 
 @router.get("/unit/{unit_id}/documents", response_model=List[DocumentOut])
@@ -36,7 +45,7 @@ async def list_unit_documents(
         unit["hoa_id"],
     )
 
-    return [DocumentOut(**dict(r)) for r in rows]
+    return [_doc_out(r) for r in rows]
 
 
 @router.get("/hoa/{hoa_id}/documents", response_model=List[DocumentOut])
@@ -51,7 +60,7 @@ async def list_hoa_documents(
         "SELECT * FROM documents WHERE hoa_id = $1 ORDER BY created_at DESC",
         hoa_id,
     )
-    return [DocumentOut(**dict(r)) for r in rows]
+    return [_doc_out(r) for r in rows]
 
 
 @router.post("/hoa/{hoa_id}/documents", response_model=DocumentOut)
@@ -65,8 +74,8 @@ async def upload_hoa_document(
 
     row = await conn.fetchrow(
         """
-        INSERT INTO documents (hoa_id, name, file_url, uploaded_by, doc_type)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO documents (hoa_id, name, file_url, uploaded_by, doc_type, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
         RETURNING *
         """,
         hoa_id,
@@ -74,6 +83,7 @@ async def upload_hoa_document(
         body.file_url,
         user.sub,
         body.doc_type,
+        json.dumps(body.metadata) if body.metadata else None,
     )
 
-    return DocumentOut(**dict(row))
+    return _doc_out(row)

@@ -123,6 +123,7 @@ class DocumentCreate(BaseModel):
     name: str
     file_url: str
     doc_type: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class DocumentOut(BaseModel):
@@ -131,5 +132,6 @@ class DocumentOut(BaseModel):
     name: str
     file_url: str
     doc_type: Optional[str] = None
+    metadata: Optional[dict] = None
     uploaded_by: Optional[uuid.UUID]
     created_at: datetime

@@ -44,6 +44,7 @@ export default function AdminDocuments() {
   }
   const [name, setName] = useState('')
   const [docType, setDocType] = useState('')
+  const [windFields, setWindFields] = useState({ inspection_date: '', address: '', units_covered: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -75,10 +76,19 @@ export default function AdminDocuments() {
       if (uploadErr) throw new Error(uploadErr.message)
 
       const { data } = supabase.storage.from('hoa-documents').getPublicUrl(path)
-      await apiPost(`/hoa/${hoaId}/documents`, { name, file_url: data.publicUrl, doc_type: docType || null })
+      const metadata = docType === 'Wind Mitigation'
+        ? Object.fromEntries(Object.entries(windFields).filter(([, v]) => v))
+        : null
+      await apiPost(`/hoa/${hoaId}/documents`, {
+        name,
+        file_url: data.publicUrl,
+        doc_type: docType || null,
+        metadata: metadata && Object.keys(metadata).length ? metadata : null,
+      })
 
       setName('')
       setDocType('')
+      setWindFields({ inspection_date: '', address: '', units_covered: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -147,6 +157,40 @@ export default function AdminDocuments() {
                 {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+            {docType === 'Wind Mitigation' && (
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Inspection Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={windFields.inspection_date}
+                    onChange={e => setWindFields(f => ({ ...f, inspection_date: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <input
+                    required
+                    value={windFields.address}
+                    onChange={e => setWindFields(f => ({ ...f, address: e.target.value }))}
+                    placeholder="123 Ocean Dr"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Units Covered</label>
+                  <input
+                    required
+                    value={windFields.units_covered}
+                    onChange={e => setWindFields(f => ({ ...f, units_covered: e.target.value }))}
+                    placeholder="All, or e.g. 101–210"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Document Name</label>
               <input
@@ -194,7 +238,18 @@ export default function AdminDocuments() {
               {docs.map(d => (
                 <tr key={d.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
-                  <td className="px-4 py-3 font-medium">{d.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {d.name}
+                    {d.metadata && (
+                      <p className="text-xs text-slate-400 font-normal mt-0.5">
+                        {[
+                          d.metadata.inspection_date && `Inspected ${d.metadata.inspection_date}`,
+                          d.metadata.address,
+                          d.metadata.units_covered && `Units: ${d.metadata.units_covered}`,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"

@@ -117,7 +117,12 @@ export default function TenantDocuments() {
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-slate-700 truncate">{d.name}</p>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            {[d.doc_type, new Date(d.created_at).toLocaleDateString()].filter(Boolean).join(' · ')}
+                            {[
+                              d.doc_type,
+                              d.metadata?.inspection_date && `Inspected ${d.metadata.inspection_date}`,
+                              d.metadata?.units_covered && `Units: ${d.metadata.units_covered}`,
+                              new Date(d.created_at).toLocaleDateString(),
+                            ].filter(Boolean).join(' · ')}
                           </p>
                         </div>
                       </div>
