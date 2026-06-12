@@ -124,8 +124,8 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '🎉', text: 'Document uploaded and shared with all unit owners.', success: true })
   } else if (!docType) {
     nextSteps.push({ icon: '📋', text: 'Select a Document Type to get started.' })
-  } else if (docType === 'Wind Mitigation' && (!windFields.inspection_date || !windFields.address || !windFields.building)) {
-    nextSteps.push({ icon: '📝', text: 'Fill in the Inspection Date, Address, and Building # or Name.' })
+  } else if (docType === 'Wind Mitigation' && (!windFields.inspection_date || !windFields.address)) {
+    nextSteps.push({ icon: '📝', text: 'Fill in the Inspection Date and Address (Building # or Name is optional).' })
   } else if (!file) {
     nextSteps.push({ icon: '📄', text: 'Choose the file to upload.' })
   } else {
@@ -234,9 +234,8 @@ export default function AdminDocuments() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
                   <input
-                    required
                     value={windFields.building}
                     onChange={e => setWindFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
