@@ -344,7 +344,7 @@ export default function AdminDocuments() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Inspection Date</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Document Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
@@ -363,7 +363,10 @@ export default function AdminDocuments() {
                       <p className="text-xs text-slate-400 font-normal mt-0.5">EOI {d.metadata.eoi_date}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.inspection_date ? new Date(d.metadata.inspection_date + 'T00:00:00').toLocaleDateString() : '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{(() => {
+                    const date = d.metadata?.inspection_date || d.metadata?.eoi_date
+                    return date ? new Date(date + 'T00:00:00').toLocaleDateString() : '—'
+                  })()}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
