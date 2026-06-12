@@ -35,7 +35,7 @@ const STATUS_HERO = {
   },
   missing: {
     icon: '!', title: 'No policy on file',
-    blurb: 'Your association requires proof of insurance — upload your declaration page in the YELLOW box below. If you need insurance, click here to start a new quote:',
+    blurb: 'Your association requires proof of insurance — upload your declaration page in the YELLOW box below. If you need insurance, click Request a HO-6 quote below.',
     card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
   },
 }
@@ -338,13 +338,6 @@ export default function TenantDashboard() {
                   </div>
                 )}
 
-                {/* Quote CTA, only when it actually helps */}
-                {needsQuote && QUOTE_FORM_URL && !parsing && (
-                  <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-block mt-4 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-                    Get a quote →
-                  </a>
-                )}
               </div>
             </div>
           </section>
