@@ -487,7 +487,7 @@ export default function AdminDocuments() {
                 <tr key={d.id} className={rowColor}>
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || 'ALL'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
