@@ -51,6 +51,9 @@ export default function TenantDocuments() {
                 }`}
               >
                 Unit {u.unit_number || '—'}
+                {u.hoa_name && tenantUnits.some(o => o.hoa_id !== u.hoa_id) && (
+                  <span className="opacity-70"> · {u.hoa_name}</span>
+                )}
               </button>
             ))}
           </div>
