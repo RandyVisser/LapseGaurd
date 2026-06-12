@@ -185,9 +185,45 @@ export default function TenantDashboard() {
     </div>
   )
 
+  // ── Next-steps helper box ─────────────────────────────────────────────
+  const nextSteps = []
+  if (!policyLoading) {
+    if (parsing) {
+      nextSteps.push({ icon: '⏳', text: 'We\'re reading your document — this usually takes 10–20 seconds…', wait: true })
+    } else if (!policy || status === 'missing') {
+      nextSteps.push({ icon: '📄', text: 'Upload your insurance declaration page below.' })
+    } else if (status === 'lapsed') {
+      nextSteps.push({ icon: '🔄', text: 'Your policy is expired — upload your renewal declaration page below.' })
+    } else if (flags.length > 0) {
+      flags.forEach(f => nextSteps.push({ icon: '⚠️', text: f }))
+    } else if (status === 'non_compliant') {
+      nextSteps.push({ icon: '⚠️', text: 'Your policy doesn\'t meet an association requirement — see the details above.' })
+    } else {
+      nextSteps.push({ icon: '🎉', text: 'You\'re all set! Your policy is on file and meets your association\'s requirements.', success: true })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="tenant" />
+      {nextSteps.length > 0 && (
+        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'}`}>
+          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+            <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
+          </div>
+          <ul className="p-4 space-y-3">
+            {nextSteps.map((s, i) => (
+              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                <span className="text-base leading-snug">{s.icon}</span>
+                <span>
+                  {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                  {s.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <main className="max-w-2xl mx-auto px-4 py-8">
 
         {/* Unit context */}
