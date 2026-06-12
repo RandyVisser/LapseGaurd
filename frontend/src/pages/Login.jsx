@@ -27,7 +27,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-blue-800 mb-1">LapseGuard</h1>
+        <h1 className="text-2xl font-bold text-blue-800 mb-1">condo.insure</h1>
         <p className="text-sm text-slate-500 mb-4">Condo Association Insurance Compliance</p>
         {welcome === '1' && (
           <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
