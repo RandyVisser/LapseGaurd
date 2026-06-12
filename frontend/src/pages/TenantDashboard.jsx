@@ -424,7 +424,7 @@ export default function TenantDashboard() {
             className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-5 py-4 mb-5 hover:border-blue-300 transition-colors">
             <div>
               <p className="text-sm font-semibold text-slate-700">Compare your rate</p>
-              <p className="text-xs text-slate-400 mt-0.5">Get a free condo insurance quote in minutes</p>
+              <p className="text-xs text-slate-400 mt-0.5">Get a free HO-6 insurance quote sent via email</p>
             </div>
             <span className="text-blue-600 font-semibold text-sm flex-shrink-0">Request a HO-6 quote →</span>
           </a>
