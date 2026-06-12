@@ -26,8 +26,16 @@ function docExpiration(d) {
 
 function daysUntil(dateStr) {
   if (!dateStr) return null
+  const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00')
+  if (isNaN(d)) return null
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000)
+  return Math.round((d - today) / 86400000)
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00')
+  return isNaN(d) ? '—' : d.toLocaleDateString()
 }
 
 const HOA_FIELD_OPTIONS = {
@@ -438,13 +446,13 @@ export default function AdminDocuments() {
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
-                    return date ? new Date(date + 'T00:00:00').toLocaleDateString() : '—'
+                    return fmtDate(date)
                   })()}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className={`px-4 py-3 ${days !== null && days < 0 ? 'text-red-700 font-semibold' : days !== null && days <= 30 ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>
-                    {exp ? new Date(exp + 'T00:00:00').toLocaleDateString() : '—'}
+                    {fmtDate(exp)}
                     {days !== null && days < 0 && <span className="ml-1.5 text-xs">(expired)</span>}
                   </td>
                   <td className="px-4 py-3">
