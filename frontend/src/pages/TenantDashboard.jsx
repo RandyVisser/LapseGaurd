@@ -190,7 +190,6 @@ export default function TenantDashboard() {
       nextSteps.push({ icon: '⏳', text: 'We\'re reading your document — this usually takes 10–20 seconds…', wait: true })
     } else if (!policy || status === 'missing') {
       nextSteps.push({ icon: '📄', text: 'Click the YELLOW box to upload your DEC PAGE.' })
-      nextSteps.push({ icon: '🛡️', text: 'If you need insurance, click the BLACK Request a HO-6 quote.' })
     } else if (status === 'lapsed') {
       nextSteps.push({ icon: '🔄', text: 'Your policy is expired — upload your renewal declaration page below.' })
     } else if (flags.length > 0) {
