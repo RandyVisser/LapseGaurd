@@ -120,7 +120,7 @@ export default function TenantDocuments() {
                             {[
                               d.doc_type,
                               d.metadata?.inspection_date && `Inspected ${d.metadata.inspection_date}`,
-                              d.metadata?.units_covered && `Units: ${d.metadata.units_covered}`,
+                              d.metadata?.building && `Building: ${d.metadata.building}`,
                               new Date(d.created_at).toLocaleDateString(),
                             ].filter(Boolean).join(' · ')}
                           </p>

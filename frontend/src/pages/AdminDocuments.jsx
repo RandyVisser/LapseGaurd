@@ -44,7 +44,7 @@ export default function AdminDocuments() {
   }
   const [name, setName] = useState('')
   const [docType, setDocType] = useState('')
-  const [windFields, setWindFields] = useState({ inspection_date: '', address: '', units_covered: '' })
+  const [windFields, setWindFields] = useState({ inspection_date: '', address: '', building: '' })
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -88,7 +88,7 @@ export default function AdminDocuments() {
 
       setName('')
       setDocType('')
-      setWindFields({ inspection_date: '', address: '', units_covered: '' })
+      setWindFields({ inspection_date: '', address: '', building: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
@@ -180,12 +180,12 @@ export default function AdminDocuments() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Units Covered</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name</label>
                   <input
                     required
-                    value={windFields.units_covered}
-                    onChange={e => setWindFields(f => ({ ...f, units_covered: e.target.value }))}
-                    placeholder="All, or e.g. 101–210"
+                    value={windFields.building}
+                    onChange={e => setWindFields(f => ({ ...f, building: e.target.value }))}
+                    placeholder="e.g. Building 3 or Seaside Tower"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -245,7 +245,7 @@ export default function AdminDocuments() {
                         {[
                           d.metadata.inspection_date && `Inspected ${d.metadata.inspection_date}`,
                           d.metadata.address,
-                          d.metadata.units_covered && `Units: ${d.metadata.units_covered}`,
+                          d.metadata.building && `Building: ${d.metadata.building}`,
                         ].filter(Boolean).join(' · ')}
                       </p>
                     )}
