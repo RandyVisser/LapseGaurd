@@ -52,7 +52,6 @@ export default function TenantDashboard() {
   const [allPolicies, setAllPolicies] = useState([])
   const [policyLoading, setPolicyLoading] = useState(true)
   const [form, setForm] = useState({ insurer: '', policy_number: '', expiration_date: '' })
-  const [showManual, setShowManual] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [file, setFile] = useState(null)
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -108,8 +107,8 @@ export default function TenantDashboard() {
     e.preventDefault()
     setError(''); setSuccess('')
 
-    if (!file && !form.insurer && !form.policy_number && !form.expiration_date) {
-      setError('Attach your declaration page (or enter the details manually).')
+    if (!file) {
+      setError('Attach your declaration page to submit.')
       return
     }
     if (form.expiration_date && new Date(form.expiration_date) < new Date()) {
@@ -141,7 +140,6 @@ export default function TenantDashboard() {
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
-      setShowManual(false)
       if (file) startParsingPoll()
     } catch (e) {
       setError(e.message)
@@ -390,37 +388,6 @@ export default function TenantDashboard() {
                 onChange={e => setFile(e.target.files[0] || null)}
                 className="hidden"
               />
-            </div>
-
-            {/* Manual details, tucked away — the AI reads the doc anyway */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowManual(s => !s)}
-                className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2"
-              >
-                {showManual ? 'Hide manual details' : 'Or enter details manually'}
-              </button>
-              {showManual && (
-                <div className="grid sm:grid-cols-3 gap-3 mt-3">
-                  {[
-                    { label: 'Insurer', key: 'insurer', placeholder: 'State Farm' },
-                    { label: 'Policy number', key: 'policy_number', placeholder: 'HO-123456' },
-                    { label: 'Expiration date', key: 'expiration_date', type: 'date' },
-                  ].map(({ label, key, placeholder, type }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
-                      <input
-                        type={type || 'text'}
-                        value={form[key]}
-                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                        placeholder={placeholder}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {success && <p className="text-sm text-green-600">{success}</p>}
