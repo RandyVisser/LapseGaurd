@@ -465,10 +465,10 @@ export default function AdminDocuments() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Document Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Document Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Expires</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
                 <th className="px-4 py-3"></th>
@@ -486,13 +486,13 @@ export default function AdminDocuments() {
                 return (
                 <tr key={d.id} className={rowColor}>
                   <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-slate-500">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
                     return fmtDate(date)
                   })()}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className={`px-4 py-3 ${days !== null && days < 0 ? 'text-red-700 font-semibold' : days !== null && days <= 30 ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>
                     {fmtDate(exp)}
                     {days !== null && days < 0 && <span className="ml-1.5 text-xs">(expired)</span>}
