@@ -121,7 +121,11 @@ export default function Landing() {
       </section>
 
       <footer className="text-center py-8 text-sm text-slate-400">
-        © {new Date().getFullYear()} LapseGuard. All rights reserved.
+        <p>© {new Date().getFullYear()} LapseGuard. All rights reserved.</p>
+        <p className="mt-2 space-x-4">
+          <a href="/privacy" className="hover:text-slate-600 underline underline-offset-2">Privacy</a>
+          <a href="/terms" className="hover:text-slate-600 underline underline-offset-2">Terms</a>
+        </p>
       </footer>
     </div>
   )

@@ -16,6 +16,8 @@ const AdminSettings = lazy(() => import('./pages/AdminSettings'))
 const AdminTenantDetail = lazy(() => import('./pages/AdminTenantDetail'))
 const TenantDashboard = lazy(() => import('./pages/TenantDashboard'))
 const TenantDocuments = lazy(() => import('./pages/TenantDocuments'))
+const Privacy = lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacy })))
+const Terms = lazy(() => import('./pages/Legal').then(m => ({ default: m.Terms })))
 
 function PageLoader() {
   return (
@@ -49,6 +51,8 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/join/:token" element={<Join />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin/dashboard" element={<RequireAuth role="hoa_admin"><AdminDashboard /></RequireAuth>} />
             <Route path="/admin/documents" element={<RequireAuth role="hoa_admin"><AdminDocuments /></RequireAuth>} />
