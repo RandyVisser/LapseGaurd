@@ -344,6 +344,8 @@ export default function AdminDocuments() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Expires</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
@@ -360,14 +362,13 @@ export default function AdminDocuments() {
                       <p className="text-xs text-slate-400 font-normal mt-0.5">
                         {[
                           d.metadata.inspection_date && `Inspected ${d.metadata.inspection_date}`,
-                          d.metadata.address,
-                          d.metadata.building && `Building: ${d.metadata.building}`,
                           d.metadata.eoi_date && `EOI ${d.metadata.eoi_date}`,
-                          d.metadata.building_address,
                         ].filter(Boolean).join(' · ')}
                       </p>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-slate-500">{d.metadata?.expiration_date ? new Date(d.metadata.expiration_date + 'T00:00:00').toLocaleDateString() : '—'}</td>
                   <td className="px-4 py-3">
@@ -389,7 +390,7 @@ export default function AdminDocuments() {
               ))}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
                 </tr>
               )}
             </tbody>
