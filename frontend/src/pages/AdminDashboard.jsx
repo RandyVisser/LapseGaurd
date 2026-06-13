@@ -411,6 +411,7 @@ export default function AdminDashboard() {
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
   const [addingPm, setAddingPm] = useState(false)
   const [editUnit, setEditUnit] = useState(null)
+  const [editIsPm, setEditIsPm] = useState(false)
   const [editForm, setEditForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
   const [savingOwner, setSavingOwner] = useState(false)
   const [deleteUnitId, setDeleteUnitId] = useState(null)
@@ -528,8 +529,9 @@ export default function AdminDashboard() {
     }
   }
 
-  function openEditOwner(u) {
+  function openEditOwner(u, isPm = false) {
     setEditUnit(u)
+    setEditIsPm(isPm)
     setEditForm({
       owner_primary: u.owner_primary || '',
       owner_secondary: u.owner_secondary || '',
@@ -891,30 +893,34 @@ export default function AdminDashboard() {
         {editUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-              <h2 className="font-semibold text-slate-800 mb-1">Edit Owner Info</h2>
-              <p className="text-xs text-slate-400 mb-4">Unit {editUnit.unit_number} — fix a typo or update after a sale.</p>
+              <h2 className="font-semibold text-slate-800 mb-1">{editIsPm ? 'Edit Property Manager' : 'Edit Owner Info'}</h2>
+              <p className="text-xs text-slate-400 mb-4">{editIsPm ? 'Update the property manager name or email.' : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
               <form onSubmit={handleSaveOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary name</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{editIsPm ? 'Name' : 'Primary name'}</label>
                     <input value={editForm.owner_primary} onChange={e => setEditForm(f => ({ ...f, owner_primary: e.target.value }))}
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary email</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">{editIsPm ? 'Email' : 'Primary email'}</label>
                     <input type="email" value={editForm.email_primary} onChange={e => setEditForm(f => ({ ...f, email_primary: e.target.value }))}
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
+                  {!editIsPm && (
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Secondary name</label>
                     <input value={editForm.owner_secondary} onChange={e => setEditForm(f => ({ ...f, owner_secondary: e.target.value }))}
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
+                  )}
+                  {!editIsPm && (
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
                     <input type="email" value={editForm.email_secondary} onChange={e => setEditForm(f => ({ ...f, email_secondary: e.target.value }))}
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingOwner}
@@ -1140,6 +1146,10 @@ export default function AdminDashboard() {
                           {
                             label: 'Send Invite',
                             onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                          },
+                          {
+                            label: 'Edit PM…',
+                            onClick: () => openEditOwner(u, true),
                           },
                           {
                             label: 'Add New PM…',
