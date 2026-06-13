@@ -191,20 +191,34 @@ def _match_by_address(property_address: str, candidates: list, min_score: int = 
     return [c for s, c in scored if s == best]
 
 
-async def _all_unit_candidates(conn) -> list:
-    """Every unit (with a tenant) on the platform, shaped for address matching.
-    Used to resolve an unknown sender's forwarded dec page by property address."""
-    rows = await conn.fetch(
-        """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
+_CANDIDATE_FIELDS = """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
                   u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
                   u.city, u.state, u.zip, u.hoa_id
-           FROM tenants t JOIN units u ON u.id = t.unit_id"""
-    )
+           FROM tenants t JOIN units u ON u.id = t.unit_id
+           WHERE lower(coalesce(u.assoc_title, '')) <> 'property manager'"""
+
+
+def _candidate_dicts(rows) -> list:
     return [
         {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
          "hoa_id": str(r["hoa_id"])}
         for r in rows
     ]
+
+
+async def _all_unit_candidates(conn) -> list:
+    """Every real unit (with a tenant, excluding PM-titled units) on the platform,
+    shaped for address matching. Resolves an unknown sender's forwarded dec page."""
+    return _candidate_dicts(await conn.fetch(_CANDIDATE_FIELDS))
+
+
+async def _candidates_in_hoas(conn, hoa_ids: list) -> list:
+    """Real units (excluding PM-titled) within the given HOAs — used to scope a
+    known property manager's forwarded dec page to the associations they manage."""
+    if not hoa_ids:
+        return []
+    return _candidate_dicts(await conn.fetch(
+        _CANDIDATE_FIELDS + " AND u.hoa_id = ANY($1::uuid[])", hoa_ids))
 
 
 async def _unknown_sender_task(sender: str, candidates: list, content: bytes, content_type: str):
@@ -359,34 +373,51 @@ async def receive_inbound_email(
     match_rows = await conn.fetch(
         """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
                   u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
-                  u.city, u.state, u.zip, u.hoa_id
+                  u.city, u.state, u.zip, u.hoa_id, u.assoc_title
            FROM tenants t JOIN units u ON u.id = t.unit_id
            WHERE lower(t.email) = lower($1)
               OR lower(u.email_primary) = lower($1)
               OR lower(u.email_secondary) = lower($1)""",
         sender,
     )
-    if not match_rows:
-        # Case 2: unknown sender (e.g. a property manager forwarding an owner's
-        # dec page). Fall back to matching the dec page's property address against
-        # every unit on the platform — requires a strong, unique match.
-        if not _pick_attachment(data.get("attachments") or []):
-            logger.info("Inbound from unknown sender %s with no attachment — ignoring", sender)
-            return {"handled": False, "reason": "unknown sender, no attachment"}
-        fetched = await _fetch_attachment_bytes(data.get("email_id") or data.get("id"))
-        if fetched is None:
-            logger.info("Inbound from unknown sender %s — attachment fetch failed — ignoring", sender)
-            return {"handled": False, "reason": "unknown sender, attachment fetch failed"}
-        content, content_type = fetched
-        all_candidates = await _all_unit_candidates(conn)
-        background_tasks.add_task(_unknown_sender_task, sender, all_candidates, content, content_type)
-        return {"handled": True, "matched_by": "pending_unknown_sender_address"}
     # Plain dicts with string ids — these cross into background tasks
-    matches = [
+    all_matches = [
         {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
          "hoa_id": str(r["hoa_id"])}
         for r in match_rows
     ]
+    # A property manager's email may be attached to a unit titled "Property
+    # Manager". We never upload documents onto a PM unit — instead we route the
+    # dec page to the real unit by its property address.
+    def _is_pm(m):
+        return (m.get("assoc_title") or "").strip().lower() == "property manager"
+    owner_matches = [m for m in all_matches if not _is_pm(m)]
+    pm_matches = [m for m in all_matches if _is_pm(m)]
+
+    if not owner_matches:
+        # Sender is either unknown, or a known property manager (matched only to a
+        # PM unit). Either way, route by the dec page's property address.
+        if not _pick_attachment(data.get("attachments") or []):
+            logger.info("Inbound from %s with no attachment — ignoring", sender)
+            return {"handled": False, "reason": "no attachment"}
+        fetched = await _fetch_attachment_bytes(data.get("email_id") or data.get("id"))
+        if fetched is None:
+            logger.info("Inbound from %s — attachment fetch failed — ignoring", sender)
+            return {"handled": False, "reason": "attachment fetch failed"}
+        content, content_type = fetched
+        if pm_matches:
+            # Known property manager — scope the address search to the HOA(s) they
+            # manage, excluding any PM-titled units.
+            hoa_ids = list({m["hoa_id"] for m in pm_matches})
+            candidates = await _candidates_in_hoas(conn, hoa_ids)
+            background_tasks.add_task(_unknown_sender_task, sender, candidates, content, content_type)
+            return {"handled": True, "matched_by": "pending_property_manager_address"}
+        # Truly unknown sender — search every (non-PM) unit on the platform.
+        all_candidates = await _all_unit_candidates(conn)
+        background_tasks.add_task(_unknown_sender_task, sender, all_candidates, content, content_type)
+        return {"handled": True, "matched_by": "pending_unknown_sender_address"}
+
+    matches = owner_matches
 
     # Webhook carries attachment metadata only — bail early if none look usable,
     # otherwise fetch the real bytes from the Received emails API
