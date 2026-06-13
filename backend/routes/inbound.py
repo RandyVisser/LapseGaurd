@@ -235,7 +235,7 @@ async def _unknown_sender_task(sender: str, candidates: list, content: bytes, co
         if len(hits) == 1:
             pool = await get_pool()
             async with pool.acquire() as conn:
-                await _ingest(conn, sender, hits[0], content, content_type)
+                await _ingest(conn, sender, hits[0], content, content_type, resolved_by_address=True)
             logger.info("Inbound from unknown sender %s matched unit %s by address",
                         sender, hits[0].get("unit_id"))
             return
@@ -251,19 +251,23 @@ def _ext_for(content_type: str) -> str:
     return "pdf" if "pdf" in content_type else content_type.split("/")[-1]
 
 
+def _full_unit_address(match: dict) -> str | None:
+    if not match.get("street_address"):
+        return None
+    parts = [match["street_address"]]
+    if match.get("unit_number"):
+        parts.append(f"Unit {match['unit_number']}")
+    addr = ", ".join(parts)
+    cs = " ".join(filter(None, [match.get("city"), match.get("state")]))
+    if cs:
+        addr += f", {cs}"
+    if match.get("zip"):
+        addr += f" {match['zip']}"
+    return addr
+
+
 def _build_submitted(match: dict, hoa_row) -> dict:
-    unit_address = None
-    if match.get("street_address"):
-        parts = [match["street_address"]]
-        if match.get("unit_number"):
-            parts.append(f"Unit {match['unit_number']}")
-        addr = ", ".join(parts)
-        cs = " ".join(filter(None, [match.get("city"), match.get("state")]))
-        if cs:
-            addr += f", {cs}"
-        if match.get("zip"):
-            addr += f" {match['zip']}"
-        unit_address = addr
+    unit_address = _full_unit_address(match)
     return {
         "insurer": None,
         "policy_number": None,
@@ -276,15 +280,22 @@ def _build_submitted(match: dict, hoa_row) -> dict:
     }
 
 
-async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: str):
-    """Create the policy for a resolved unit, kick off parsing, confirm by email."""
+async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: str,
+                  resolved_by_address: bool = False):
+    """Create the policy for a resolved unit, kick off parsing, confirm by email.
+    When resolved_by_address is set, the sender didn't own the unit (an unknown
+    sender or a property manager forwarding on an owner's behalf), so the
+    confirmation spells out which owner/unit the document was assigned to."""
     document_hash = hashlib.sha256(content).hexdigest()
     dupe = await conn.fetchrow(
         "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
         match["tenant_id"], document_hash,
     )
     if dupe:
-        subject, html = _already_received_email(match.get("tenant_name"))
+        if resolved_by_address:
+            subject, html = _assigned_email(match, already=True)
+        else:
+            subject, html = _already_received_email(match.get("tenant_name"))
         await send_email(sender, subject, html)
         return
 
@@ -303,7 +314,10 @@ async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: 
     )
     await _run_parsing(str(row["id"]), path, _build_submitted(match, hoa_row))
 
-    subject, html = _received_email(match.get("tenant_name"), match.get("unit_number"))
+    if resolved_by_address:
+        subject, html = _assigned_email(match)
+    else:
+        subject, html = _received_email(match.get("tenant_name"), match.get("unit_number"))
     await send_email(sender, subject, html)
 
 
@@ -474,6 +488,29 @@ def _no_attachment_email(name: str | None):
     <p>Hi {name or 'there'},</p>
     <p>We received your email but couldn't find an attached insurance document.
     Please reply with your declaration page attached as a PDF or photo.</p>
+    """
+    return subject, html
+
+
+def _assigned_email(match: dict, already: bool = False):
+    owner = match.get("owner_primary") or match.get("owner_secondary") or match.get("tenant_name") or "the unit owner"
+    unit_no = match.get("unit_number") or "—"
+    address = _full_unit_address(match) or "address on file"
+    intro = ("This document was already on file, so there was nothing more to do. "
+             "Here's the unit it belongs to:") if already else \
+            ("We received the insurance document and assigned it to the unit below. "
+             "It's being reviewed now.")
+    subject = ("Document already on file — Unit " + unit_no) if already else \
+              ("Document received and assigned — Unit " + unit_no)
+    html = f"""
+    <p>Hi there,</p>
+    <p>{intro}</p>
+    <table cellpadding="0" cellspacing="0" style="margin:12px 0;font-size:14px">
+      <tr><td style="padding:2px 12px 2px 0;color:#64748b">Unit owner</td><td style="font-weight:600">{owner}</td></tr>
+      <tr><td style="padding:2px 12px 2px 0;color:#64748b">Unit #</td><td style="font-weight:600">{unit_no}</td></tr>
+      <tr><td style="padding:2px 12px 2px 0;color:#64748b">Address</td><td style="font-weight:600">{address}</td></tr>
+    </table>
+    <p>You can review status anytime at <a href="{APP_URL}">{APP_URL}</a>.</p>
     """
     return subject, html
 
