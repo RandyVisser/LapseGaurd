@@ -384,8 +384,8 @@ export default function TenantDashboard() {
                     {dragOver ? 'Drop to upload' : 'Drag & drop your dec page'}
                   </p>
                   <p className="text-xs text-slate-400 mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
-                  <p className="text-sm text-slate-600 font-medium sm:hidden">Tap to take a photo or choose a file</p>
-                  <p className="text-xs text-slate-400 mt-1 sm:hidden">PDF, PNG, JPG</p>
+                  <p className="text-sm text-slate-600 font-medium sm:hidden">Tap to upload your dec page</p>
+                  <p className="text-xs text-slate-400 mt-1 sm:hidden">A PDF works best · a clear, full-page photo is OK too</p>
                 </div>
               )}
               <input
