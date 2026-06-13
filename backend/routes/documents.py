@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,15 +9,23 @@ from models.schemas import DocumentCreate, DocumentOut
 from models.db import get_conn
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from routes.hoa import _assert_hoa_access
+from services.storage import signed_url, object_path
+
+HOA_BUCKET = "hoa-documents"
 
 router = APIRouter()
 
 
-def _doc_out(row) -> DocumentOut:
+async def _doc_out(row) -> DocumentOut:
     d = dict(row)
     if isinstance(d.get("metadata"), str):
         d["metadata"] = json.loads(d["metadata"])
+    d["file_url"] = await signed_url(d.get("file_url"), HOA_BUCKET)
     return DocumentOut(**d)
+
+
+async def _docs_out(rows) -> List[DocumentOut]:
+    return list(await asyncio.gather(*(_doc_out(r) for r in rows)))
 
 
 @router.get("/unit/{unit_id}/documents", response_model=List[DocumentOut])
@@ -45,7 +54,7 @@ async def list_unit_documents(
         unit["hoa_id"],
     )
 
-    return [_doc_out(r) for r in rows]
+    return await _docs_out(rows)
 
 
 @router.get("/hoa/{hoa_id}/documents", response_model=List[DocumentOut])
@@ -60,7 +69,7 @@ async def list_hoa_documents(
         "SELECT * FROM documents WHERE hoa_id = $1 ORDER BY created_at DESC",
         hoa_id,
     )
-    return [_doc_out(r) for r in rows]
+    return await _docs_out(rows)
 
 
 @router.post("/hoa/{hoa_id}/documents", response_model=DocumentOut)
@@ -80,13 +89,13 @@ async def upload_hoa_document(
         """,
         hoa_id,
         body.name,
-        body.file_url,
+        object_path(body.file_url, HOA_BUCKET),  # store bare path; reads sign it
         user.sub,
         body.doc_type,
         json.dumps(body.metadata) if body.metadata else None,
     )
 
-    return _doc_out(row)
+    return await _doc_out(row)
 
 
 @router.delete("/hoa/{hoa_id}/documents/{doc_id}")

@@ -14,10 +14,12 @@ from models.db import get_conn, get_pool
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.policy_parser import parse_dec_page
 from services.email import send_email, policy_upload_notification_html
+from services.storage import signed_url, fetch_bytes, object_path
 from routes.hoa import _assert_hoa_access
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 APP_URL = os.environ.get("APP_URL", "https://condo.insure")
+POLICY_BUCKET = "policy-documents"
 
 router = APIRouter()
 
@@ -25,13 +27,43 @@ logger = logging.getLogger(__name__)
 
 
 def _require_storage_url(url: str | None):
-    """Reject document URLs outside our Supabase storage — the backend fetches
-    these URLs server-side (hashing + AI parsing), so arbitrary URLs are an SSRF vector."""
+    """Reject document references the backend can't resolve to our own storage.
+    Accepts a bare object path or a legacy full Supabase storage URL; anything
+    that still carries a scheme after normalization (a foreign URL) is rejected.
+    The actual fetch is structurally safe regardless — it always targets our
+    bucket — but this gives a clean 422 for bad input."""
     if url is None:
         return
-    storage_base = f"{SUPABASE_URL}/storage/v1/object"
-    if not SUPABASE_URL or not url.startswith(storage_base):
+    path = object_path(url, POLICY_BUCKET)
+    if path is None or "://" in path:
         raise HTTPException(status_code=422, detail="document_url must point to Supabase storage")
+
+
+async def _policy_out(row, *, sign: bool = True) -> PolicyOut:
+    """Build a PolicyOut, replacing the stored document path with a short-lived
+    signed URL so the frontend can open it from a private bucket."""
+    d = dict(row)
+    doc = await signed_url(d.get("document_url"), POLICY_BUCKET) if sign else d.get("document_url")
+    extracted = d.get("extracted_data")
+    if isinstance(extracted, str):
+        extracted = json.loads(extracted)
+    overrides = d.get("review_overrides")
+    if isinstance(overrides, str):
+        overrides = json.loads(overrides)
+    return PolicyOut(
+        id=d["id"],
+        tenant_id=d["tenant_id"],
+        insurer=d.get("insurer"),
+        policy_number=d.get("policy_number"),
+        expiration_date=d.get("expiration_date"),
+        status=d["status"],
+        document_url=doc,
+        uploaded_at=d["uploaded_at"],
+        extracted_data=extracted or None,
+        parsed_at=d.get("parsed_at"),
+        coverage_type=d.get("coverage_type"),
+        review_overrides=overrides or {},
+    )
 
 
 def _compute_status(expiration_date: date | None) -> PolicyStatus:
@@ -76,37 +108,18 @@ async def get_policy(
     )
     if row is None:
         return None
-    return PolicyOut(
-        id=row["id"],
-        tenant_id=row["tenant_id"],
-        insurer=row["insurer"],
-        policy_number=row["policy_number"],
-        expiration_date=row["expiration_date"],
-        status=row["status"],
-        document_url=row["document_url"],
-        uploaded_at=row["uploaded_at"],
-        extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
-        parsed_at=row["parsed_at"],
-        coverage_type=row["coverage_type"],
-        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
-    )
+    return await _policy_out(row)
 
 
 async def _hash_document(document_url: str) -> str | None:
     """Fetch the uploaded document and return a SHA-256 hex digest of its bytes,
-    used to detect accidental re-uploads of the same file."""
-    storage_base = f"{SUPABASE_URL}/storage/v1/object"
-    if not SUPABASE_URL or not document_url.startswith(storage_base):
-        logger.warning("Rejected document URL outside Supabase storage: %s", document_url)
+    used to detect accidental re-uploads of the same file. Fetches via the
+    service role so it works on private buckets."""
+    fetched = await fetch_bytes(document_url, POLICY_BUCKET)
+    if fetched is None:
         return None
-    try:
-        async with httpx.AsyncClient(timeout=30) as http:
-            resp = await http.get(document_url)
-            resp.raise_for_status()
-            return hashlib.sha256(resp.content).hexdigest()
-    except Exception as e:
-        logger.error(f"Failed to hash document {document_url}: {e}")
-        return None
+    content, _ = fetched
+    return hashlib.sha256(content).hexdigest()
 
 
 def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str, has_wind_only_companion: bool) -> dict:
@@ -304,6 +317,8 @@ async def upload_policy(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _require_storage_url(body.document_url)
+    # Store a bare object path (not a public URL) so reads go through signed URLs
+    doc_ref = object_path(body.document_url, POLICY_BUCKET)
 
     # Verify tenant belongs to this unit (match by user id or email, like /tenant/me)
     tenant = await conn.fetchrow(
@@ -345,12 +360,12 @@ async def upload_policy(
         )
 
     # Uploaded proof of insurance always goes to pending review for admin sign-off
-    status = PolicyStatus.pending_review if body.document_url else _compute_status(body.expiration_date)
+    status = PolicyStatus.pending_review if doc_ref else _compute_status(body.expiration_date)
 
     # Detect accidental re-uploads of the exact same file for this tenant
     document_hash = None
-    if body.document_url:
-        document_hash = await _hash_document(body.document_url)
+    if doc_ref:
+        document_hash = await _hash_document(doc_ref)
         if document_hash:
             dupe = await conn.fetchrow(
                 "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
@@ -373,22 +388,13 @@ async def upload_policy(
         body.policy_number,
         body.expiration_date,
         status.value,
-        body.document_url,
+        doc_ref,
         document_hash,
     )
 
-    policy = PolicyOut(
-        id=row["id"],
-        tenant_id=row["tenant_id"],
-        insurer=row["insurer"],
-        policy_number=row["policy_number"],
-        expiration_date=row["expiration_date"],
-        status=row["status"],
-        document_url=row["document_url"],
-        uploaded_at=row["uploaded_at"],
-    )
+    policy = await _policy_out(row)
 
-    if body.document_url:
+    if doc_ref:
         unit_address = None
         if unit_row and unit_row["street_address"]:
             parts = [unit_row["street_address"]]
@@ -412,7 +418,7 @@ async def upload_policy(
             "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
             "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
         }
-        background_tasks.add_task(_run_parsing, str(row["id"]), body.document_url, submitted)
+        background_tasks.add_task(_run_parsing, str(row["id"]), doc_ref, submitted)
 
         # Notify admin when a tenant uploads (not when admin uploads on behalf of tenant)
         if user.role == "tenant" and unit_row:
@@ -482,7 +488,7 @@ async def edit_policy(
     if body.coverage_type is not None:
         updates["coverage_type"] = body.coverage_type
     if body.document_url is not None:
-        updates["document_url"] = body.document_url
+        updates["document_url"] = object_path(body.document_url, POLICY_BUCKET)
 
     # Expiration date — also recompute status
     exp = body.expiration_date if body.expiration_date is not None else row["expiration_date"]
@@ -528,20 +534,7 @@ async def edit_policy(
             policy_id, *updates.values(),
         )
 
-    return PolicyOut(
-        id=row["id"],
-        tenant_id=row["tenant_id"],
-        insurer=row["insurer"],
-        policy_number=row["policy_number"],
-        expiration_date=row["expiration_date"],
-        status=row["status"],
-        document_url=row["document_url"],
-        uploaded_at=row["uploaded_at"],
-        extracted_data=json.loads(row["extracted_data"]) if isinstance(row["extracted_data"], str) else (row["extracted_data"] or None),
-        parsed_at=row["parsed_at"],
-        coverage_type=row["coverage_type"],
-        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
-    )
+    return await _policy_out(row)
 
 
 @router.delete("/policy/{policy_id}")
@@ -587,19 +580,7 @@ async def approve_policy(
         policy_id,
     )
 
-    return PolicyOut(
-        id=updated["id"],
-        tenant_id=updated["tenant_id"],
-        insurer=updated["insurer"],
-        policy_number=updated["policy_number"],
-        expiration_date=updated["expiration_date"],
-        status=updated["status"],
-        document_url=updated["document_url"],
-        uploaded_at=updated["uploaded_at"],
-        extracted_data=json.loads(updated["extracted_data"]) if updated["extracted_data"] else None,
-        parsed_at=updated["parsed_at"],
-        coverage_type=updated["coverage_type"],
-    )
+    return await _policy_out(updated)
 
 
 @router.post("/policy/{policy_id}/run-ai", response_model=PolicyOut)
@@ -659,17 +640,4 @@ async def run_ai_on_policy(
 
     background_tasks.add_task(_run_parsing, str(row["id"]), row["document_url"], submitted)
 
-    return PolicyOut(
-        id=row["id"],
-        tenant_id=row["tenant_id"],
-        insurer=row["insurer"],
-        policy_number=row["policy_number"],
-        expiration_date=row["expiration_date"],
-        status=row["status"],
-        document_url=row["document_url"],
-        uploaded_at=row["uploaded_at"],
-        extracted_data=json.loads(row["extracted_data"]) if row["extracted_data"] else None,
-        parsed_at=row["parsed_at"],
-        coverage_type=row["coverage_type"],
-        review_overrides=json.loads(row["review_overrides"]) if isinstance(row["review_overrides"], str) else (row["review_overrides"] or {}),
-    )
+    return await _policy_out(row)

@@ -12,6 +12,8 @@ from models.schemas import TenantDetailOut, PolicyOut, PolicyStatus, ActivityLog
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
+from services.storage import signed_url
+import asyncio
 import os
 from services.email import send_email, admin_notify_html, invite_email_html
 
@@ -257,6 +259,11 @@ async def get_tenant_detail(
 
         return db_status if db_status != PolicyStatus.non_compliant.value else PolicyStatus.active.value
 
+    # Mint short-lived signed URLs for each policy's document (private bucket)
+    signed_docs = await asyncio.gather(
+        *(signed_url(r["document_url"], "policy-documents") for r in policy_rows)
+    )
+
     policies = [
         PolicyOut(
             id=r["id"],
@@ -265,7 +272,7 @@ async def get_tenant_detail(
             policy_number=r["policy_number"],
             expiration_date=r["expiration_date"],
             status=_effective_status(r),
-            document_url=r["document_url"],
+            document_url=signed,
             uploaded_at=r["uploaded_at"],
             extracted_data=json.loads(r["extracted_data"]) if r["extracted_data"] else None,
             parsed_at=r["parsed_at"],
@@ -274,7 +281,7 @@ async def get_tenant_detail(
             review_overrides=json.loads(r["review_overrides"]) if isinstance(r["review_overrides"], str) else (r["review_overrides"] or {}),
             superseded_by=r["superseded_by"],
         )
-        for r in policy_rows
+        for r, signed in zip(policy_rows, signed_docs)
     ]
 
     return TenantDetailOut(
@@ -557,6 +564,9 @@ async def get_my_policies(
         "SELECT * FROM policies WHERE tenant_id = $1 ORDER BY uploaded_at DESC",
         tenant["id"],
     )
+    signed_docs = await asyncio.gather(
+        *(signed_url(r["document_url"], "policy-documents") for r in rows)
+    )
     return [
         {
             "id": str(r["id"]),
@@ -564,11 +574,11 @@ async def get_my_policies(
             "policy_number": r["policy_number"],
             "expiration_date": r["expiration_date"].isoformat() if r["expiration_date"] else None,
             "status": r["status"],
-            "document_url": r["document_url"],
+            "document_url": signed,
             "uploaded_at": r["uploaded_at"].isoformat(),
             "coverage_type": r["coverage_type"],
         }
-        for r in rows
+        for r, signed in zip(rows, signed_docs)
     ]
 
 

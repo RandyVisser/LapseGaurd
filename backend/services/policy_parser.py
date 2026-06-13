@@ -9,9 +9,10 @@ import os
 import re
 import logging
 
-import httpx
 import pdfplumber
 import anthropic
+
+from services.storage import fetch_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -224,19 +225,15 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
         logger.warning("ANTHROPIC_API_KEY not set — skipping dec page parsing")
         return None
 
-    # SSRF guard: this fetch runs server-side, so only our own storage is allowed
-    storage_base = f"{SUPABASE_URL}/storage/v1/object"
-    if not SUPABASE_URL or not document_url.startswith(storage_base):
-        logger.warning("Refusing to fetch document URL outside Supabase storage: %s", document_url)
+    # Fetch via the service role (works on private buckets); fetch_bytes also
+    # scopes the request to our bucket, so an arbitrary host can't be injected
+    fetched = await fetch_bytes(document_url, "policy-documents")
+    if fetched is None:
+        logger.warning("Could not fetch document for parsing: %s", document_url)
         return None
+    content, content_type = fetched
 
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
-            resp = await http.get(document_url)
-            resp.raise_for_status()
-            content = resp.content
-            content_type = resp.headers.get("content-type", "")
-
         client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
         is_pdf = "pdf" in content_type or document_url.lower().endswith(".pdf")

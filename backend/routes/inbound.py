@@ -163,18 +163,19 @@ async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: 
         return
 
     path = f"{match['unit_id']}/{int(time.time() * 1000)}-email.{_ext_for(content_type)}"
-    document_url = await _upload_to_storage(path, content, content_type)
+    await _upload_to_storage(path, content, content_type)
+    # Store the bare object path; reads sign it (private bucket)
 
     row = await conn.fetchrow(
         """INSERT INTO policies (tenant_id, status, document_url, document_hash)
            VALUES ($1, $2, $3, $4) RETURNING id""",
-        match["tenant_id"], PolicyStatus.pending_review.value, document_url, document_hash,
+        match["tenant_id"], PolicyStatus.pending_review.value, path, document_hash,
     )
     hoa_row = await conn.fetchrow(
         "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
         match["hoa_id"],
     )
-    await _run_parsing(str(row["id"]), document_url, _build_submitted(match, hoa_row))
+    await _run_parsing(str(row["id"]), path, _build_submitted(match, hoa_row))
 
     subject, html = _received_email(match.get("tenant_name"), match.get("unit_number"))
     await send_email(sender, subject, html)
