@@ -29,7 +29,7 @@ export function Privacy() {
       <section>
         <h2>What we collect</h2>
         <p>
-          LapseGuard (operated at condo.insure) helps condo associations track unit-owner insurance
+          condo.insure helps condo associations track unit-owner insurance
           compliance. To do that we collect: account information (name, email, password), unit and
           ownership records provided by your association, and insurance documents you or your
           association upload — including declaration pages, which contain details such as your name,
@@ -82,7 +82,7 @@ export function Terms() {
       <section>
         <h2>The service</h2>
         <p>
-          LapseGuard provides software that helps condo associations collect, verify, and track proof
+          condo.insure provides software that helps condo associations collect, verify, and track proof
           of unit-owner insurance. The service includes automated document analysis and email
           notifications. It is provided "as is" without warranty of any kind.
         </p>
@@ -90,7 +90,7 @@ export function Terms() {
       <section>
         <h2>Not insurance or legal advice</h2>
         <p>
-          LapseGuard is a record-keeping and workflow tool. It does not sell insurance, is not an
+          condo.insure is a record-keeping and workflow tool. It does not sell insurance, is not an
           insurance carrier or licensed agent, and its automated document analysis is an aid — not a
           substitute — for your association's own review. Compliance determinations shown in the
           product are based on the rules your association configures and the documents provided, and
@@ -110,7 +110,7 @@ export function Terms() {
       <section>
         <h2>Limitation of liability</h2>
         <p>
-          To the maximum extent permitted by law, LapseGuard is not liable for indirect, incidental,
+          To the maximum extent permitted by law, condo.insure is not liable for indirect, incidental,
           or consequential damages — including losses arising from lapsed coverage, denied claims, or
           decisions made in reliance on information shown in the product. Our total liability is
           limited to the amounts paid for the service in the twelve months preceding the claim.

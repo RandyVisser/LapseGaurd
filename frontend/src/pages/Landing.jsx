@@ -4,7 +4,7 @@ function NavBar() {
   const navigate = useNavigate()
   return (
     <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
-      <span className="text-xl font-bold text-blue-800">LapseGuard</span>
+      <span className="text-xl font-bold text-blue-800">condo.insure</span>
       <div className="flex items-center gap-4">
         <button onClick={() => navigate('/login')} className="text-sm text-slate-600 hover:text-slate-900">
           Sign in
@@ -55,7 +55,7 @@ export default function Landing() {
           <span className="text-blue-700">handled for your association.</span>
         </h1>
         <p className="mt-6 text-lg text-slate-500 max-w-2xl mx-auto">
-          LapseGuard helps condo associations track unit owner insurance policies,
+          condo.insure helps condo associations track unit owner insurance policies,
           send automated renewal reminders, and verify dec pages — all in one place.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
@@ -121,7 +121,7 @@ export default function Landing() {
       </section>
 
       <footer className="text-center py-8 text-sm text-slate-400">
-        <p>© {new Date().getFullYear()} LapseGuard. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} condo.insure. All rights reserved.</p>
         <p className="mt-2 space-x-4">
           <a href="/privacy" className="hover:text-slate-600 underline underline-offset-2">Privacy</a>
           <a href="/terms" className="hover:text-slate-600 underline underline-offset-2">Terms</a>

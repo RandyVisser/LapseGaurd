@@ -63,7 +63,7 @@ export default function Signup() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
         <Link to="/" className="text-sm text-blue-600 hover:underline mb-6 block">← Back</Link>
         <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your association</h1>
-        <p className="text-sm text-slate-500 mb-6">Create your LapseGuard account</p>
+        <p className="text-sm text-slate-500 mb-6">Create your condo.insure account</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
