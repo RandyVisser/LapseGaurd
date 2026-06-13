@@ -7,9 +7,15 @@ Owners may hold multiple units (same association or several). Disambiguation
 order: single match → unit number in the subject line → property address on
 the parsed dec page → failure email with next steps.
 
+Resend inbound webhooks deliver attachment *metadata* only; the bytes are
+fetched separately from the Received emails API (needs RESEND_API_KEY, the
+same key used for sending).
+
 Setup (Resend dashboard):
-1. Enable inbound email for the domain and route it to POST {API_URL}/inbound/email
-2. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
+1. Add the MX record Resend gives you for the receiving domain
+2. Create an inbound endpoint pointing at POST {API_URL}/inbound/email
+3. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
+4. RESEND_API_KEY must already be set (it is, for outbound email)
 """
 import base64
 import hashlib
@@ -37,6 +43,7 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 RESEND_WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 APP_URL = os.environ.get("APP_URL", "https://condo.insure")
 
 _ALLOWED_TYPES = ("application/pdf", "image/jpeg", "image/png")
@@ -89,6 +96,38 @@ def _pick_attachment(attachments: list) -> dict | None:
             or (a.get("filename") or "").lower().endswith(".pdf")]
     images = [a for a in attachments if (a.get("content_type") or "").startswith("image/")]
     return (pdfs or images or [None])[0]
+
+
+async def _fetch_attachment_bytes(email_id: str | None) -> tuple[bytes, str] | None:
+    """Resend inbound webhooks carry attachment *metadata* only. Fetch the real
+    attachment list (with signed download_urls) from the Received emails API,
+    pick the best one (PDF > image), and download its bytes."""
+    if not (email_id and RESEND_API_KEY):
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=30) as http:
+            resp = await http.get(
+                f"https://api.resend.com/emails/receiving/{email_id}/attachments",
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+            )
+            resp.raise_for_status()
+            j = resp.json()
+            items = j if isinstance(j, list) else (j.get("data") or j.get("attachments") or [])
+            chosen = _pick_attachment(items)
+            if not chosen or not chosen.get("download_url"):
+                return None
+            dl = await http.get(chosen["download_url"], timeout=60)
+            dl.raise_for_status()
+            content = dl.content
+        if not content or len(content) > _MAX_ATTACHMENT_BYTES:
+            return None
+        ctype = chosen.get("content_type") or dl.headers.get("content-type") or "application/pdf"
+        if not any(ctype.startswith(t.split("/")[0]) for t in _ALLOWED_TYPES):
+            ctype = "application/pdf"
+        return content, ctype
+    except Exception:
+        logger.exception("Failed to fetch inbound attachment for email %s", email_id)
+        return None
 
 
 def _match_by_subject(subject: str, candidates: list) -> list:
@@ -258,22 +297,19 @@ async def receive_inbound_email(
         for r in match_rows
     ]
 
-    attachment = _pick_attachment(data.get("attachments") or [])
-    if not attachment or not attachment.get("content"):
+    # Webhook carries attachment metadata only — bail early if none look usable,
+    # otherwise fetch the real bytes from the Received emails API
+    if not _pick_attachment(data.get("attachments") or []):
         subject, html = _no_attachment_email(matches[0].get("tenant_name"))
         background_tasks.add_task(send_email, sender, subject, html)
         return {"handled": False, "reason": "no usable attachment"}
 
-    try:
-        content = base64.b64decode(attachment["content"])
-    except Exception:
-        return {"handled": False, "reason": "attachment not decodable"}
-    if len(content) > _MAX_ATTACHMENT_BYTES:
-        return {"handled": False, "reason": "attachment too large"}
-
-    content_type = attachment.get("content_type") or "application/pdf"
-    if not any(content_type.startswith(t.split("/")[0]) for t in _ALLOWED_TYPES):
-        content_type = "application/pdf"
+    fetched = await _fetch_attachment_bytes(data.get("email_id") or data.get("id"))
+    if fetched is None:
+        subject, html = _no_attachment_email(matches[0].get("tenant_name"))
+        background_tasks.add_task(send_email, sender, subject, html)
+        return {"handled": False, "reason": "attachment fetch failed"}
+    content, content_type = fetched
 
     # Resolve which unit this policy belongs to
     if len(matches) == 1:
