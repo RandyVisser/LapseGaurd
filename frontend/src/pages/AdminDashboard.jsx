@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, supabase } from '../supabase'
+import { apiGet, apiPost, apiPatch, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 
@@ -407,6 +407,9 @@ export default function AdminDashboard() {
   const [importResult, setImportResult] = useState(null)
   const [exporting, setExporting] = useState(false)
   const importFileRef = useRef(null)
+  const [editUnit, setEditUnit] = useState(null)
+  const [editForm, setEditForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
+  const [savingOwner, setSavingOwner] = useState(false)
   const [deleteUnitId, setDeleteUnitId] = useState(null)
   const [deletingUnit, setDeletingUnit] = useState(false)
 
@@ -520,6 +523,27 @@ export default function AdminDashboard() {
       setDeletingUnit(false)
       setDeleteUnitId(null)
     }
+  }
+
+  function openEditOwner(u) {
+    setEditUnit(u)
+    setEditForm({
+      owner_primary: u.owner_primary || '',
+      owner_secondary: u.owner_secondary || '',
+      email_primary: (u.email_primary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_primary || ''),
+      email_secondary: (u.email_secondary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_secondary || ''),
+    })
+  }
+
+  async function handleSaveOwner(e) {
+    e.preventDefault()
+    setSavingOwner(true)
+    try {
+      await apiPatch(`/unit/${editUnit.unit_id}/owner`, editForm)
+      setUnits(prev => prev.map(u => u.unit_id === editUnit.unit_id ? { ...u, ...editForm } : u))
+      setEditUnit(null)
+    } catch (err) { setError(err.message) }
+    finally { setSavingOwner(false) }
   }
 
   async function handleInvite(e) {
@@ -844,6 +868,49 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {editUnit && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+              <h2 className="font-semibold text-slate-800 mb-1">Edit Owner Info</h2>
+              <p className="text-xs text-slate-400 mb-4">Unit {editUnit.unit_number} — fix a typo or update after a sale.</p>
+              <form onSubmit={handleSaveOwner} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary name</label>
+                    <input value={editForm.owner_primary} onChange={e => setEditForm(f => ({ ...f, owner_primary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary email</label>
+                    <input type="email" value={editForm.email_primary} onChange={e => setEditForm(f => ({ ...f, email_primary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary name</label>
+                    <input value={editForm.owner_secondary} onChange={e => setEditForm(f => ({ ...f, owner_secondary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
+                    <input type="email" value={editForm.email_secondary} onChange={e => setEditForm(f => ({ ...f, email_secondary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={savingOwner}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {savingOwner ? 'Saving…' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setEditUnit(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* List toolbar — search + view controls, right above what they act on */}
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center flex-1 max-w-xs">
@@ -1023,6 +1090,10 @@ export default function AdminDashboard() {
                           {
                             label: 'Invite Secondary Owner',
                             onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                          },
+                          {
+                            label: 'Edit Owner Info…',
+                            onClick: () => openEditOwner(u),
                           },
                           {
                             label: 'Delete unit…',
