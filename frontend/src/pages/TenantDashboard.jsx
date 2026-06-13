@@ -3,6 +3,7 @@ import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import useIsMobile from '../hooks/useIsMobile'
 
 const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
 
@@ -184,6 +185,9 @@ export default function TenantDashboard() {
   )
 
   // ── Next-steps helper box ─────────────────────────────────────────────
+  // Collapses to a corner pill on mobile so it doesn't cover the page
+  const isMobile = useIsMobile()
+  const [helperExpanded, setHelperExpanded] = useState(false)
   const nextSteps = []
   if (!policyLoading) {
     if (parsing) {
@@ -205,22 +209,37 @@ export default function TenantDashboard() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="tenant" />
       {nextSteps.length > 0 && (
-        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'}`}>
-          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
-            <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
+        isMobile && !helperExpanded ? (
+          <button
+            onClick={() => setHelperExpanded(true)}
+            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}
+          >
+            {nextSteps[0]?.success ? '✓ All set' : 'Next Steps'}
+            {!nextSteps[0]?.success && (
+              <span className="bg-white/25 rounded-full px-1.5 text-xs">{nextSteps.length}</span>
+            )}
+          </button>
+        ) : (
+          <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
+            <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+              <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
+              {isMobile && (
+                <button onClick={() => setHelperExpanded(false)} aria-label="Collapse" className="text-white/90 hover:text-white text-xl leading-none">×</button>
+              )}
+            </div>
+            <ul className="p-4 space-y-3">
+              {nextSteps.map((s, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                  <span className="text-base leading-snug">{s.icon}</span>
+                  <span>
+                    {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                    {s.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="p-4 space-y-3">
-            {nextSteps.map((s, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
-                <span className="text-base leading-snug">{s.icon}</span>
-                <span>
-                  {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
-                  {s.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        )
       )}
       <main className="max-w-2xl mx-auto px-4 py-8">
 
