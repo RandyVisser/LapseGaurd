@@ -1056,13 +1056,14 @@ export default function AdminDashboard() {
               {filteredUnits.map(u => {
                 const tenantIdStr = u.tenant_id ? String(u.tenant_id) : null
                 const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
+                const isPm = (u.assoc_title || '').trim().toLowerCase() === 'property manager'
                 return (
                 <tr
                   key={u.unit_id}
-                  className={`hover:bg-slate-50 ${(u.tenant_id || u.status === 'missing') ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+                  className={`hover:bg-slate-50 ${(!isPm && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
                 >
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    {tenantIdStr && u.assoc_title !== 'Property Manager' ? (
+                    {tenantIdStr && !isPm ? (
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -1072,8 +1073,8 @@ export default function AdminDashboard() {
                     ) : null}
                   </td>
                   {activeColumns.map(c => (
-                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => openUnit(u)}>
-                      {c.render(u)}
+                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => { if (!isPm) openUnit(u) }}>
+                      {isPm && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
                     </td>
                   ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
