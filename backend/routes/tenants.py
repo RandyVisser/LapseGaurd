@@ -118,7 +118,7 @@ async def get_tenant_detail(
                COALESCE(t.phone, '') AS phone,
                u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
-               u.owner_primary, u.owner_secondary,
+               u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
                h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required
@@ -299,6 +299,8 @@ async def get_tenant_detail(
         zip=row["zip"],
         owner_primary=row["owner_primary"],
         owner_secondary=row["owner_secondary"],
+        email_primary=row["email_primary"],
+        email_secondary=row["email_secondary"],
         policies=policies,
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],

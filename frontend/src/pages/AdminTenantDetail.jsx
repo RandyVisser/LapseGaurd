@@ -490,6 +490,8 @@ export default function AdminTenantDetail() {
 
   // Editable tenant/unit form
   const [form, setForm]     = useState({})
+  // Unit owners on title (separate from the tenant login record)
+  const [ownerForm, setOwnerForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
   // Association requirements (from HOA)
   const [reqForm, setReqForm] = useState({ coverage_a_min: '', coverage_e_min: '' })
 
@@ -536,6 +538,12 @@ export default function AdminTenantDetail() {
       city: data.city || '',
       state: data.state || '',
       zip: data.zip || '',
+    })
+    setOwnerForm({
+      owner_primary: data.owner_primary || '',
+      owner_secondary: data.owner_secondary || '',
+      email_primary: (data.email_primary || '').toLowerCase().endsWith('@condo.insure') ? '' : (data.email_primary || ''),
+      email_secondary: (data.email_secondary || '').toLowerCase().endsWith('@condo.insure') ? '' : (data.email_secondary || ''),
     })
     setReqForm({
       coverage_a_min: data.ho6_coverage_a_min ?? '',
@@ -729,6 +737,13 @@ export default function AdminTenantDetail() {
         if (!tenantPayload.email) delete tenantPayload.email
         await apiPatch(`/tenant/${tenantId}`, tenantPayload)
       } catch (e) { throw new Error(`[tenant] ${e.message}`) }
+
+      // 1b. Save unit-owner names/emails (on-title owners)
+      if (tenant?.unit_id) {
+        try {
+          await apiPatch(`/unit/${tenant.unit_id}/owner`, ownerForm)
+        } catch (e) { throw new Error(`[unit owner] ${e.message}`) }
+      }
 
       // 2. Save HOA requirements if changed
       if (tenant?.hoa_id) {
@@ -991,6 +1006,18 @@ export default function AdminTenantDetail() {
                   <FieldInput label="Owner email"       value={form.email}   onChange={tField('email')} type="email" />
                   <FieldInput label="Owner phone"       value={form.phone}   onChange={tField('phone')} type="tel" placeholder="(555) 000-0000" />
                   <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
+                </div>
+
+                {/* Owners on title — correct typos or update after a sale */}
+                <div className="pt-4 border-t border-slate-100">
+                  <SectionLabel>Unit owners on title</SectionLabel>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FieldInput label="Primary name"     value={ownerForm.owner_primary}   onChange={v => setOwnerForm(f => ({ ...f, owner_primary: v }))} />
+                    <FieldInput label="Primary email"    value={ownerForm.email_primary}   onChange={v => setOwnerForm(f => ({ ...f, email_primary: v }))} type="email" />
+                    <FieldInput label="Secondary name"   value={ownerForm.owner_secondary} onChange={v => setOwnerForm(f => ({ ...f, owner_secondary: v }))} />
+                    <FieldInput label="Secondary email"  value={ownerForm.email_secondary} onChange={v => setOwnerForm(f => ({ ...f, email_secondary: v }))} type="email" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">Use this to fix a typo or update the owner when a unit sells. Changes save with the Save button below.</p>
                 </div>
 
                 {/* Unit address */}

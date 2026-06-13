@@ -60,6 +60,8 @@ class TenantDetailOut(BaseModel):
     zip: Optional[str] = None
     owner_primary: Optional[str] = None
     owner_secondary: Optional[str] = None
+    email_primary: Optional[str] = None
+    email_secondary: Optional[str] = None
     policies: list[PolicyOut]
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None

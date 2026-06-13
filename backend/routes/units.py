@@ -77,6 +77,42 @@ def _compute_status(expiration_date: date | None) -> PolicyStatus:
     return PolicyStatus.active
 
 
+class UnitOwnerUpdate(BaseModel):
+    owner_primary: Optional[str] = None
+    owner_secondary: Optional[str] = None
+    email_primary: Optional[str] = None
+    email_secondary: Optional[str] = None
+
+
+@router.patch("/unit/{unit_id}/owner")
+async def update_unit_owner(
+    unit_id: str,
+    body: UnitOwnerUpdate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Correct unit-owner names/emails (typo fixes or new owner after a sale)."""
+    unit = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+    if unit is None:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
+
+    await conn.execute(
+        """UPDATE units SET
+               owner_primary = $2,
+               owner_secondary = $3,
+               email_primary = $4,
+               email_secondary = $5
+           WHERE id = $1""",
+        unit_id,
+        (body.owner_primary or "").strip() or None,
+        (body.owner_secondary or "").strip() or None,
+        (body.email_primary or "").strip() or None,
+        (body.email_secondary or "").strip() or None,
+    )
+    return {"updated": True}
+
+
 @router.get("/unit/{unit_id}/policy", response_model=PolicyOut | None)
 async def get_policy(
     unit_id: str,
