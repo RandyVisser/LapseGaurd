@@ -87,6 +87,9 @@ async def _upload_to_storage(path: str, content: bytes, content_type: str) -> st
             url,
             content=content,
             headers={
+                # apikey is required alongside Authorization — without it the
+                # new-format sb_secret_* key is parsed as a JWT and rejected
+                "apikey": SERVICE_ROLE_KEY,
                 "Authorization": f"Bearer {SERVICE_ROLE_KEY}",
                 "Content-Type": content_type,
                 "x-upsert": "true",
