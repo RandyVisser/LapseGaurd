@@ -134,19 +134,30 @@ def invite_email_html(
     unit_number: str,
     hoa_name: str,
     invite_url: str,
+    is_property_manager: bool = False,
 ) -> tuple[str, str]:
     subject = f"You've been invited to join {hoa_name} on condo.insure"
-    html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
-      {_header()}
-      <p style="color:#374151">Hi,</p>
+    if is_property_manager:
+        intro = f"""
+        Your condo association <strong>{hoa_name}</strong> has invited you to join
+        condo.insure as a <strong>property manager</strong>.
+      </p>
       <p style="color:#374151">
+        Once you create your account you can track unit-owner insurance compliance,
+        manage documents, and stay on top of renewals — all in one place."""
+    else:
+        intro = f"""
         Your condo association <strong>{hoa_name}</strong> has invited you to set up
         your insurance compliance profile for <strong>Unit {unit_number}</strong>.
       </p>
       <p style="color:#374151">
         Once you create your account you can upload your proof of insurance,
-        track your policy status, and receive renewal reminders — all in one place.
+        track your policy status, and receive renewal reminders — all in one place."""
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Hi,</p>
+      <p style="color:#374151">{intro}
       </p>
       {_btn(invite_url, "Create Your Account")}
       <p style="color:#6b7280;font-size:13px;margin-top:8px">

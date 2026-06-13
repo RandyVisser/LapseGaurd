@@ -614,7 +614,7 @@ async def invite_tenant(
 ):
     row = await conn.fetchrow(
         """
-        SELECT u.unit_number, u.hoa_id, h.name AS hoa_name
+        SELECT u.unit_number, u.assoc_title, u.hoa_id, h.name AS hoa_name
         FROM units u JOIN hoas h ON h.id = u.hoa_id
         WHERE u.id = $1
         """,
@@ -622,6 +622,7 @@ async def invite_tenant(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Unit not found")
+    is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
     if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -646,7 +647,7 @@ async def invite_tenant(
 
     invite_url = f"{APP_URL}/join/{invite['token']}"
     subject, html = invite_email_html(
-        body.email, row["unit_number"], row["hoa_name"], invite_url
+        body.email, row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
     )
     sent = await send_email(body.email, subject, html)
     if not sent:
