@@ -555,13 +555,17 @@ export default function AdminDashboard() {
     e.preventDefault()
     setAddingPm(true)
     try {
+      // From the (empty) PM card there's no source PM unit — copy subdivision
+      // from any unit in this HOA so the new PM lands in the same subdivision
+      const sourceUnitId = addPmFor === 'new' ? (units[0]?.unit_id || null) : addPmFor
       await apiPost(`/hoa/${hoaId}/property-manager`, {
         name: pmForm.name,
         email: pmForm.email,
-        source_unit_id: addPmFor,
+        source_unit_id: sourceUnitId,
       })
-      const u = await apiGet(`/hoa/${hoaId}/units`)
-      setUnits(u)
+      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+      setSummary(s); setUnits(u)
+      setActiveFilter('pm')
       setAddPmFor(null)
       setPmForm({ name: '', email: '' })
     } catch (err) { setError(err.message) }
@@ -810,7 +814,10 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => setActiveFilter('pm')} />
+                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => {
+                    if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', email: '' }) }
+                    else setActiveFilter('pm')
+                  }} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
