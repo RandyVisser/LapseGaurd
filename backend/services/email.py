@@ -32,14 +32,14 @@ def _footer() -> str:
     return """
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0">
     <p style="color:#9ca3af;font-size:12px">
-      LapseGuard — Condo Association Insurance Compliance
+      condo.insure — Condo Association Insurance Compliance
     </p>"""
 
 
 def _header() -> str:
     return """
     <div style="background:#1e40af;padding:20px 24px;border-radius:8px 8px 0 0">
-      <span style="color:#ffffff;font-size:20px;font-weight:700">LapseGuard</span>
+      <span style="color:#ffffff;font-size:20px;font-weight:700">condo.insure</span>
     </div>
     <div style="background:#ffffff;padding:24px;border-radius:0 0 8px 8px;
                 border:1px solid #e5e7eb;border-top:none">"""
@@ -135,7 +135,7 @@ def invite_email_html(
     hoa_name: str,
     invite_url: str,
 ) -> tuple[str, str]:
-    subject = f"You've been invited to join {hoa_name} on LapseGuard"
+    subject = f"You've been invited to join {hoa_name} on condo.insure"
     html = f"""
     <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
@@ -158,14 +158,14 @@ def invite_email_html(
 
 
 def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
-    subject = f"Welcome to LapseGuard — let's get {hoa_name} set up"
+    subject = f"Welcome to condo.insure — let's get {hoa_name} set up"
     dashboard_url = f"{APP_URL}/admin/dashboard"
     html = f"""
     <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Hi {admin_name},</p>
       <p style="color:#374151">
-        Your <strong>{hoa_name}</strong> account is ready on LapseGuard. Here's how to get started:
+        Your <strong>{hoa_name}</strong> account is ready on condo.insure. Here's how to get started:
       </p>
       <ol style="color:#374151;padding-left:20px;line-height:2">
         <li>Log in to your dashboard</li>
