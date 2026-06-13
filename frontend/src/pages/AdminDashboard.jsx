@@ -613,7 +613,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing']) {
+            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -648,6 +648,8 @@ export default function AdminDashboard() {
         else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
         else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
         else if (activeFilter === 'missing') { if (u.status !== 'missing') return false }
+        else if (activeFilter === 'invite_sent') { if (u.status !== 'missing' || !u.invite_sent) return false }
+        else if (activeFilter === 'not_invited') { if (u.status !== 'missing' || u.invite_sent) return false }
         else { if (u.status !== activeFilter) return false }
       }
       if (search) {
@@ -769,6 +771,8 @@ export default function AdminDashboard() {
                   <StatCard compact label="Active · Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
                   <StatCard compact label="Expired" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
                   <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
+                  <StatCard compact label="Invite Sent" value={summary.invite_sent ?? 0} color="text-indigo-600" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
+                  <StatCard compact label="Not Invited Yet" value={summary.not_invited ?? 0} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
                   <StatCard compact label="No Policy Received" value={summary.missing} color="text-slate-500" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
                 </div>
               </div>

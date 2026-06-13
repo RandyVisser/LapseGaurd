@@ -261,7 +261,8 @@ async def list_units(
             u.purchase_date,
             t.name AS tenant_name,
             t.email AS tenant_email,
-            t.id AS tenant_id
+            t.id AS tenant_id,
+            EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
         FROM units u
         LEFT JOIN LATERAL (
             SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
@@ -302,6 +303,7 @@ async def list_units(
             tenant_id=r["tenant_id"],
             status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
             expiration_date=exp_dates.get(r["tenant_id"]),
+            invite_sent=r["has_invite"],
         )
         for r in rows
     ]
@@ -316,7 +318,8 @@ async def compliance_summary(
     await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
-        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id
+        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
+                  EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
            WHERE u.hoa_id = $1
            ORDER BY u.id, t.id""",
@@ -329,6 +332,7 @@ async def compliance_summary(
 
     total_units = board_members = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = 0
+    invite_sent = not_invited = 0
     for r in rows:
         if (r["assoc_title"] or "").strip().lower() == "property manager":
             property_managers += 1
@@ -349,6 +353,11 @@ async def compliance_summary(
             pending_review += 1
         else:
             missing += 1
+            # No policy on file — split by whether an invite has been sent
+            if r["has_invite"]:
+                invite_sent += 1
+            else:
+                not_invited += 1
 
     invites_sent = await conn.fetchval(
         "SELECT COUNT(*) FROM unit_invites i JOIN units u ON u.id = i.unit_id WHERE u.hoa_id = $1",
@@ -366,6 +375,8 @@ async def compliance_summary(
         pending_review=pending_review,
         missing=missing,
         invites_sent=invites_sent,
+        invite_sent=invite_sent,
+        not_invited=not_invited,
     )
 
 

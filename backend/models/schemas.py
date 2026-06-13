@@ -105,6 +105,7 @@ class UnitComplianceOut(BaseModel):
     tenant_id: Optional[uuid.UUID]
     status: PolicyStatus
     expiration_date: Optional[date] = None
+    invite_sent: bool = False
 
 
 class ComplianceSummary(BaseModel):
@@ -118,6 +119,8 @@ class ComplianceSummary(BaseModel):
     pending_review: int = 0
     missing: int
     invites_sent: int = 0  # invites issued for this HOA's units (getting-started checklist)
+    invite_sent: int = 0   # units with no policy that have been invited
+    not_invited: int = 0   # units with no policy and no invite sent
 
 
 class DocumentCreate(BaseModel):
