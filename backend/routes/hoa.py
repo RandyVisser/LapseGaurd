@@ -451,6 +451,43 @@ async def compliance_trend(
     ]
 
 
+class PropertyManagerCreate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    source_unit_id: Optional[str] = None  # copy subdivision/corp details from this unit
+
+
+@router.post("/hoa/{hoa_id}/property-manager", status_code=201)
+async def add_property_manager(
+    hoa_id: str,
+    body: PropertyManagerCreate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Create a new Property Manager position in the same subdivision/association."""
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    subdivision = corp_name = sunbiz = None
+    if body.source_unit_id:
+        src = await conn.fetchrow(
+            "SELECT subdivision, corp_name, sunbiz_doc_number FROM units WHERE id = $1 AND hoa_id = $2",
+            body.source_unit_id, hoa_id,
+        )
+        if src:
+            subdivision, corp_name, sunbiz = src["subdivision"], src["corp_name"], src["sunbiz_doc_number"]
+
+    row = await conn.fetchrow(
+        """INSERT INTO units (hoa_id, unit_number, assoc_title, subdivision, corp_name,
+                              sunbiz_doc_number, owner_primary, email_primary)
+           VALUES ($1, 'PM', 'Property Manager', $2, $3, $4, $5, $6)
+           RETURNING id""",
+        hoa_id, subdivision, corp_name, sunbiz,
+        (body.name or "").strip() or None,
+        (body.email or "").strip() or None,
+    )
+    return {"unit_id": str(row["id"])}
+
+
 @router.post("/hoa/{hoa_id}/units", status_code=201)
 async def add_unit(
     hoa_id: str,

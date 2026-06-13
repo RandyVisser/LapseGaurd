@@ -407,6 +407,9 @@ export default function AdminDashboard() {
   const [importResult, setImportResult] = useState(null)
   const [exporting, setExporting] = useState(false)
   const importFileRef = useRef(null)
+  const [addPmFor, setAddPmFor] = useState(null)
+  const [pmForm, setPmForm] = useState({ name: '', email: '' })
+  const [addingPm, setAddingPm] = useState(false)
   const [editUnit, setEditUnit] = useState(null)
   const [editForm, setEditForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
   const [savingOwner, setSavingOwner] = useState(false)
@@ -544,6 +547,23 @@ export default function AdminDashboard() {
       setEditUnit(null)
     } catch (err) { setError(err.message) }
     finally { setSavingOwner(false) }
+  }
+
+  async function handleAddPm(e) {
+    e.preventDefault()
+    setAddingPm(true)
+    try {
+      await apiPost(`/hoa/${hoaId}/property-manager`, {
+        name: pmForm.name,
+        email: pmForm.email,
+        source_unit_id: addPmFor,
+      })
+      const u = await apiGet(`/hoa/${hoaId}/units`)
+      setUnits(u)
+      setAddPmFor(null)
+      setPmForm({ name: '', email: '' })
+    } catch (err) { setError(err.message) }
+    finally { setAddingPm(false) }
   }
 
   async function handleInvite(e) {
@@ -911,6 +931,39 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {addPmFor && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-slate-800 mb-1">Add New Property Manager</h2>
+              <p className="text-xs text-slate-400 mb-4">Creates a new PM position in this subdivision.</p>
+              <form onSubmit={handleAddPm} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <input value={pmForm.name} onChange={e => setPmForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Manager name or company"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <input type="email" value={pmForm.email} onChange={e => setPmForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="manager@email.com"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={addingPm}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {addingPm ? 'Adding…' : 'Add PM'}
+                  </button>
+                  <button type="button" onClick={() => setAddPmFor(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* List toolbar — search + view controls, right above what they act on */}
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center flex-1 max-w-xs">
@@ -1083,7 +1136,22 @@ export default function AdminDashboard() {
                         <span className="text-xs text-green-600 font-medium whitespace-nowrap">Invite sent ✓</span>
                       )}
                       <RowActionsMenu
-                        items={[
+                        items={isPm ? [
+                          {
+                            label: 'Send Invite',
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                          },
+                          {
+                            label: 'Add New PM…',
+                            onClick: () => { setAddPmFor(u.unit_id); setPmForm({ name: '', email: '' }) },
+                          },
+                          {
+                            label: 'Delete…',
+                            danger: true,
+                            disabled: deletingUnit && deleteUnitId === u.unit_id,
+                            onClick: () => handleDeleteUnit(u.unit_id),
+                          },
+                        ] : [
                           {
                             label: 'Invite Primary Owner',
                             onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') },
