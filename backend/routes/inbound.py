@@ -162,9 +162,11 @@ def _match_by_subject(subject: str, candidates: list) -> list:
             if c.get("unit_number") and str(c["unit_number"]).lower() in tokens]
 
 
-def _match_by_address(property_address: str, candidates: list) -> list:
-    """Score candidates against the dec page's property address: the unit
-    number and the street number each count. Returns the top scorers."""
+def _match_by_address(property_address: str, candidates: list, min_score: int = 1) -> list:
+    """Score candidates against the dec page's property address: unit number,
+    street number, and street-name word overlap each count. Returns the top
+    scorers at or above min_score. Use a higher min_score when searching a large
+    or untrusted pool (e.g. all units, for an unknown sender) to avoid false hits."""
     if not property_address:
         return []
     tokens = set(re.split(r"[\s,#:()\-]+", property_address.lower()))
@@ -175,14 +177,58 @@ def _match_by_address(property_address: str, candidates: list) -> list:
         if unit_no and unit_no in tokens:
             score += 1
         street = str(c.get("street_address") or "").lower().split()
-        if street and street[0] in tokens:
+        if street and street[0] in tokens:  # street number
             score += 1
-        if score:
+        # street-name word overlap (ignore the leading number and short tokens)
+        name_words = [w for w in street[1:] if len(w) > 2]
+        if name_words and any(w in tokens for w in name_words):
+            score += 1
+        if score >= min_score:
             scored.append((score, c))
     if not scored:
         return []
     best = max(s for s, _ in scored)
     return [c for s, c in scored if s == best]
+
+
+async def _all_unit_candidates(conn) -> list:
+    """Every unit (with a tenant) on the platform, shaped for address matching.
+    Used to resolve an unknown sender's forwarded dec page by property address."""
+    rows = await conn.fetch(
+        """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
+                  u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
+                  u.city, u.state, u.zip, u.hoa_id
+           FROM tenants t JOIN units u ON u.id = t.unit_id"""
+    )
+    return [
+        {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
+         "hoa_id": str(r["hoa_id"])}
+        for r in rows
+    ]
+
+
+async def _unknown_sender_task(sender: str, candidates: list, content: bytes, content_type: str):
+    """Unknown sender (e.g. a property manager forwarding an owner's dec page).
+    Parse the dec page and match its property address against all units — needs a
+    strong, unique match (min_score 2) before attaching, since the sender isn't
+    trusted to belong to any unit."""
+    try:
+        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
+        url = await _upload_to_storage(staging, content, content_type)
+        extracted = await parse_dec_page(url, {})
+        addr = (extracted or {}).get("property_address") or ""
+        hits = _match_by_address(addr, candidates, min_score=2)
+        if len(hits) == 1:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await _ingest(conn, sender, hits[0], content, content_type)
+            logger.info("Inbound from unknown sender %s matched unit %s by address",
+                        sender, hits[0].get("unit_id"))
+            return
+        logger.info("Inbound from unknown sender %s — no unique address match (%d hits) — ignoring",
+                    sender, len(hits))
+    except Exception:
+        logger.exception("Inbound unknown-sender match failed for %s", sender)
 
 
 def _ext_for(content_type: str) -> str:
@@ -319,8 +365,20 @@ async def receive_inbound_email(
         sender,
     )
     if not match_rows:
-        logger.info("Inbound email from unknown sender %s — ignoring", sender)
-        return {"handled": False, "reason": "sender not recognized"}
+        # Case 2: unknown sender (e.g. a property manager forwarding an owner's
+        # dec page). Fall back to matching the dec page's property address against
+        # every unit on the platform — requires a strong, unique match.
+        if not _pick_attachment(data.get("attachments") or []):
+            logger.info("Inbound from unknown sender %s with no attachment — ignoring", sender)
+            return {"handled": False, "reason": "unknown sender, no attachment"}
+        fetched = await _fetch_attachment_bytes(data.get("email_id") or data.get("id"))
+        if fetched is None:
+            logger.info("Inbound from unknown sender %s — attachment fetch failed — ignoring", sender)
+            return {"handled": False, "reason": "unknown sender, attachment fetch failed"}
+        content, content_type = fetched
+        all_candidates = await _all_unit_candidates(conn)
+        background_tasks.add_task(_unknown_sender_task, sender, all_candidates, content, content_type)
+        return {"handled": True, "matched_by": "pending_unknown_sender_address"}
     # Plain dicts with string ids — these cross into background tasks
     matches = [
         {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
