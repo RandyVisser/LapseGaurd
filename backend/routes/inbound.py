@@ -16,6 +16,8 @@ Setup (Resend dashboard):
 2. Create an inbound endpoint pointing at POST {API_URL}/inbound/email
 3. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
 4. RESEND_API_KEY must already be set (it is, for outbound email)
+5. Set INBOUND_ADDRESS=docs@condo.insure so only mail to that address is
+   treated as a submission (Resend receiving is domain catch-all)
 """
 import base64
 import hashlib
@@ -45,6 +47,10 @@ SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 RESEND_WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 APP_URL = os.environ.get("APP_URL", "https://condo.insure")
+# Resend receiving is domain-wide catch-all, so replies to our alert/notify
+# emails also hit this webhook. When set, only mail addressed to this intake
+# address is treated as a document submission (e.g. docs@condo.insure).
+INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "")
 
 _ALLOWED_TYPES = ("application/pdf", "image/jpeg", "image/png")
 _MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
@@ -88,6 +94,22 @@ async def _upload_to_storage(path: str, content: bytes, content_type: str) -> st
         )
         resp.raise_for_status()
     return f"{SUPABASE_URL}/storage/v1/object/public/policy-documents/{path}"
+
+
+def _addressed_to_intake(data: dict, intake: str) -> bool:
+    """True if the inbound email was sent to the configured intake address
+    (checked across to + cc). Handles recipients given as strings or objects."""
+    if not intake:
+        return True  # no intake configured → accept all (back-compat)
+
+    def _as_list(v):
+        if not v:
+            return []
+        return [v] if isinstance(v, str) else list(v)
+
+    rcpts = _as_list(data.get("to")) + _as_list(data.get("cc"))
+    joined = " ".join(str(r).lower() for r in rcpts)
+    return intake.lower() in joined
 
 
 def _pick_attachment(attachments: list) -> dict | None:
@@ -270,6 +292,12 @@ async def receive_inbound_email(
         return {"handled": False, "reason": "not an inbound email event"}
 
     data = payload.get("data") or {}
+
+    # Domain catch-all: only process mail sent to our intake address, so replies
+    # to alert/notify emails (and other domain traffic) are silently ignored
+    if not _addressed_to_intake(data, INBOUND_ADDRESS):
+        return {"handled": False, "reason": "not addressed to intake address"}
+
     _, sender = parseaddr(data.get("from") or "")
     if not sender:
         return {"handled": False, "reason": "no sender"}

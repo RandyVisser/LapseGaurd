@@ -10,7 +10,36 @@ from routes.inbound import (
     _pick_attachment,
     _match_by_subject,
     _match_by_address,
+    _addressed_to_intake,
 )
+
+
+class TestAddressedToIntake:
+    INTAKE = "docs@condo.insure"
+
+    def test_to_string_match(self):
+        assert _addressed_to_intake({"to": "docs@condo.insure"}, self.INTAKE) is True
+
+    def test_to_list_match(self):
+        assert _addressed_to_intake({"to": ["docs@condo.insure"]}, self.INTAKE) is True
+
+    def test_object_recipients_match(self):
+        data = {"to": [{"email": "docs@condo.insure", "name": "Docs"}]}
+        assert _addressed_to_intake(data, self.INTAKE) is True
+
+    def test_match_via_cc(self):
+        data = {"to": ["someone@else.com"], "cc": ["docs@condo.insure"]}
+        assert _addressed_to_intake(data, self.INTAKE) is True
+
+    def test_reply_to_alerts_ignored(self):
+        # Owner replies to a renewal alert (to alerts@) — must not be processed
+        assert _addressed_to_intake({"to": ["alerts@condo.insure"]}, self.INTAKE) is False
+
+    def test_case_insensitive(self):
+        assert _addressed_to_intake({"to": ["Docs@Condo.Insure"]}, self.INTAKE) is True
+
+    def test_no_intake_configured_accepts_all(self):
+        assert _addressed_to_intake({"to": ["anything@condo.insure"]}, "") is True
 
 
 def _sign(secret_b64: str, msg_id: str, timestamp: str, body: bytes) -> str:
