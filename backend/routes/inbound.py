@@ -225,8 +225,10 @@ async def _unknown_sender_task(sender: str, candidates: list, content: bytes, co
             logger.info("Inbound from unknown sender %s matched unit %s by address",
                         sender, hits[0].get("unit_id"))
             return
-        logger.info("Inbound from unknown sender %s — no unique address match (%d hits) — ignoring",
+        logger.info("Inbound from unknown sender %s — no unique address match (%d hits)",
                     sender, len(hits))
+        subject, html = _unmatched_address_email()
+        await send_email(sender, subject, html)
     except Exception:
         logger.exception("Inbound unknown-sender match failed for %s", sender)
 
@@ -441,6 +443,25 @@ def _no_attachment_email(name: str | None):
     <p>Hi {name or 'there'},</p>
     <p>We received your email but couldn't find an attached insurance document.
     Please reply with your declaration page attached as a PDF or photo.</p>
+    """
+    return subject, html
+
+
+def _unmatched_address_email():
+    subject = "We couldn't match your insurance document to a unit"
+    html = f"""
+    <p>Hi there,</p>
+    <p>Thanks for forwarding the insurance declaration page. We weren't able to
+    automatically match it to a unit in our system based on the property address
+    on the document.</p>
+    <p>To get it on file, please make sure the unit is set up with us, then either:</p>
+    <ol>
+      <li>Have the unit owner forward it from the email address on file for their unit, or</li>
+      <li>Reply with the unit's full property address (street, unit number, city, state, zip)
+      so we can route it correctly.</li>
+    </ol>
+    <p>You can also manage units and upload documents directly at
+    <a href="{APP_URL}">{APP_URL}</a>.</p>
     """
     return subject, html
 
