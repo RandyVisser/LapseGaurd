@@ -227,6 +227,25 @@ export default function AdminSettings() {
               </div>
             </div>
 
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <p className="font-semibold text-slate-700">Email Previews</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">See exactly what unit owners receive.</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'invite', label: 'Invite' },
+                  { key: 'renewal', label: 'Renewal' },
+                  { key: 'expired', label: 'Expired Policy' },
+                  { key: 'non_compliant', label: 'Non-Compliant' },
+                ].map(b => (
+                  <button key={b.key} type="button"
+                    onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
+                    className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm">
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <p className="font-semibold text-slate-700">Email Alert Settings</p>
 
@@ -403,27 +422,6 @@ export default function AdminSettings() {
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
           </form>
-        )}
-
-        {!loading && form && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6">
-            <p className="font-semibold text-slate-700">Email Previews</p>
-            <p className="text-xs text-slate-500 mt-1 mb-3">See exactly what unit owners receive.</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'invite', label: 'Invite' },
-                { key: 'renewal', label: 'Renewal' },
-                { key: 'expired', label: 'Expired Policy' },
-                { key: 'non_compliant', label: 'Non-Compliant' },
-              ].map(b => (
-                <button key={b.key} type="button"
-                  onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
-                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm">
-                  {b.label}
-                </button>
-              ))}
-            </div>
-          </div>
         )}
 
         {previewKind && emailPreviews && emailPreviews[previewKind] && (
