@@ -4,6 +4,8 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 import useIsMobile from '../hooks/useIsMobile'
 
+const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function currency(val) {
@@ -963,6 +965,18 @@ export default function AdminTenantDetail() {
               {formattedAddress && <p className="text-sm text-slate-500 mt-0.5">{formattedAddress}</p>}
             </div>
           </div>
+          {QUOTE_FORM_URL && (
+            <a
+              href={`${QUOTE_FORM_URL}?${new URLSearchParams({
+                tenant_name: headerName || '',
+                unit: tenant?.unit_number || '',
+                hoa: tenant?.hoa_name || '',
+              })}`}
+              target="_blank" rel="noopener noreferrer"
+              className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap mt-0.5">
+              Get a New HO-6 Quote →
+            </a>
+          )}
         </div>
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
