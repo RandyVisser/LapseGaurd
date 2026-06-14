@@ -82,6 +82,7 @@ class UnitOwnerUpdate(BaseModel):
     owner_secondary: Optional[str] = None
     email_primary: Optional[str] = None
     email_secondary: Optional[str] = None
+    assoc_title: Optional[str] = None  # board role (President, VP, etc.); "" clears it
 
 
 @router.patch("/unit/{unit_id}/owner")
@@ -91,24 +92,32 @@ async def update_unit_owner(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Correct unit-owner names/emails (typo fixes or new owner after a sale)."""
-    unit = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+    """Correct unit-owner names/emails and the board title (typo fixes, new owner,
+    or amending who sits on the board)."""
+    unit = await conn.fetchrow("SELECT hoa_id, assoc_title FROM units WHERE id = $1", unit_id)
     if unit is None:
         raise HTTPException(status_code=404, detail="Unit not found")
     await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
+
+    # Board title edits never convert a unit to/from a Property Manager position
+    new_title = (body.assoc_title or "").strip() or None
+    if (new_title or "").lower() == "property manager" or (unit["assoc_title"] or "").strip().lower() == "property manager":
+        new_title = unit["assoc_title"]
 
     await conn.execute(
         """UPDATE units SET
                owner_primary = $2,
                owner_secondary = $3,
                email_primary = $4,
-               email_secondary = $5
+               email_secondary = $5,
+               assoc_title = $6
            WHERE id = $1""",
         unit_id,
         (body.owner_primary or "").strip() or None,
         (body.owner_secondary or "").strip() or None,
         (body.email_primary or "").strip() or None,
         (body.email_secondary or "").strip() or None,
+        new_title,
     )
     return {"updated": True}
 

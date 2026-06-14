@@ -544,6 +544,7 @@ export default function AdminDashboard() {
       owner_secondary: u.owner_secondary || '',
       email_primary: (u.email_primary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_primary || ''),
       email_secondary: (u.email_secondary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_secondary || ''),
+      assoc_title: u.assoc_title || '',
     })
   }
 
@@ -553,6 +554,10 @@ export default function AdminDashboard() {
     try {
       await apiPatch(`/unit/${editUnit.unit_id}/owner`, editForm)
       setUnits(prev => prev.map(u => u.unit_id === editUnit.unit_id ? { ...u, ...editForm } : u))
+      // Board title changes affect the Board Members count
+      if (hoaId && hoaId !== ALL_HOAS) {
+        apiGet(`/hoa/${hoaId}/compliance`).then(setSummary).catch(() => {})
+      }
       setEditUnit(null)
     } catch (err) { setError(err.message) }
     finally { setSavingOwner(false) }
@@ -1007,6 +1012,21 @@ export default function AdminDashboard() {
                     <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
                     <input type="email" value={editForm.email_secondary} onChange={e => setEditForm(f => ({ ...f, email_secondary: e.target.value }))}
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  )}
+                  {!editIsPm && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Board title <span className="font-normal text-slate-400">(blank = not on the board)</span></label>
+                    <input list="board-titles" value={editForm.assoc_title} onChange={e => setEditForm(f => ({ ...f, assoc_title: e.target.value }))}
+                      placeholder="e.g. President, Treasurer"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <datalist id="board-titles">
+                      <option value="President" />
+                      <option value="Vice President" />
+                      <option value="Secretary" />
+                      <option value="Treasurer" />
+                      <option value="Board Member" />
+                    </datalist>
                   </div>
                   )}
                 </div>
