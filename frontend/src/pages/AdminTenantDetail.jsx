@@ -1005,7 +1005,7 @@ export default function AdminTenantDetail() {
 
             {/* ── Unit & Owner ──────────────────────────────────────────────── */}
             <div>
-              <SectionLabel>Unit &amp; owner</SectionLabel>
+              <SectionLabel>Association Requirements</SectionLabel>
               <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
 
                 {/* Association name — owner details and address are managed on the association page */}
@@ -1013,9 +1013,8 @@ export default function AdminTenantDetail() {
                   <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
                 </div>
 
-                {/* Association requirements */}
+                {/* Coverage minimums */}
                 <div className="pt-4 border-t border-slate-100">
-                  <SectionLabel>Association requirements</SectionLabel>
                   <div className="grid grid-cols-2 gap-4">
                     <CurrencyInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
                       onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} placeholder="200000" />
