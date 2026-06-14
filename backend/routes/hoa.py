@@ -23,6 +23,12 @@ from services.importer import (
 
 class UnitCreate(BaseModel):
     unit_number: str
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
+    owner_primary: Optional[str] = None
+    email_primary: Optional[str] = None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -501,9 +507,27 @@ async def add_unit(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     await _assert_hoa_access(user, hoa_id, conn)
+    # Carry the subdivision/corp details from an existing unit so the new unit
+    # lands in the same association grouping
+    src = await conn.fetchrow(
+        "SELECT subdivision, corp_name, sunbiz_doc_number FROM units WHERE hoa_id = $1 LIMIT 1",
+        hoa_id,
+    )
     row = await conn.fetchrow(
-        "INSERT INTO units (hoa_id, unit_number) VALUES ($1, $2) RETURNING id, unit_number",
+        """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                              owner_primary, email_primary, subdivision, corp_name, sunbiz_doc_number)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING id, unit_number""",
         hoa_id, body.unit_number,
+        (body.street_address or "").strip() or None,
+        (body.city or "").strip() or None,
+        (body.state or "").strip() or None,
+        (body.zip or "").strip() or None,
+        (body.owner_primary or "").strip() or None,
+        (body.email_primary or "").strip() or None,
+        src["subdivision"] if src else None,
+        src["corp_name"] if src else None,
+        src["sunbiz_doc_number"] if src else None,
     )
     return {"unit_id": str(row["id"]), "unit_number": row["unit_number"]}
 
