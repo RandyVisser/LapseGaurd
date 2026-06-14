@@ -135,7 +135,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile
     try { return localStorage.getItem(GETTING_STARTED_DISMISSED_KEY) === 'true' } catch { return false }
   })
 
-  if (!summary || dismissed) return null
+  if (!summary) return null
 
   const policiesReceived = summary.total_units - summary.missing
   const steps = [
@@ -168,6 +168,20 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile
   function dismiss() {
     setDismissed(true)
     try { localStorage.setItem(GETTING_STARTED_DISMISSED_KEY, 'true') } catch { /* ignore */ }
+  }
+
+  // Dismissed but not finished — leave a way back in (esp. on mobile, where
+  // this is the import entry point)
+  if (dismissed) {
+    return (
+      <button
+        onClick={() => { setDismissed(false); try { localStorage.removeItem(GETTING_STARTED_DISMISSED_KEY) } catch { /* ignore */ } }}
+        className="mb-4 w-full sm:w-auto text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-100 flex items-center justify-center gap-2"
+      >
+        ✦ Finish setting up your association
+        <span className="text-blue-400">({steps.length - doneCount} left) ▸</span>
+      </button>
+    )
   }
 
   return (
@@ -1046,6 +1060,15 @@ export default function AdminDashboard() {
               <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">✕</button>
             )}
           </div>
+          {isMobile && (
+            <button
+              onClick={() => setImportOpen(true)}
+              disabled={!hoaId || hoaId === '__all__'}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50 flex-shrink-0"
+            >
+              Import
+            </button>
+          )}
           {!isMobile && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 mr-1">View:</span>
