@@ -45,7 +45,11 @@ export function AuthProvider({ children }) {
     if (session && (role === 'super_user' || role === 'property_manager' || role === 'hoa_admin')) {
       apiGet('/hoas').then(list => {
         setAvailableHoas(list)
-        setSelectedHoaId(prev => prev || list[0]?.id || null)
+        // super_users / PMs manage many associations → default to the
+        // all-associations overview (no single HOA's title leaks in). A plain
+        // hoa_admin defaults to their one association.
+        const multi = role === 'super_user' || role === 'property_manager'
+        setSelectedHoaId(prev => prev || (multi ? '__all__' : list[0]?.id) || null)
       }).catch(() => {})
     }
   }, [session?.user?.id, role])
