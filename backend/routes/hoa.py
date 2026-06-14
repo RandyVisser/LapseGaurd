@@ -2,7 +2,7 @@ import csv
 import io
 import logging
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 
 import asyncpg
@@ -15,7 +15,10 @@ from models.db import get_conn
 from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
-from services.email import board_report_html, send_email
+from services.email import (
+    board_report_html, send_email,
+    invite_email_html, renewal_notice_html, admin_notify_html,
+)
 from services.importer import (
     parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
 )
@@ -668,6 +671,36 @@ async def update_hoa(
         noncompliant_reminders_enabled=updated["noncompliant_reminders_enabled"],
         noncompliant_reminder_days=updated["noncompliant_reminder_days"],
     )
+
+
+@router.get("/hoa/{hoa_id}/email-previews")
+async def email_previews(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Rendered samples of each owner email, using this association's name, so
+    admins can see exactly what owners receive."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    hoa = await conn.fetchrow("SELECT name FROM hoas WHERE id = $1", hoa_id)
+    name = hoa["name"] if hoa else "Your Association"
+    today = date.today()
+
+    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample")
+    ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
+    exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
+    nc_s, nc_h = admin_notify_html(
+        "Jane Smith", "101", name,
+        "Your policy is on file but does not currently meet your association's "
+        "insurance requirements. Please upload an updated policy so your unit "
+        "shows as compliant.",
+    )
+    return {
+        "invite": {"subject": inv_s, "html": inv_h},
+        "renewal": {"subject": ren_s, "html": ren_h},
+        "expired": {"subject": exp_s, "html": exp_h},
+        "non_compliant": {"subject": nc_s, "html": nc_h},
+    }
 
 
 @router.delete("/hoa/{hoa_id}")

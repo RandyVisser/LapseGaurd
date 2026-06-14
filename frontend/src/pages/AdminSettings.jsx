@@ -18,6 +18,17 @@ export default function AdminSettings() {
   const [addingUnit, setAddingUnit] = useState(false)
   const [unitMsg, setUnitMsg] = useState('')
   const [showAddUnit, setShowAddUnit] = useState(false)
+  const [emailPreviews, setEmailPreviews] = useState(null)
+  const [previewKind, setPreviewKind] = useState(null)
+
+  async function openEmailPreviews() {
+    setPreviewKind('invite')
+    if (!emailPreviews) {
+      try { setEmailPreviews(await apiGet(`/hoa/${hoaId}/email-previews`)) }
+      catch (err) { setError(err.message); setPreviewKind(null) }
+    }
+  }
+
   const [showDelete, setShowDelete] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -392,6 +403,56 @@ export default function AdminSettings() {
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
           </form>
+        )}
+
+        {!loading && form && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6">
+            <p className="font-semibold text-slate-700">Email Previews</p>
+            <p className="text-xs text-slate-500 mt-1 mb-3">See exactly what unit owners receive.</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'invite', label: 'Invite' },
+                { key: 'renewal', label: 'Renewal' },
+                { key: 'expired', label: 'Expired Policy' },
+                { key: 'non_compliant', label: 'Non-Compliant' },
+              ].map(b => (
+                <button key={b.key} type="button"
+                  onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
+                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm">
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {previewKind && emailPreviews && emailPreviews[previewKind] && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setPreviewKind(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Subject</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{emailPreviews[previewKind].subject}</p>
+                </div>
+                <button onClick={() => setPreviewKind(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">×</button>
+              </div>
+              <div className="flex gap-1 px-3 pt-3 flex-wrap">
+                {[
+                  { key: 'invite', label: 'Invite' },
+                  { key: 'renewal', label: 'Renewal' },
+                  { key: 'expired', label: 'Expired Policy' },
+                  { key: 'non_compliant', label: 'Non-Compliant' },
+                ].map(b => (
+                  <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg ${previewKind === b.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              <iframe title="Email preview" srcDoc={emailPreviews[previewKind].html}
+                className="flex-1 w-full border-0 mt-3" style={{ minHeight: '420px' }} />
+            </div>
+          </div>
         )}
 
         {!loading && form && (
