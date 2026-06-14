@@ -36,7 +36,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from models.db import get_conn, get_pool
 from models.schemas import PolicyStatus
 from routes.units import _run_parsing
-from services.policy_parser import parse_dec_page
+from services.policy_parser import parse_dec_bytes
 from services.email import send_email
 
 router = APIRouter()
@@ -221,44 +221,13 @@ async def _candidates_in_hoas(conn, hoa_ids: list) -> list:
         _CANDIDATE_FIELDS + " AND u.hoa_id = ANY($1::uuid[])", hoa_ids))
 
 
-async def _unknown_sender_task(sender: str, candidates: list, content: bytes, content_type: str):
-    """Unknown sender (e.g. a property manager forwarding an owner's dec page).
-    Parse the dec page and match its property address against all units — needs a
-    strong, unique match (min_score 2) before attaching, since the sender isn't
-    trusted to belong to any unit."""
-    try:
-        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
-        url = await _upload_to_storage(staging, content, content_type)
-        extracted = await parse_dec_page(url, {})
-        addr = (extracted or {}).get("property_address") or ""
-        hits = _match_by_address(addr, candidates, min_score=2)
-        if len(hits) == 1:
-            pool = await get_pool()
-            async with pool.acquire() as conn:
-                # Untrusted: the sender proved no relationship to this unit, so
-                # the confirmation must not disclose the owner's identity
-                await _ingest(conn, sender, hits[0], content, content_type,
-                              resolved_by_address=True, trusted=False)
-            logger.info("Inbound from unknown sender %s matched unit %s by address",
-                        sender, hits[0].get("unit_id"))
-            return
-        logger.info("Inbound from unknown sender %s — no unique address match (%d hits)",
-                    sender, len(hits))
-        subject, html = _unmatched_address_email()
-        await send_email(sender, subject, html)
-    except Exception:
-        logger.exception("Inbound unknown-sender match failed for %s", sender)
-
-
 async def _pm_forward_task(sender: str, scoped: list, all_candidates: list,
                            content: bytes, content_type: str):
     """Known property manager forwarding a dec page. Match the property address
     within the associations they manage. If it matches a unit in an association
     they're NOT assigned to, reject with an explanation rather than uploading."""
     try:
-        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
-        url = await _upload_to_storage(staging, content, content_type)
-        extracted = await parse_dec_page(url, {})
+        extracted = await parse_dec_bytes(content, content_type, {})
         addr = (extracted or {}).get("property_address") or ""
 
         hits = _match_by_address(addr, scoped, min_score=2)
@@ -329,6 +298,17 @@ async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: 
     but ONLY when `trusted` (a known PM for that association). An untrusted
     unknown sender gets a generic ack so we never disclose owner PII (name,
     unit, address) to an unauthenticated party that merely guessed an address."""
+    # An invited owner who never created an account has no tenant row yet —
+    # create one so the policy has somewhere to attach (mirrors the dashboard).
+    if not match.get("tenant_id"):
+        name = match.get("owner_primary") or match.get("owner_secondary")
+        new_t = await conn.fetchrow(
+            "INSERT INTO tenants (unit_id, name, email) VALUES ($1, $2, $3) RETURNING id",
+            match["unit_id"], name, sender,
+        )
+        match = {**match, "tenant_id": str(new_t["id"]),
+                 "tenant_name": match.get("tenant_name") or name}
+
     document_hash = hashlib.sha256(content).hexdigest()
     dupe = await conn.fetchrow(
         "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
@@ -382,9 +362,7 @@ async def _disambiguate_task(sender: str, candidates: list, content: bytes, cont
     """Owner has multiple units and the subject didn't name one — parse the
     dec page and match its property address against their units."""
     try:
-        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
-        url = await _upload_to_storage(staging, content, content_type)
-        extracted = await parse_dec_page(url, {})
+        extracted = await parse_dec_bytes(content, content_type, {})
         hits = _match_by_address((extracted or {}).get("property_address") or "", candidates)
 
         if len(hits) == 1:
@@ -428,22 +406,35 @@ async def receive_inbound_email(
     if not sender:
         return {"handled": False, "reason": "no sender"}
 
-    # Match the sender to unit owner(s): tenants.email first, then the unit's
-    # owner email columns (owners often email from the address on file with
-    # the HOA rather than their login email)
+    # Recognize the sender as someone the association has on file for a unit:
+    #   - a tenant (has an account), or
+    #   - an owner email on the unit, or
+    #   - an invited email (unit_invites) — so an invited owner who never made
+    #     an account can still email their dec page in.
+    # tenant_id is nullable (an invited person may have no tenant row yet);
+    # _ingest creates one on demand.
     match_rows = await conn.fetch(
-        """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
-                  u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
-                  u.city, u.state, u.zip, u.hoa_id, u.assoc_title
-           FROM tenants t JOIN units u ON u.id = t.unit_id
-           WHERE lower(t.email) = lower($1)
-              OR lower(u.email_primary) = lower($1)
-              OR lower(u.email_secondary) = lower($1)""",
+        """SELECT u.id AS unit_id, u.hoa_id, u.unit_number, u.street_address,
+                  u.city, u.state, u.zip, u.owner_primary, u.owner_secondary, u.assoc_title,
+                  tt.id AS tenant_id, tt.name AS tenant_name, tt.email AS tenant_email
+           FROM units u
+           LEFT JOIN LATERAL (
+               SELECT t.id, t.name, t.email FROM tenants t
+               WHERE t.unit_id = u.id
+               ORDER BY (lower(coalesce(t.email, '')) = lower($1)) DESC, t.id
+               LIMIT 1
+           ) tt ON true
+           WHERE lower(coalesce(u.email_primary, '')) = lower($1)
+              OR lower(coalesce(u.email_secondary, '')) = lower($1)
+              OR EXISTS (SELECT 1 FROM tenants t2 WHERE t2.unit_id = u.id AND lower(coalesce(t2.email, '')) = lower($1))
+              OR EXISTS (SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id AND lower(i.email) = lower($1))""",
         sender,
     )
     # Plain dicts with string ids — these cross into background tasks
     all_matches = [
-        {**dict(r), "tenant_id": str(r["tenant_id"]), "unit_id": str(r["unit_id"]),
+        {**dict(r),
+         "tenant_id": str(r["tenant_id"]) if r["tenant_id"] is not None else None,
+         "unit_id": str(r["unit_id"]),
          "hoa_id": str(r["hoa_id"])}
         for r in match_rows
     ]
@@ -474,10 +465,13 @@ async def receive_inbound_email(
             all_candidates = await _all_unit_candidates(conn)
             background_tasks.add_task(_pm_forward_task, sender, scoped, all_candidates, content, content_type)
             return {"handled": True, "matched_by": "pending_property_manager_address"}
-        # Truly unknown sender — search every (non-PM) unit on the platform.
-        all_candidates = await _all_unit_candidates(conn)
-        background_tasks.add_task(_unknown_sender_task, sender, all_candidates, content, content_type)
-        return {"handled": True, "matched_by": "pending_unknown_sender_address"}
+        # Not a recognized owner, an invited person, or a known PM. Only people
+        # the association has invited (or their property manager) may submit by
+        # email — don't attach to anything, just point them in the right direction.
+        logger.info("Inbound from unrecognized sender %s — rejecting", sender)
+        subject, html = _unrecognized_sender_email()
+        background_tasks.add_task(send_email, sender, subject, html)
+        return {"handled": False, "reason": "sender not recognized"}
 
     matches = owner_matches
 
@@ -536,6 +530,22 @@ def _no_attachment_email(name: str | None):
     <p>Hi {name or 'there'},</p>
     <p>We received your email but couldn't find an attached insurance document.
     Please reply with your declaration page attached as a PDF or photo.</p>
+    """
+    return subject, html
+
+
+def _unrecognized_sender_email():
+    """Sender isn't on file for any unit. Tell them how to get set up without
+    revealing anything about the platform's data."""
+    subject = "We couldn't match your email to a unit"
+    html = f"""
+    <p>Hi there,</p>
+    <p>Thanks for your message. We couldn't match your email address to a unit
+    in our system, so we weren't able to file your document.</p>
+    <p>If your association uses condo.insure, please ask them to send you an
+    invite for your unit, then email your declaration page from the address they
+    invited — or forward it to your property manager, who can submit it for you.</p>
+    <p><a href="{APP_URL}">{APP_URL}</a></p>
     """
     return subject, html
 

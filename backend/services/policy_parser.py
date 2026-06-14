@@ -220,23 +220,17 @@ def _validate(extracted: dict, submitted: dict) -> dict:
     return {"passed": len(flags) == 0, "flags": flags}
 
 
-async def parse_dec_page(document_url: str, submitted: dict | None = None) -> dict | None:
+async def parse_dec_bytes(content: bytes, content_type: str, submitted: dict | None = None) -> dict | None:
+    """Parse already-in-hand document bytes (no storage round-trip). Used by the
+    inbound email flow, which has the attachment bytes and shouldn't have to
+    upload a throwaway staging copy just to read it back."""
     if not ANTHROPIC_API_KEY:
         logger.warning("ANTHROPIC_API_KEY not set — skipping dec page parsing")
         return None
-
-    # Fetch via the service role (works on private buckets); fetch_bytes also
-    # scopes the request to our bucket, so an arbitrary host can't be injected
-    fetched = await fetch_bytes(document_url, "policy-documents")
-    if fetched is None:
-        logger.warning("Could not fetch document for parsing: %s", document_url)
-        return None
-    content, content_type = fetched
-
     try:
         client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
-        is_pdf = "pdf" in content_type or document_url.lower().endswith(".pdf")
+        is_pdf = "pdf" in (content_type or "")
 
         if is_pdf:
             # Always send the PDF natively so Claude can see logos/headers visually.
@@ -245,7 +239,7 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
             result = await _parse_with_pdf(client, content, text if len(text.strip()) > 100 else None)
         else:
             # Image file — go straight to vision
-            media_type = content_type if content_type.startswith("image/") else "image/jpeg"
+            media_type = content_type if (content_type or "").startswith("image/") else "image/jpeg"
             result = await _parse_with_vision(client, content, media_type)
 
         if result:
@@ -254,9 +248,22 @@ async def parse_dec_page(document_url: str, submitted: dict | None = None) -> di
         return result
 
     except Exception as e:
-        import traceback
-        logger.error(f"Dec page parsing failed for {document_url}: {e}")
+        logger.error(f"Dec page parsing failed: {e}")
         return None
+
+
+async def parse_dec_page(document_url: str, submitted: dict | None = None) -> dict | None:
+    # Fetch via the service role (works on private buckets); fetch_bytes also
+    # scopes the request to our bucket, so an arbitrary host can't be injected
+    fetched = await fetch_bytes(document_url, "policy-documents")
+    if fetched is None:
+        logger.warning("Could not fetch document for parsing: %s", document_url)
+        return None
+    content, content_type = fetched
+    # PDF detection also honors the URL extension for the fetch path
+    if document_url.lower().endswith(".pdf") and "pdf" not in (content_type or ""):
+        content_type = "application/pdf"
+    return await parse_dec_bytes(content, content_type, submitted)
 
 
 def _extract_pdf_text(content: bytes) -> str:
