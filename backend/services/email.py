@@ -9,15 +9,18 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
-async def send_email(to_email: str, subject: str, html: str) -> bool:
+async def send_email(to_email: str, subject: str, html: str, reply_to: str | None = None) -> bool:
     if not RESEND_API_KEY:
         print(f"[email] RESEND_API_KEY not set — skipping email to {to_email}")
         return False
+    payload = {"from": FROM_EMAIL, "to": [to_email], "subject": subject, "html": html}
+    if reply_to:
+        payload["reply_to"] = [reply_to]
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
-            json={"from": FROM_EMAIL, "to": [to_email], "subject": subject, "html": html},
+            json=payload,
         )
         return resp.status_code == 200
 

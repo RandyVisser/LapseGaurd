@@ -152,6 +152,8 @@ class HoaOut(BaseModel):
     lapsed_reminder_days: int = 7
     noncompliant_reminders_enabled: bool = True
     noncompliant_reminder_days: int = 7
+    email_sender_role: str = "property_manager"
+    email_sender_unit_id: Optional[str] = None
 
 
 class HoaUpdate(BaseModel):
@@ -165,6 +167,8 @@ class HoaUpdate(BaseModel):
     lapsed_reminder_days: int = 7
     noncompliant_reminders_enabled: bool = True
     noncompliant_reminder_days: int = 7
+    email_sender_role: str = "property_manager"
+    email_sender_unit_id: Optional[str] = None
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
@@ -196,6 +200,8 @@ _HOA_SEARCH_FIELDS = """
     h.lapsed_reminder_days,
     h.noncompliant_reminders_enabled,
     h.noncompliant_reminder_days,
+    h.email_sender_role,
+    h.email_sender_unit_id,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     COALESCE(h.corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
     COALESCE(h.sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number
@@ -244,6 +250,8 @@ async def list_hoas(
             lapsed_reminder_days=r["lapsed_reminder_days"] if r["lapsed_reminder_days"] is not None else 7,
             noncompliant_reminders_enabled=r["noncompliant_reminders_enabled"] if r["noncompliant_reminders_enabled"] is not None else True,
             noncompliant_reminder_days=r["noncompliant_reminder_days"] if r["noncompliant_reminder_days"] is not None else 7,
+            email_sender_role=r["email_sender_role"] or "property_manager",
+            email_sender_unit_id=str(r["email_sender_unit_id"]) if r["email_sender_unit_id"] else None,
         )
         for r in rows
     ]
@@ -611,7 +619,9 @@ async def update_hoa(
             lapsed_reminders_enabled = $17,
             lapsed_reminder_days = $18,
             noncompliant_reminders_enabled = $19,
-            noncompliant_reminder_days = $20
+            noncompliant_reminder_days = $20,
+            email_sender_role = $21,
+            email_sender_unit_id = $22
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
@@ -619,6 +629,7 @@ async def update_hoa(
                      invite_reminders_enabled, invite_reminder_days, alerts_enabled, alert_days,
                      lapsed_reminders_enabled, lapsed_reminder_days,
                      noncompliant_reminders_enabled, noncompliant_reminder_days,
+                     email_sender_role, email_sender_unit_id,
                      COALESCE(corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = hoas.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
                      COALESCE(sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = hoas.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number""",
         body.name,
@@ -641,6 +652,8 @@ async def update_hoa(
         max(1, int(body.lapsed_reminder_days or 7)),
         body.noncompliant_reminders_enabled,
         max(1, int(body.noncompliant_reminder_days or 7)),
+        body.email_sender_role if body.email_sender_role in ("property_manager", "president") else "property_manager",
+        body.email_sender_unit_id,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -670,7 +683,35 @@ async def update_hoa(
         lapsed_reminder_days=updated["lapsed_reminder_days"],
         noncompliant_reminders_enabled=updated["noncompliant_reminders_enabled"],
         noncompliant_reminder_days=updated["noncompliant_reminder_days"],
+        email_sender_role=updated["email_sender_role"] or "property_manager",
+        email_sender_unit_id=str(updated["email_sender_unit_id"]) if updated["email_sender_unit_id"] else None,
     )
+
+
+@router.get("/hoa/{hoa_id}/contacts")
+async def hoa_contacts(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Possible email senders for this association: its property managers and its
+    board president, for the 'send owner emails from' selector."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    rows = await conn.fetch(
+        """SELECT id, assoc_title, owner_primary, email_primary
+           FROM units WHERE hoa_id = $1
+             AND (lower(coalesce(assoc_title,'')) = 'property manager'
+                  OR lower(coalesce(assoc_title,'')) = 'president')""",
+        hoa_id,
+    )
+    pms, president = [], None
+    for r in rows:
+        entry = {"unit_id": str(r["id"]), "name": r["owner_primary"], "email": r["email_primary"]}
+        if (r["assoc_title"] or "").strip().lower() == "president":
+            president = entry
+        else:
+            pms.append(entry)
+    return {"property_managers": pms, "president": president}
 
 
 @router.get("/hoa/{hoa_id}/email-previews")

@@ -56,6 +56,26 @@ class TenantUpdate(BaseModel):
 router = APIRouter()
 
 
+async def _resolve_sender_email(conn, hoa_id) -> str | None:
+    """The reply-to contact the association chose for owner emails: a specific PM,
+    the first PM, or the President."""
+    return await conn.fetchval(
+        """
+        SELECT CASE
+          WHEN COALESCE(h.email_sender_role, 'property_manager') = 'president'
+            THEN (SELECT email_primary FROM units WHERE hoa_id = h.id
+                  AND lower(coalesce(assoc_title,'')) = 'president' LIMIT 1)
+          WHEN h.email_sender_unit_id IS NOT NULL
+            THEN (SELECT email_primary FROM units WHERE id = h.email_sender_unit_id)
+          ELSE (SELECT email_primary FROM units WHERE hoa_id = h.id
+                AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1)
+        END
+        FROM hoas h WHERE h.id = $1
+        """,
+        hoa_id,
+    )
+
+
 @router.get("/tenant/me")
 async def get_my_tenant(
     user: AuthUser = Depends(get_current_user),
@@ -661,7 +681,8 @@ async def invite_all_owners(
         )
         to_send.append((email, subject, html, invite["token"]))
 
-    results = await asyncio.gather(*(send_email(e, s, h) for e, s, h, _ in to_send))
+    sender_email = await _resolve_sender_email(conn, hoa_id)
+    results = await asyncio.gather(*(send_email(e, s, h, reply_to=sender_email) for e, s, h, _ in to_send))
     sent_tokens = [to_send[i][3] for i, ok in enumerate(results) if ok]
     failed = len(results) - len(sent_tokens)
     if sent_tokens:
@@ -720,7 +741,8 @@ async def invite_tenant(
     subject, html = invite_email_html(
         body.email, row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
     )
-    sent = await send_email(body.email, subject, html)
+    sender_email = await _resolve_sender_email(conn, row["hoa_id"])
+    sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:
         raise HTTPException(status_code=502, detail="Failed to send invite email")
 

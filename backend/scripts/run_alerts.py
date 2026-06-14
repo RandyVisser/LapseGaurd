@@ -18,6 +18,20 @@ from services.email import send_email, renewal_notice_html, invite_email_html, a
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
+# SQL expression (for a query joined on `hoas h`) resolving the email reply-to
+# contact the association chose: a specific PM, the first PM, or the President.
+_SENDER_EMAIL_SQL = """
+(CASE
+   WHEN COALESCE(h.email_sender_role, 'property_manager') = 'president'
+     THEN (SELECT pu.email_primary FROM units pu
+           WHERE pu.hoa_id = h.id AND lower(coalesce(pu.assoc_title,'')) = 'president' LIMIT 1)
+   WHEN h.email_sender_unit_id IS NOT NULL
+     THEN (SELECT su.email_primary FROM units su WHERE su.id = h.email_sender_unit_id)
+   ELSE (SELECT mu.email_primary FROM units mu
+         WHERE mu.hoa_id = h.id AND lower(coalesce(mu.assoc_title,'')) = 'property manager' LIMIT 1)
+ END)
+"""
+
 
 async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     """Re-send pending invites to unit owners who haven't accepted yet, spaced by
@@ -25,7 +39,8 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     an invite is re-sent only once its last send is older than that window."""
     rows = await conn.fetch(
         """
-        SELECT i.token, i.email, u.unit_number, u.assoc_title, h.name AS hoa_name
+        SELECT i.token, i.email, u.unit_number, u.assoc_title, h.name AS hoa_name,
+               """ + _SENDER_EMAIL_SQL + """ AS sender_email
         FROM unit_invites i
         JOIN units u ON u.id = i.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -43,7 +58,7 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
         subject, html = invite_email_html(
             row["email"], row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
         )
-        sent = await send_email(row["email"], subject, html)
+        sent = await send_email(row["email"], subject, html, reply_to=row.get("sender_email"))
         if sent:
             await conn.execute(
                 "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = $1", row["token"]
@@ -71,7 +86,8 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             COALESCE(h.alert_days, '{30,7,1}') AS alert_days,
             COALESCE(h.alerts_enabled, TRUE) AS alerts_enabled,
             COALESCE(h.lapsed_reminders_enabled, TRUE) AS lapsed_reminders_enabled,
-            COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days
+            COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days,
+            """ + _SENDER_EMAIL_SQL + """ AS sender_email
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
@@ -139,7 +155,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             row["tenant_name"], row["unit_number"], row["hoa_name"],
             row["expiration_date"], template_kind,
         )
-        sent = await send_email(row["tenant_email"], subject, html)
+        sent = await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email"))
         if sent:
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
@@ -159,7 +175,8 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
         """
         SELECT p.tenant_id, t.name AS tenant_name, t.email AS tenant_email,
                u.unit_number, h.name AS hoa_name,
-               COALESCE(h.noncompliant_reminder_days, 7) AS days
+               COALESCE(h.noncompliant_reminder_days, 7) AS days,
+               """ + _SENDER_EMAIL_SQL + """ AS sender_email
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
@@ -186,7 +203,7 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
             "insurance requirements. Please upload an updated policy so your unit "
             "shows as compliant.",
         )
-        if await send_email(row["tenant_email"], subject, html):
+        if await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email")):
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'non_compliant')",
                 row["tenant_id"],
