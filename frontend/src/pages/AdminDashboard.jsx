@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, apiPatch, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
+import ImportWizard from '../components/ImportWizard'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -403,10 +404,8 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('')
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
-  const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const importFileRef = useRef(null)
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
   const [addingPm, setAddingPm] = useState(false)
@@ -459,33 +458,6 @@ export default function AdminDashboard() {
     else { setSortCol(col); setSortDir('asc') }
   }
 
-  async function handleImport(e) {
-    const file = e.target.files?.[0]
-    if (!file || !hoaId || hoaId === '__all__') return
-    setImporting(true)
-    setImportResult(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch(`${API}/hoa/${hoaId}/units/import`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Import failed')
-      setImportResult(`Imported ${data.inserted} units${data.skipped ? `, skipped ${data.skipped}` : ''}.`)
-      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-      setSummary(s); setUnits(u)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setImporting(false)
-      if (importFileRef.current) importFileRef.current.value = ''
-    }
-  }
 
   async function handleExport() {
     if (!hoaId || hoaId === '__all__') return
@@ -799,10 +771,13 @@ export default function AdminDashboard() {
                 >
                   {exporting ? 'Exporting…' : 'Export CSV'}
                 </button>
-                <label className={`${TOOLBAR_BTN} cursor-pointer ${importing || !hoaId || hoaId === '__all__' ? 'opacity-50 pointer-events-none' : ''}`}>
-                  {importing ? 'Importing…' : 'Import CSV'}
-                  <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-                </label>
+                <button
+                  onClick={() => setImportOpen(true)}
+                  disabled={!hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  Import units
+                </button>
                 <button
                   onClick={handleSendBoardReport}
                   disabled={sendingReport || !hoaId || hoaId === '__all__'}
@@ -811,7 +786,6 @@ export default function AdminDashboard() {
                   {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
                 </button>
               </div>
-              {importResult && <p className="text-xs text-green-600">{importResult}</p>}
               {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
             </div>
           )}
@@ -825,7 +799,7 @@ export default function AdminDashboard() {
               const h = availableHoas.find(x => x.id === hoaId)
               return h ? (h.ho6_coverage_a_min != null || h.ho6_coverage_e_min != null) : false
             })()}
-            onImportClick={() => importFileRef.current?.click()}
+            onImportClick={() => setImportOpen(true)}
             isMobile={isMobile}
           />
         )}
@@ -887,6 +861,19 @@ export default function AdminDashboard() {
               Clear
             </button>
           </div>
+        )}
+
+        {/* Import wizard */}
+        {importOpen && hoaId && hoaId !== '__all__' && (
+          <ImportWizard
+            hoaId={hoaId}
+            onClose={() => setImportOpen(false)}
+            onDone={() => {
+              Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+                .then(([s, u]) => { setSummary(s); setUnits(u) })
+                .catch(() => {})
+            }}
+          />
         )}
 
         {/* Invite modal */}

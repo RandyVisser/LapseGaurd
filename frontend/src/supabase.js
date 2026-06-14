@@ -84,3 +84,17 @@ export async function apiPost(path, body) {
   })
   return _handleResponse(res)
 }
+
+// Multipart file upload (no Content-Type — the browser sets the boundary)
+export async function apiUpload(path, file, field = 'file') {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  const fd = new FormData()
+  fd.append(field, file)
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  })
+  return _handleResponse(res)
+}
