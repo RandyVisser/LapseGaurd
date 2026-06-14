@@ -415,6 +415,10 @@ async def compliance_summary(
         hoa_id,
     ) or 0
 
+    documents_count = await conn.fetchval(
+        "SELECT COUNT(*) FROM documents WHERE hoa_id = $1", hoa_id,
+    ) or 0
+
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
@@ -428,6 +432,7 @@ async def compliance_summary(
         invites_sent=invites_sent,
         invite_sent=invite_sent,
         not_invited=not_invited,
+        documents_count=documents_count,
     )
 
 

@@ -167,6 +167,12 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
       action: { label: 'Open Settings', href: '/admin/settings' },
     },
     {
+      title: 'Upload shared documents',
+      detail: 'Share docs with all owners — Wind Mitigation, Evidence of Insurance, Elevation Certificates, Flood Dec Pages, etc.',
+      done: (summary.documents_count ?? 0) > 0,
+      action: { label: 'Upload documents', href: '/admin/documents' },
+    },
+    {
       title: 'Invite unit owners',
       detail: 'Email every owner a secure signup link at once, or use the ⋯ menu on a single row.',
       done: summary.invites_sent > 0,
@@ -208,7 +214,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
         </p>
         <button onClick={dismiss} className="text-xs text-blue-500 hover:text-blue-700">Dismiss</button>
       </div>
-      <ol className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+      <ol className="grid sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
         {steps.map((step, i) => (
           <li key={step.title} className={`px-5 py-4 ${step.done ? 'bg-slate-50/50' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
@@ -711,7 +717,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited']) {
+            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
