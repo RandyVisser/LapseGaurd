@@ -141,6 +141,8 @@ class HoaOut(BaseModel):
     ho6_policy_in_force_required: bool = True
     ho6_named_insured_match_required: bool = True
     ho6_property_address_match_required: bool = True
+    invite_reminders_enabled: bool = True
+    invite_reminder_days: int = 7
 
 
 class HoaUpdate(BaseModel):
@@ -153,6 +155,8 @@ class HoaUpdate(BaseModel):
     ho6_policy_in_force_required: bool = True
     ho6_named_insured_match_required: bool = True
     ho6_property_address_match_required: bool = True
+    invite_reminders_enabled: bool = True
+    invite_reminder_days: int = 7
 
 
 _HOA_SEARCH_FIELDS = """
@@ -167,6 +171,8 @@ _HOA_SEARCH_FIELDS = """
     h.ho6_policy_in_force_required,
     h.ho6_named_insured_match_required,
     h.ho6_property_address_match_required,
+    h.invite_reminders_enabled,
+    h.invite_reminder_days,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1) AS corp_name,
     (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1) AS sunbiz_doc_number
@@ -207,6 +213,8 @@ async def list_hoas(
             ho6_policy_in_force_required=r["ho6_policy_in_force_required"],
             ho6_named_insured_match_required=r["ho6_named_insured_match_required"],
             ho6_property_address_match_required=r["ho6_property_address_match_required"],
+            invite_reminders_enabled=r["invite_reminders_enabled"] if r["invite_reminders_enabled"] is not None else True,
+            invite_reminder_days=r["invite_reminder_days"] if r["invite_reminder_days"] is not None else 7,
         )
         for r in rows
     ]
@@ -550,11 +558,14 @@ async def update_hoa(
             ho6_additional_interest_required = $6,
             ho6_policy_in_force_required = $7,
             ho6_named_insured_match_required = $8,
-            ho6_property_address_match_required = $9
+            ho6_property_address_match_required = $9,
+            invite_reminders_enabled = $11,
+            invite_reminder_days = $12
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
-                     ho6_named_insured_match_required, ho6_property_address_match_required""",
+                     ho6_named_insured_match_required, ho6_property_address_match_required,
+                     invite_reminders_enabled, invite_reminder_days""",
         body.name,
         body.alert_lead_days,
         body.ho6_coverage_a_min,
@@ -565,6 +576,8 @@ async def update_hoa(
         body.ho6_named_insured_match_required,
         body.ho6_property_address_match_required,
         hoa_id,
+        body.invite_reminders_enabled,
+        max(1, int(body.invite_reminder_days or 7)),
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -584,6 +597,8 @@ async def update_hoa(
         ho6_policy_in_force_required=updated["ho6_policy_in_force_required"],
         ho6_named_insured_match_required=updated["ho6_named_insured_match_required"],
         ho6_property_address_match_required=updated["ho6_property_address_match_required"],
+        invite_reminders_enabled=updated["invite_reminders_enabled"],
+        invite_reminder_days=updated["invite_reminder_days"],
     )
 
 

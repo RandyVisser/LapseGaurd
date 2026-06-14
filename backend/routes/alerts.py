@@ -20,9 +20,10 @@ async def run_alerts(
 
     # Delegate actual work to the alert script logic — this endpoint is a thin wrapper
     # so Railway cron can hit it via HTTP instead of running a subprocess
-    from scripts.run_alerts import process_alerts
+    from scripts.run_alerts import process_alerts, process_invite_reminders
     count = await process_alerts(conn)
-    return {"alerts_sent": count}
+    reminders = await process_invite_reminders(conn)
+    return {"alerts_sent": count, "invite_reminders_sent": reminders}
 
 
 @router.post("/reports/board/run")

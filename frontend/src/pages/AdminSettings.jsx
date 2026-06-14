@@ -46,6 +46,8 @@ export default function AdminSettings() {
           ho6_policy_in_force_required: hoa.ho6_policy_in_force_required ?? true,
           ho6_named_insured_match_required: hoa.ho6_named_insured_match_required ?? true,
           ho6_property_address_match_required: hoa.ho6_property_address_match_required ?? true,
+          invite_reminders_enabled: hoa.invite_reminders_enabled ?? true,
+          invite_reminder_days: hoa.invite_reminder_days ?? 7,
         })
       })
       .catch(e => setError(e.message))
@@ -63,6 +65,7 @@ export default function AdminSettings() {
         alert_lead_days: Number(form.alert_lead_days) || 30,
         ho6_coverage_a_min: form.ho6_coverage_a_min !== '' ? Number(form.ho6_coverage_a_min) : null,
         ho6_coverage_e_min: form.ho6_coverage_e_min !== '' ? Number(form.ho6_coverage_e_min) : null,
+        invite_reminder_days: Number(form.invite_reminder_days) || 7,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -186,6 +189,31 @@ export default function AdminSettings() {
                   <span className="text-sm text-slate-500">days</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">Default is 30. Tenants receive one email per 7-day window.</p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.invite_reminders_enabled}
+                    onChange={e => setForm(f => ({ ...f, invite_reminders_enabled: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Auto-resend invites to owners who haven't accepted yet
+                </label>
+                {form.invite_reminders_enabled && (
+                  <div className="flex items-center gap-3 mt-2 ml-6">
+                    <span className="text-sm text-slate-600">Re-send every</span>
+                    <input
+                      type="number" min="1" max="90" step="1"
+                      value={form.invite_reminder_days}
+                      onChange={e => setForm(f => ({ ...f, invite_reminder_days: e.target.value }))}
+                      className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-500">days until they respond</span>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Any unit with an email and a pending (unaccepted) invite is re-invited on this cadence.</p>
               </div>
             </div>
 

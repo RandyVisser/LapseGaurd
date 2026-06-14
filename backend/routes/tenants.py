@@ -635,11 +635,13 @@ async def invite_tenant(
         """,
         unit_id, body.email,
     )
-    if not invite:
+    if invite:
+        await conn.execute("UPDATE unit_invites SET last_sent_at = NOW() WHERE token = $1", invite["token"])
+    else:
         invite = await conn.fetchrow(
             """
-            INSERT INTO unit_invites (unit_id, email)
-            VALUES ($1, $2)
+            INSERT INTO unit_invites (unit_id, email, last_sent_at)
+            VALUES ($1, $2, NOW())
             RETURNING token
             """,
             unit_id, body.email,

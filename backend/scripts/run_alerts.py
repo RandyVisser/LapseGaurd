@@ -13,9 +13,44 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html
+from services.email import send_email, renewal_notice_html, invite_email_html
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
+APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
+
+
+async def process_invite_reminders(conn: asyncpg.Connection) -> int:
+    """Re-send pending invites to unit owners who haven't accepted yet, spaced by
+    each association's invite_reminder_days (default 7). Runs every cron tick;
+    an invite is re-sent only once its last send is older than that window."""
+    rows = await conn.fetch(
+        """
+        SELECT i.token, i.email, u.unit_number, u.assoc_title, h.name AS hoa_name
+        FROM unit_invites i
+        JOIN units u ON u.id = i.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
+        WHERE i.accepted_at IS NULL
+          AND i.email IS NOT NULL
+          AND COALESCE(h.invite_reminders_enabled, TRUE) = TRUE
+          AND COALESCE(i.last_sent_at, i.created_at)
+              < NOW() - (COALESCE(h.invite_reminder_days, 7) * INTERVAL '1 day')
+        """,
+    )
+    count = 0
+    for row in rows:
+        is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
+        invite_url = f"{APP_URL}/join/{row['token']}"
+        subject, html = invite_email_html(
+            row["email"], row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
+        )
+        sent = await send_email(row["email"], subject, html)
+        if sent:
+            await conn.execute(
+                "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = $1", row["token"]
+            )
+            count += 1
+            print(f"[alerts] Re-sent invite to {row['email']} (Unit {row['unit_number']})")
+    return count
 
 
 async def process_alerts(conn: asyncpg.Connection) -> int:
@@ -107,8 +142,9 @@ async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
     async with pool.acquire() as conn:
         count = await process_alerts(conn)
+        reminders = await process_invite_reminders(conn)
     await pool.close()
-    print(f"[alerts] Done. {count} alerts sent.")
+    print(f"[alerts] Done. {count} alerts sent, {reminders} invite reminders sent.")
 
 
 if __name__ == "__main__":
