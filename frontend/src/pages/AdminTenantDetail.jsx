@@ -963,12 +963,6 @@ export default function AdminTenantDetail() {
               {formattedAddress && <p className="text-sm text-slate-500 mt-0.5">{formattedAddress}</p>}
             </div>
           </div>
-          {tenant && (
-            <button type="button" onClick={handleRemoveOwner} disabled={removingOwner}
-              className="flex items-center gap-1.5 text-sm font-medium text-red-600 border border-red-200 bg-white rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-50 mt-0.5">
-              {removingOwner ? 'Removing…' : 'Remove owner'}
-            </button>
-          )}
         </div>
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
