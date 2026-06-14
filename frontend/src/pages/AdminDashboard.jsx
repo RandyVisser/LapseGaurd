@@ -93,7 +93,7 @@ const COLUMNS = [
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
-  { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || displayEmail(u.tenant_email) || '—' },
+  { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-slate-400">—</span> },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
