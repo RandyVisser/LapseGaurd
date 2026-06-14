@@ -81,7 +81,7 @@ export default function AdminDocuments() {
   const [success, setSuccess] = useState('')
 
   async function load() {
-    if (!hoaId) return
+    if (!hoaId || hoaId === '__all__') { setDocs([]); return }
     try {
       setDocs(await apiGet(`/hoa/${hoaId}/documents`))
     } catch (e) {
@@ -93,6 +93,7 @@ export default function AdminDocuments() {
 
   async function handleUpload(e) {
     e.preventDefault()
+    if (!hoaId || hoaId === '__all__') { setError('Select a single association first'); return }
     if (!file) { setError('Please select a file'); return }
     setError(''); setSuccess('')
     setUploading(true)
