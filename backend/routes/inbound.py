@@ -235,7 +235,10 @@ async def _unknown_sender_task(sender: str, candidates: list, content: bytes, co
         if len(hits) == 1:
             pool = await get_pool()
             async with pool.acquire() as conn:
-                await _ingest(conn, sender, hits[0], content, content_type, resolved_by_address=True)
+                # Untrusted: the sender proved no relationship to this unit, so
+                # the confirmation must not disclose the owner's identity
+                await _ingest(conn, sender, hits[0], content, content_type,
+                              resolved_by_address=True, trusted=False)
             logger.info("Inbound from unknown sender %s matched unit %s by address",
                         sender, hits[0].get("unit_id"))
             return
@@ -262,7 +265,9 @@ async def _pm_forward_task(sender: str, scoped: list, all_candidates: list,
         if len(hits) == 1:
             pool = await get_pool()
             async with pool.acquire() as conn:
-                await _ingest(conn, sender, hits[0], content, content_type, resolved_by_address=True)
+                # Trusted: a known PM for this association may see owner details
+                await _ingest(conn, sender, hits[0], content, content_type,
+                              resolved_by_address=True, trusted=True)
             logger.info("Inbound PM %s matched unit %s by address", sender, hits[0].get("unit_id"))
             return
 
@@ -316,19 +321,24 @@ def _build_submitted(match: dict, hoa_row) -> dict:
 
 
 async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: str,
-                  resolved_by_address: bool = False):
+                  resolved_by_address: bool = False, trusted: bool = True):
     """Create the policy for a resolved unit, kick off parsing, confirm by email.
     When resolved_by_address is set, the sender didn't own the unit (an unknown
     sender or a property manager forwarding on an owner's behalf), so the
-    confirmation spells out which owner/unit the document was assigned to."""
+    confirmation spells out which owner/unit the document was assigned to —
+    but ONLY when `trusted` (a known PM for that association). An untrusted
+    unknown sender gets a generic ack so we never disclose owner PII (name,
+    unit, address) to an unauthenticated party that merely guessed an address."""
     document_hash = hashlib.sha256(content).hexdigest()
     dupe = await conn.fetchrow(
         "SELECT id FROM policies WHERE tenant_id = $1 AND document_hash = $2",
         match["tenant_id"], document_hash,
     )
     if dupe:
-        if resolved_by_address:
+        if resolved_by_address and trusted:
             subject, html = _assigned_email(match, already=True)
+        elif resolved_by_address:
+            subject, html = _generic_ack_email()
         else:
             subject, html = _already_received_email(match.get("tenant_name"))
         await send_email(sender, subject, html)
@@ -349,8 +359,10 @@ async def _ingest(conn, sender: str, match: dict, content: bytes, content_type: 
     )
     await _run_parsing(str(row["id"]), path, _build_submitted(match, hoa_row))
 
-    if resolved_by_address:
+    if resolved_by_address and trusted:
         subject, html = _assigned_email(match)
+    elif resolved_by_address:
+        subject, html = _generic_ack_email()
     else:
         subject, html = _received_email(match.get("tenant_name"), match.get("unit_number"))
     await send_email(sender, subject, html)
@@ -524,6 +536,21 @@ def _no_attachment_email(name: str | None):
     <p>Hi {name or 'there'},</p>
     <p>We received your email but couldn't find an attached insurance document.
     Please reply with your declaration page attached as a PDF or photo.</p>
+    """
+    return subject, html
+
+
+def _generic_ack_email():
+    """Acknowledgment for a sender we can't tie to the unit (unknown sender).
+    Deliberately discloses no owner/unit/address — they haven't proven any
+    relationship to the unit, so we never confirm whose it is."""
+    subject = "We received your email"
+    html = f"""
+    <p>Hi there,</p>
+    <p>Thanks — we received your message. If it relates to a property we track,
+    we've passed it along to the association for review. No further action is
+    needed on your end.</p>
+    <p><a href="{APP_URL}">{APP_URL}</a></p>
     """
     return subject, html
 
