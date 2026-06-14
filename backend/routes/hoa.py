@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import re
 from datetime import date
 from typing import List, Optional
@@ -15,12 +16,16 @@ from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
 from services.email import board_report_html, send_email
+from services.importer import (
+    parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
+)
 
 
 class UnitCreate(BaseModel):
     unit_number: str
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connection):
@@ -777,52 +782,145 @@ async def import_units_csv(
     headers = {h.strip() for h in (reader.fieldnames or [])}
     propradar_format = "Radar ID" in headers
 
+    # Existing non-PM unit numbers, so a re-import doesn't create duplicates
+    # (there's no DB unique constraint — PM units intentionally share 'PM')
+    existing = {
+        r["unit_number"] for r in await conn.fetch(
+            "SELECT unit_number FROM units WHERE hoa_id = $1 "
+            "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
+    }
+    seen: set = set()
     inserted = skipped = 0
     for row in rows:
         def v(key): return (row.get(key) or "").strip() or None
 
-        if propradar_format:
-            radar = v("Radar ID")
-            if not radar or not re.match(r"^P[A-Z0-9]+$", radar):
-                skipped += 1
-                continue
-            street, unit_number = _parse_csv_address(v("Address") or "")
-            pd_str = v("Purchase Date")
-            purchase_date = date.fromisoformat(pd_str) if pd_str else None
-            await conn.execute(
-                """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
-                       radar_id, assessor_parcel_number, type, subdivision,
-                       owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-                   ON CONFLICT DO NOTHING""",
-                hoa_id, unit_number or v("Address"), street, v("City"), "FL", v("ZIP"),
-                radar, v("APN"), v("Type"), v("Subdivision"),
-                v("Primary Name"), v("Primary Email1"),
-                v("Secondary Name"), v("Secondary Email1"), purchase_date,
-            )
-        else:
-            unit_number = v("unit_number") or v("Unit") or v("Unit Number")
-            if not unit_number:
-                skipped += 1
-                continue
-            pd_str = v("purchase_date") or v("Purchase Date")
-            purchase_date = date.fromisoformat(pd_str) if pd_str else None
-            await conn.execute(
-                """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
-                       owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-                   ON CONFLICT DO NOTHING""",
-                hoa_id, unit_number,
-                v("street_address") or v("Street Address"),
-                v("city") or v("City"),
-                v("state") or v("State"),
-                v("zip") or v("Zip") or v("ZIP"),
-                v("owner_primary") or v("Primary Name"),
-                v("email_primary") or v("Primary Email") or v("Primary Email1"),
-                v("owner_secondary") or v("Secondary Name"),
-                v("email_secondary") or v("Secondary Email") or v("Secondary Email1"),
-                purchase_date,
-            )
-        inserted += 1
+        try:
+            if propradar_format:
+                radar = v("Radar ID")
+                if not radar or not re.match(r"^P[A-Z0-9]+$", radar):
+                    skipped += 1
+                    continue
+                street, unit_number = _parse_csv_address(v("Address") or "")
+                unit_number = unit_number or v("Address")
+                if unit_number in existing or unit_number in seen:
+                    skipped += 1
+                    continue
+                seen.add(unit_number)
+                pd_iso = flexible_date(v("Purchase Date"))
+                await conn.execute(
+                    """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                           radar_id, assessor_parcel_number, type, subdivision,
+                           owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)""",
+                    hoa_id, unit_number, street, v("City"), "FL", v("ZIP"),
+                    radar, v("APN"), v("Type"), v("Subdivision"),
+                    v("Primary Name"), v("Primary Email1"),
+                    v("Secondary Name"), v("Secondary Email1"),
+                    date.fromisoformat(pd_iso) if pd_iso else None,
+                )
+            else:
+                unit_number = v("unit_number") or v("Unit") or v("Unit Number")
+                if not unit_number:
+                    skipped += 1
+                    continue
+                if unit_number in existing or unit_number in seen:
+                    skipped += 1
+                    continue
+                seen.add(unit_number)
+                pd_iso = flexible_date(v("purchase_date") or v("Purchase Date"))
+                await conn.execute(
+                    """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                           owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
+                    hoa_id, unit_number,
+                    v("street_address") or v("Street Address"),
+                    v("city") or v("City"),
+                    v("state") or v("State"),
+                    v("zip") or v("Zip") or v("ZIP"),
+                    v("owner_primary") or v("Primary Name"),
+                    v("email_primary") or v("Primary Email") or v("Primary Email1"),
+                    v("owner_secondary") or v("Secondary Name"),
+                    v("email_secondary") or v("Secondary Email") or v("Secondary Email1"),
+                    date.fromisoformat(pd_iso) if pd_iso else None,
+                )
+            inserted += 1
+        except Exception as e:
+            skipped += 1
+            logger.warning("Import row skipped (hoa %s): %s", hoa_id, e)
 
     return {"inserted": inserted, "skipped": skipped}
+
+
+class ImportCommit(BaseModel):
+    mapping: dict
+    rows: List[dict]
+
+
+@router.post("/hoa/{hoa_id}/units/import/preview")
+async def import_units_preview(
+    hoa_id: str,
+    file: UploadFile = File(...),
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Parse the PM's spreadsheet, have Claude map their columns to our schema,
+    and return a preview (mapping + sample rows + issues) WITHOUT importing.
+    The raw rows are echoed back so the commit step needn't re-upload."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    content = await file.read()
+    try:
+        headers, rows = parse_upload(file.filename, content)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    mapping = await ai_suggest_mapping(headers, rows[:5])
+    result = build_preview(headers, rows, mapping)
+    result["rows"] = rows
+    return result
+
+
+@router.post("/hoa/{hoa_id}/units/import/commit")
+async def import_units_commit(
+    hoa_id: str,
+    body: ImportCommit,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Apply the confirmed column mapping to every row and insert. Returns a
+    per-unit report of what was skipped and why."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    existing = {
+        r["unit_number"] for r in await conn.fetch(
+            "SELECT unit_number FROM units WHERE hoa_id = $1 "
+            "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
+    }
+    inserted = skipped = 0
+    errors: list = []
+    seen: set = set()
+    for raw in body.rows:
+        norm, _issues = normalize_row(raw, body.mapping)
+        unit = norm.get("unit_number")
+        if not unit:
+            skipped += 1
+            continue
+        if unit in existing or unit in seen:
+            skipped += 1
+            errors.append({"unit": unit, "reason": "already on file — skipped"})
+            continue
+        seen.add(unit)
+        try:
+            await conn.execute(
+                """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
+                       owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
+                hoa_id, unit, norm.get("street_address"), norm.get("city"),
+                norm.get("state"), norm.get("zip"), norm.get("owner_primary"),
+                norm.get("email_primary"), norm.get("owner_secondary"),
+                norm.get("email_secondary"),
+                date.fromisoformat(norm["purchase_date"]) if norm.get("purchase_date") else None,
+            )
+            inserted += 1
+        except Exception as e:
+            skipped += 1
+            errors.append({"unit": unit, "reason": "could not import this row"})
+            logger.warning("Import commit row failed (unit %s): %s", unit, e)
+    return {"inserted": inserted, "skipped": skipped, "errors": errors[:50]}
