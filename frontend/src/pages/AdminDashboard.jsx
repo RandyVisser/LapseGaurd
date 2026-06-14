@@ -720,12 +720,14 @@ export default function AdminDashboard() {
       }
       return true
     })
+    // numeric:true so unit "3" sorts before "12" (natural order), not lexically
+    const cmp = (a, b, col) =>
+      (a[col] ?? '').toString().localeCompare((b[col] ?? '').toString(), undefined, { numeric: true, sensitivity: 'base' })
     if (sortCol) {
-      filtered.sort((a, b) => {
-        const av = (a[sortCol] || '').toString().toLowerCase()
-        const bv = (b[sortCol] || '').toString().toLowerCase()
-        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
-      })
+      filtered.sort((a, b) => sortDir === 'asc' ? cmp(a, b, sortCol) : cmp(b, a, sortCol))
+    } else {
+      // default: natural order by unit number
+      filtered.sort((a, b) => cmp(a, b, 'unit_number'))
     }
     return filtered
   })()
