@@ -410,6 +410,9 @@ export default function AdminDashboard() {
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
   const [addingPm, setAddingPm] = useState(false)
+  const [soldUnit, setSoldUnit] = useState(null)
+  const [soldForm, setSoldForm] = useState({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' })
+  const [savingSold, setSavingSold] = useState(false)
   const [editUnit, setEditUnit] = useState(null)
   const [editIsPm, setEditIsPm] = useState(false)
   const [editForm, setEditForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
@@ -549,6 +552,24 @@ export default function AdminDashboard() {
       setEditUnit(null)
     } catch (err) { setError(err.message) }
     finally { setSavingOwner(false) }
+  }
+
+  async function handleNewOwner(e) {
+    e.preventDefault()
+    setSavingSold(true)
+    try {
+      await apiPost(`/unit/${soldUnit.unit_id}/new-owner`, soldForm)
+      // Old owner's login, policy and invites are gone — unit resets to "no policy"
+      setUnits(prev => prev.map(u => u.unit_id === soldUnit.unit_id
+        ? { ...u, ...soldForm, tenant_id: null, tenant_name: null, tenant_email: null,
+            status: 'missing', invite_sent: false, expiration_date: null }
+        : u))
+      if (hoaId && hoaId !== ALL_HOAS) {
+        apiGet(`/hoa/${hoaId}/compliance`).then(setSummary).catch(() => {})
+      }
+      setSoldUnit(null)
+    } catch (err) { setError(err.message) }
+    finally { setSavingSold(false) }
   }
 
   async function handleAddPm(e) {
@@ -944,6 +965,53 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {soldUnit && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+              <h2 className="font-semibold text-slate-800 mb-1">Unit Sold — New Owner</h2>
+              <p className="text-xs text-slate-500 mb-1">Unit {soldUnit.unit_number}</p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
+                This removes the current owner's login, their policy on file, and any pending invites.
+                The new owner will need to be invited to upload their own policy.
+              </div>
+              <form onSubmit={handleNewOwner} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary name</label>
+                    <input value={soldForm.owner_primary} onChange={e => setSoldForm(f => ({ ...f, owner_primary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary email</label>
+                    <input type="email" value={soldForm.email_primary} onChange={e => setSoldForm(f => ({ ...f, email_primary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary name</label>
+                    <input value={soldForm.owner_secondary} onChange={e => setSoldForm(f => ({ ...f, owner_secondary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
+                    <input type="email" value={soldForm.email_secondary} onChange={e => setSoldForm(f => ({ ...f, email_secondary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={savingSold}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {savingSold ? 'Saving…' : 'Save New Owner'}
+                  </button>
+                  <button type="button" onClick={() => setSoldUnit(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {addPmFor && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
@@ -1180,6 +1248,10 @@ export default function AdminDashboard() {
                           {
                             label: 'Edit Owner Info…',
                             onClick: () => openEditOwner(u),
+                          },
+                          {
+                            label: 'Unit Sold / New Owner…',
+                            onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
                           {
                             label: 'Delete unit…',
