@@ -228,70 +228,35 @@ export default function AdminSettings() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <p className="font-semibold text-slate-700">Alert Settings</p>
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.alerts_enabled}
-                  onChange={e => setForm(f => ({ ...f, alerts_enabled: e.target.checked }))}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                Send renewal alerts to unit owners
-              </label>
-              {form.alerts_enabled && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Send renewal reminders
-                </label>
-                <div className="flex flex-col gap-2 ml-6 pl-3 border-l-2 border-slate-100">
-                  {[30, 7, 1].map(d => (
-                    <label key={d} className="flex items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={(form.alert_days || []).includes(d)}
-                        onChange={e => setForm(f => {
-                          const set = new Set(f.alert_days || [])
-                          if (e.target.checked) set.add(d); else set.delete(d)
-                          return { ...f, alert_days: [...set].sort((a, b) => b - a) }
-                        })}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      {d} {d === 1 ? 'day' : 'days'} prior
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-400 mt-2">By default, unit owners receive emails 30 days, 7 days, and 1 day prior to their renewal.</p>
-              </div>
-              )}
+              <p className="font-semibold text-slate-700">Email Alert Settings</p>
 
-              {form.alerts_enabled && (
-              <div className="pt-4 border-t border-slate-100">
+              {/* INVITE */}
+              <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
-                    checked={form.lapsed_reminders_enabled}
-                    onChange={e => setForm(f => ({ ...f, lapsed_reminders_enabled: e.target.checked }))}
+                    checked={form.invite_reminders_enabled}
+                    onChange={e => setForm(f => ({ ...f, invite_reminders_enabled: e.target.checked }))}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  If a policy has expired or lapsed, keep reminding the owner
+                  INVITE: Auto-resend invites to owners who haven't accepted yet
                 </label>
-                {form.lapsed_reminders_enabled && (
+                {form.invite_reminders_enabled && (
                   <div className="flex items-center gap-3 mt-2 ml-6">
                     <span className="text-sm text-slate-600">Re-send every</span>
                     <input
                       type="number" min="1" max="90" step="1"
-                      value={form.lapsed_reminder_days}
-                      onChange={e => setForm(f => ({ ...f, lapsed_reminder_days: e.target.value }))}
+                      value={form.invite_reminder_days}
+                      onChange={e => setForm(f => ({ ...f, invite_reminder_days: e.target.value }))}
                       className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-500">days until they respond</span>
                   </div>
                 )}
-                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Reminders stop once the owner uploads a current policy.</p>
+                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Any unit with an email and a pending (unaccepted) invite is re-invited on this cadence.</p>
               </div>
-              )}
 
-              {form.alerts_enabled && (
+              {/* NON-COMPLIANT */}
               <div className="pt-4 border-t border-slate-100">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input
@@ -300,7 +265,7 @@ export default function AdminSettings() {
                     onChange={e => setForm(f => ({ ...f, noncompliant_reminders_enabled: e.target.checked }))}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  If a unit owner is Active · Non-Compliant, keep reminding them
+                  NON-COMPLIANT: If a unit owner is Active · Non-Compliant, keep reminding them
                 </label>
                 {form.noncompliant_reminders_enabled && (
                   <div className="flex items-center gap-3 mt-2 ml-6">
@@ -316,31 +281,66 @@ export default function AdminSettings() {
                 )}
                 <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Reminders stop once the policy meets all requirements.</p>
               </div>
-              )}
 
+              {/* RENEWAL */}
               <div className="pt-4 border-t border-slate-100">
-                <label className="flex items-center gap-2 text-sm text-slate-700">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
-                    checked={form.invite_reminders_enabled}
-                    onChange={e => setForm(f => ({ ...f, invite_reminders_enabled: e.target.checked }))}
+                    checked={form.alerts_enabled}
+                    onChange={e => setForm(f => ({ ...f, alerts_enabled: e.target.checked }))}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Auto-resend invites to owners who haven't accepted yet
+                  RENEWAL: Send renewal alerts to unit owners
                 </label>
-                {form.invite_reminders_enabled && (
+                {form.alerts_enabled && (
+                  <>
+                    <div className="flex flex-col gap-2 mt-2 ml-6 pl-3 border-l-2 border-slate-100">
+                      {[30, 7, 1].map(d => (
+                        <label key={d} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={(form.alert_days || []).includes(d)}
+                            onChange={e => setForm(f => {
+                              const set = new Set(f.alert_days || [])
+                              if (e.target.checked) set.add(d); else set.delete(d)
+                              return { ...f, alert_days: [...set].sort((a, b) => b - a) }
+                            })}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          {d} {d === 1 ? 'day' : 'days'} prior
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2 ml-6">By default, unit owners receive emails 30 days, 7 days, and 1 day prior to their renewal.</p>
+                  </>
+                )}
+              </div>
+
+              {/* EXPIRED */}
+              <div className="pt-4 border-t border-slate-100">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.lapsed_reminders_enabled}
+                    onChange={e => setForm(f => ({ ...f, lapsed_reminders_enabled: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  EXPIRED: If a policy has expired or lapsed, keep reminding the owner
+                </label>
+                {form.lapsed_reminders_enabled && (
                   <div className="flex items-center gap-3 mt-2 ml-6">
                     <span className="text-sm text-slate-600">Re-send every</span>
                     <input
                       type="number" min="1" max="90" step="1"
-                      value={form.invite_reminder_days}
-                      onChange={e => setForm(f => ({ ...f, invite_reminder_days: e.target.value }))}
+                      value={form.lapsed_reminder_days}
+                      onChange={e => setForm(f => ({ ...f, lapsed_reminder_days: e.target.value }))}
                       className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-500">days until they respond</span>
                   </div>
                 )}
-                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Any unit with an email and a pending (unaccepted) invite is re-invited on this cadence.</p>
+                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Reminders stop once the owner uploads a current policy.</p>
               </div>
             </div>
 

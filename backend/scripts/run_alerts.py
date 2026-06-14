@@ -69,6 +69,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             h.name AS hoa_name,
             COALESCE(h.alert_lead_days, 30) AS alert_lead_days,
             COALESCE(h.alert_days, '{30,7,1}') AS alert_days,
+            COALESCE(h.alerts_enabled, TRUE) AS alerts_enabled,
             COALESCE(h.lapsed_reminders_enabled, TRUE) AS lapsed_reminders_enabled,
             COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days
         FROM policies p
@@ -77,7 +78,6 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         JOIN hoas h ON h.id = u.hoa_id
         WHERE p.expiration_date IS NOT NULL
           AND p.superseded_by IS NULL
-          AND COALESCE(h.alerts_enabled, TRUE) = TRUE
           AND p.expiration_date <= CURRENT_DATE + (COALESCE(h.alert_lead_days, 30) * INTERVAL '1 day')
         """,
     )
@@ -112,6 +112,9 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             # fresh policy upload supersedes this one, which ends the reminders
             alert_type, throttle_days = "lapsed", row["lapsed_reminder_days"]
         else:
+            # Renewal reminders are independent of the lapsed/non-compliant toggles
+            if not row["alerts_enabled"]:
+                continue
             # smallest enabled milestone that the policy has crossed into
             applicable = min((m for m in milestones if m >= days_until), default=None)
             if applicable is None:
@@ -163,7 +166,6 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
         JOIN hoas h ON h.id = u.hoa_id
         WHERE p.status = 'non_compliant'
           AND p.superseded_by IS NULL
-          AND COALESCE(h.alerts_enabled, TRUE) = TRUE
           AND COALESCE(h.noncompliant_reminders_enabled, TRUE) = TRUE
           AND t.email IS NOT NULL
         """,
