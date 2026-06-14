@@ -39,6 +39,7 @@ function fmtDate(dateStr) {
 }
 
 const HOA_FIELD_OPTIONS = {
+  name: { label: 'Association Name', key: 'name' },
   subdivision: { label: 'Subdivision', key: 'subdivision' },
   corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
   sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
@@ -47,7 +48,7 @@ const HOA_FIELD_OPTIONS = {
 export default function AdminDocuments() {
   const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
   const [docs, setDocs] = useState([])
-  const [hoaFieldType, setHoaFieldType] = useState('subdivision')
+  const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
 
   const hoaFieldValues = (() => {

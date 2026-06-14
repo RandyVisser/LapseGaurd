@@ -380,11 +380,12 @@ export default function AdminDashboard() {
   const [notifySuccess, setNotifySuccess] = useState(null)
   const [inviteUnit, setInviteUnit] = useState(null)
   const HOA_FIELD_OPTIONS = {
+    name: { label: 'Association Name', key: 'name' },
     subdivision: { label: 'Subdivision', key: 'subdivision' },
     corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
     sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
   }
-  const [hoaFieldType, setHoaFieldType] = useState('subdivision')
+  const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
 
   const hoaFieldValues = (() => {
