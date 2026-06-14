@@ -733,8 +733,16 @@ export default function AdminTenantDetail() {
         : form.street_address
       try {
         const tenantPayload = { ...form, street_address: cleanStreetAddress }
-        // Empty email field means a hidden placeholder @condo.insure address — don't overwrite it
-        if (!tenantPayload.email) delete tenantPayload.email
+        // The login email column is NOT NULL. If the field is cleared, store a
+        // hidden @condo.insure placeholder (shown as blank) so the email is
+        // effectively removed; if it was already a placeholder, leave it as-is.
+        if (!tenantPayload.email) {
+          if ((tenant?.email || '').toLowerCase().endsWith('@condo.insure')) {
+            delete tenantPayload.email
+          } else {
+            tenantPayload.email = `cleared+${Date.now()}@condo.insure`
+          }
+        }
         await apiPatch(`/tenant/${tenantId}`, tenantPayload)
       } catch (e) { throw new Error(`[tenant] ${e.message}`) }
 
