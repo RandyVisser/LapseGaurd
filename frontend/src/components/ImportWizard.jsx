@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiUpload, apiPost } from '../supabase'
 
 // Onboarding's first step: a property manager uploads their unit list (any
@@ -27,13 +27,14 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
   const [mapping, setMapping] = useState({})
+  const [rows, setRows] = useState([])          // editable copy of the raw rows
   const [result, setResult] = useState(null)
   const [hoverIssue, setHoverIssue] = useState(null) // 'unit' | 'email' | 'date'
   const fileRef = useRef(null)
+  const tableScrollRef = useRef(null)
 
   const fields = data?.fields || []
   const headers = data?.headers || []
-  const rows = data?.rows || []
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
@@ -43,6 +44,7 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
       const res = await apiUpload(`/hoa/${hoaId}/units/import/preview`, file)
       setData(res)
       setMapping(res.mapping || {})
+      setRows(res.rows || [])
       setStage('preview')
     } catch (err) {
       setError(err.message)
@@ -50,6 +52,14 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  // Inline edit: write the new value back to the raw row's mapped column, so
+  // the fix flows through normalization at commit (and re-flags live)
+  function editCell(rowIdx, fieldKey, value) {
+    const col = mapping[fieldKey]
+    if (!col) return
+    setRows(prev => prev.map((r, i) => i === rowIdx ? { ...r, [col]: value } : r))
   }
 
   function setField(fieldKey, header) {
@@ -95,9 +105,27 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
 
   const issueItems = [
     counts.unit && { key: 'unit', text: `${counts.unit} row${counts.unit !== 1 ? 's have' : ' has'} no unit number — will be skipped` },
-    counts.email && { key: 'email', text: `${counts.email} email${counts.email !== 1 ? 's' : ''} look${counts.email === 1 ? 's' : ''} invalid — kept for you to fix` },
-    counts.date && { key: 'date', text: `${counts.date} purchase date${counts.date !== 1 ? 's' : ''} couldn't be read — left blank` },
+    counts.email && { key: 'email', text: `${counts.email} email${counts.email !== 1 ? 's' : ''} look${counts.email === 1 ? 's' : ''} invalid — fix below or import as-is` },
+    counts.date && { key: 'date', text: `${counts.date} purchase date${counts.date !== 1 ? 's' : ''} couldn't be read — fix below or leave blank` },
   ].filter(Boolean)
+
+  // When a warning is hovered, scroll the first matching row into view so the
+  // highlight isn't off-screen
+  useEffect(() => {
+    if (!hoverIssue) return
+    const idx = analysis.findIndex(a =>
+      (hoverIssue === 'unit' && a.missingUnit) ||
+      (hoverIssue === 'email' && a.badEmails.length) ||
+      (hoverIssue === 'date' && a.badDate))
+    const container = tableScrollRef.current
+    if (idx < 0 || !container) return
+    const tr = container.querySelector(`tr[data-ri="${idx}"]`)
+    if (!tr) return
+    const cRect = container.getBoundingClientRect()
+    const rRect = tr.getBoundingClientRect()
+    const delta = (rRect.top - cRect.top) - (container.clientHeight / 2 - tr.clientHeight / 2)
+    container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' })
+  }, [hoverIssue, analysis])
 
   async function handleCommit() {
     setBusy(true); setError(''); setStage('committing')
@@ -229,14 +257,15 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                 </div>
               )}
 
-              {/* Sample — scrolls on its own so long lists don't blow out the wizard */}
+              {/* Preview — editable so the PM can fix data before importing;
+                  scrolls on its own so long lists don't blow out the wizard */}
               <div>
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  Preview <span className="text-slate-300 normal-case font-normal tracking-normal">· all {rows.length} rows</span>
+                  Preview <span className="text-slate-300 normal-case font-normal tracking-normal">· all {rows.length} rows · click any cell to edit</span>
                 </p>
-                <div className="border border-slate-200 rounded-lg overflow-auto max-h-64">
+                <div ref={tableScrollRef} className="border border-slate-200 rounded-lg overflow-auto max-h-64">
                   <table className="w-full text-xs whitespace-nowrap">
-                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                       <tr>
                         {shownFields.map(f => (
                           <th key={f.key} className="text-left px-3 py-2 font-semibold text-slate-500">{f.label}</th>
@@ -245,10 +274,15 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((r, i) => (
-                        <tr key={i} className={rowClass(analysis[i])}>
+                        <tr key={i} data-ri={i} className={rowClass(analysis[i])}>
                           {shownFields.map(f => (
-                            <td key={f.key} className={`px-3 py-2 text-slate-600 ${cellClass(f.key, analysis[i])}`}>
-                              {r[mapping[f.key]] || <span className="text-slate-300">—</span>}
+                            <td key={f.key} className={`px-1 py-0.5 ${cellClass(f.key, analysis[i])}`}>
+                              <input
+                                value={r[mapping[f.key]] ?? ''}
+                                onChange={e => editCell(i, f.key, e.target.value)}
+                                placeholder="—"
+                                className="w-full min-w-[80px] bg-transparent px-2 py-1.5 text-slate-700 rounded focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 placeholder:text-slate-300"
+                              />
                             </td>
                           ))}
                         </tr>
@@ -281,7 +315,7 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
         <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
           {stage === 'preview' && (
             <>
-              <button onClick={() => { setStage('select'); setData(null) }} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">Back</button>
+              <button onClick={() => { setStage('select'); setData(null); setRows([]) }} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2">Back</button>
               <button
                 onClick={handleCommit}
                 disabled={busy || !unitMapped || importable === 0}
