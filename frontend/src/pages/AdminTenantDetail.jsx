@@ -1008,43 +1008,9 @@ export default function AdminTenantDetail() {
               <SectionLabel>Unit &amp; owner</SectionLabel>
               <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
 
-                {/* Association name — owner details are managed on the association page */}
+                {/* Association name — owner details and address are managed on the association page */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
-                </div>
-
-                {/* Unit address */}
-                <div className="pt-4 border-t border-slate-100">
-                  <SectionLabel>Unit address</SectionLabel>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1.5">Street address &amp; unit</label>
-                      <input value={form.street_address || ''} onChange={e => tField('street_address')(e.target.value)}
-                        placeholder="123 Ocean Blvd Unit 101"
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1.5">City</label>
-                        <input value={form.city || ''} onChange={e => tField('city')(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1.5">State</label>
-                        <input value={form.state || ''} onChange={e => tField('state')(e.target.value)}
-                          placeholder="FL" maxLength={2}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1.5">ZIP</label>
-                        <input value={form.zip || ''} onChange={e => tField('zip')(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                    </div>
-                    {formattedAddress && (
-                      <p className="text-xs text-slate-400">{formattedAddress}</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* Association requirements */}
