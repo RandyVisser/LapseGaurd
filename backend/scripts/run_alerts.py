@@ -74,6 +74,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         JOIN hoas h ON h.id = u.hoa_id
         WHERE p.expiration_date IS NOT NULL
           AND p.superseded_by IS NULL
+          AND COALESCE(h.alerts_enabled, TRUE) = TRUE
           AND p.expiration_date <= CURRENT_DATE + (COALESCE(h.alert_lead_days, 30) * INTERVAL '1 day')
         """,
     )

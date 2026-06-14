@@ -53,6 +53,7 @@ export default function AdminSettings() {
           name: hoa.name || '',
           corp_name: hoa.corp_name || '',
           sunbiz_doc_number: hoa.sunbiz_doc_number || '',
+          alerts_enabled: hoa.alerts_enabled ?? true,
           alert_lead_days: hoa.alert_lead_days ?? 30,
           ho6_coverage_a_min: hoa.ho6_coverage_a_min ?? '',
           ho6_coverage_e_min: hoa.ho6_coverage_e_min ?? '',
@@ -212,6 +213,16 @@ export default function AdminSettings() {
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <p className="font-semibold text-slate-700">Alert Settings</p>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={form.alerts_enabled}
+                  onChange={e => setForm(f => ({ ...f, alerts_enabled: e.target.checked }))}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Send renewal alerts to unit owners
+              </label>
+              {form.alerts_enabled && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Send renewal alerts how many days before expiration?
@@ -227,6 +238,7 @@ export default function AdminSettings() {
                 </div>
                 <p className="text-xs text-slate-400 mt-1">Default is 30. Tenants receive one email per 7-day window.</p>
               </div>
+              )}
 
               <div className="pt-4 border-t border-slate-100">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
