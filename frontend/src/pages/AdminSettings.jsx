@@ -55,6 +55,8 @@ export default function AdminSettings() {
           sunbiz_doc_number: hoa.sunbiz_doc_number || '',
           alerts_enabled: hoa.alerts_enabled ?? true,
           alert_days: hoa.alert_days?.length ? hoa.alert_days : [30, 7, 1],
+          lapsed_reminders_enabled: hoa.lapsed_reminders_enabled ?? true,
+          lapsed_reminder_days: hoa.lapsed_reminder_days ?? 7,
           alert_lead_days: hoa.alert_lead_days ?? 30,
           ho6_coverage_a_min: hoa.ho6_coverage_a_min ?? '',
           ho6_coverage_e_min: hoa.ho6_coverage_e_min ?? '',
@@ -246,6 +248,33 @@ export default function AdminSettings() {
                   ))}
                 </div>
                 <p className="text-xs text-slate-400 mt-2">By default, unit owners receive emails 30 days, 7 days, and 1 day prior to their renewal.</p>
+              </div>
+              )}
+
+              {form.alerts_enabled && (
+              <div className="pt-4 border-t border-slate-100">
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.lapsed_reminders_enabled}
+                    onChange={e => setForm(f => ({ ...f, lapsed_reminders_enabled: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  If a policy has expired or lapsed, keep reminding the owner
+                </label>
+                {form.lapsed_reminders_enabled && (
+                  <div className="flex items-center gap-3 mt-2 ml-6">
+                    <span className="text-sm text-slate-600">Re-send every</span>
+                    <input
+                      type="number" min="1" max="90" step="1"
+                      value={form.lapsed_reminder_days}
+                      onChange={e => setForm(f => ({ ...f, lapsed_reminder_days: e.target.value }))}
+                      className="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-500">days until they respond</span>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 mt-1 ml-6">Default is 7. Reminders stop once the owner uploads a current policy.</p>
               </div>
               )}
 

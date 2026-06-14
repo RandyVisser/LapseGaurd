@@ -68,7 +68,9 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             u.unit_number,
             h.name AS hoa_name,
             COALESCE(h.alert_lead_days, 30) AS alert_lead_days,
-            COALESCE(h.alert_days, '{30,7,1}') AS alert_days
+            COALESCE(h.alert_days, '{30,7,1}') AS alert_days,
+            COALESCE(h.lapsed_reminders_enabled, TRUE) AS lapsed_reminders_enabled,
+            COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
@@ -104,7 +106,11 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
 
         # Pick which reminder/lapse milestone applies right now
         if days_until < 0:
-            alert_type, throttle_days = "lapsed", 7
+            if not row["lapsed_reminders_enabled"]:
+                continue
+            # Repeat the lapse notice every N days until the owner responds; a
+            # fresh policy upload supersedes this one, which ends the reminders
+            alert_type, throttle_days = "lapsed", row["lapsed_reminder_days"]
         else:
             # smallest enabled milestone that the policy has crossed into
             applicable = min((m for m in milestones if m >= days_until), default=None)
