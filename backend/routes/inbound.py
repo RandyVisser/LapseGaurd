@@ -193,8 +193,8 @@ def _match_by_address(property_address: str, candidates: list, min_score: int = 
 
 _CANDIDATE_FIELDS = """SELECT t.id AS tenant_id, t.unit_id, t.name AS tenant_name, t.email AS tenant_email,
                   u.owner_primary, u.owner_secondary, u.street_address, u.unit_number,
-                  u.city, u.state, u.zip, u.hoa_id
-           FROM tenants t JOIN units u ON u.id = t.unit_id
+                  u.city, u.state, u.zip, u.hoa_id, h.name AS hoa_name
+           FROM tenants t JOIN units u ON u.id = t.unit_id JOIN hoas h ON h.id = u.hoa_id
            WHERE lower(coalesce(u.assoc_title, '')) <> 'property manager'"""
 
 
@@ -245,6 +245,41 @@ async def _unknown_sender_task(sender: str, candidates: list, content: bytes, co
         await send_email(sender, subject, html)
     except Exception:
         logger.exception("Inbound unknown-sender match failed for %s", sender)
+
+
+async def _pm_forward_task(sender: str, scoped: list, all_candidates: list,
+                           content: bytes, content_type: str):
+    """Known property manager forwarding a dec page. Match the property address
+    within the associations they manage. If it matches a unit in an association
+    they're NOT assigned to, reject with an explanation rather than uploading."""
+    try:
+        staging = f"inbound-staging/{int(time.time() * 1000)}.{_ext_for(content_type)}"
+        url = await _upload_to_storage(staging, content, content_type)
+        extracted = await parse_dec_page(url, {})
+        addr = (extracted or {}).get("property_address") or ""
+
+        hits = _match_by_address(addr, scoped, min_score=2)
+        if len(hits) == 1:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await _ingest(conn, sender, hits[0], content, content_type, resolved_by_address=True)
+            logger.info("Inbound PM %s matched unit %s by address", sender, hits[0].get("unit_id"))
+            return
+
+        # No match in their associations — does it belong to one they're NOT on?
+        global_hits = _match_by_address(addr, all_candidates, min_score=2)
+        if len(global_hits) >= 1:
+            other = global_hits[0]
+            logger.info("Inbound PM %s tried to upload to unaffiliated association %s — rejecting",
+                        sender, other.get("hoa_name"))
+            subject, html = _not_assigned_email(other.get("hoa_name"))
+            await send_email(sender, subject, html)
+            return
+
+        subject, html = _unmatched_address_email()
+        await send_email(sender, subject, html)
+    except Exception:
+        logger.exception("Inbound PM forward match failed for %s", sender)
 
 
 def _ext_for(content_type: str) -> str:
@@ -420,11 +455,12 @@ async def receive_inbound_email(
             return {"handled": False, "reason": "attachment fetch failed"}
         content, content_type = fetched
         if pm_matches:
-            # Known property manager — scope the address search to the HOA(s) they
-            # manage, excluding any PM-titled units.
+            # Known property manager — match within the HOA(s) they manage. If the
+            # address belongs to an association they're NOT on, reject with a note.
             hoa_ids = list({m["hoa_id"] for m in pm_matches})
-            candidates = await _candidates_in_hoas(conn, hoa_ids)
-            background_tasks.add_task(_unknown_sender_task, sender, candidates, content, content_type)
+            scoped = await _candidates_in_hoas(conn, hoa_ids)
+            all_candidates = await _all_unit_candidates(conn)
+            background_tasks.add_task(_pm_forward_task, sender, scoped, all_candidates, content, content_type)
             return {"handled": True, "matched_by": "pending_property_manager_address"}
         # Truly unknown sender — search every (non-PM) unit on the platform.
         all_candidates = await _all_unit_candidates(conn)
@@ -511,6 +547,22 @@ def _assigned_email(match: dict, already: bool = False):
       <tr><td style="padding:2px 12px 2px 0;color:#64748b">Address</td><td style="font-weight:600">{address}</td></tr>
     </table>
     <p>You can review status anytime at <a href="{APP_URL}">{APP_URL}</a>.</p>
+    """
+    return subject, html
+
+
+def _not_assigned_email(hoa_name: str | None):
+    where = f" for {hoa_name}" if hoa_name else ""
+    subject = "You're not assigned to this association"
+    html = f"""
+    <p>Hi there,</p>
+    <p>Thanks for forwarding the insurance declaration page. The property address on
+    the document belongs to an association{where} that you're not currently assigned
+    to as a property manager, so we couldn't upload it.</p>
+    <p>You'll need to be added as a property manager to this association before you can
+    submit policies for its unit owners. Please ask the association's administrator to
+    add you, then forward the document again.</p>
+    <p>Questions? Reach out at <a href="{APP_URL}">{APP_URL}</a>.</p>
     """
     return subject, html
 
