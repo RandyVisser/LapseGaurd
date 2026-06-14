@@ -80,6 +80,60 @@ export default function AdminSettings() {
         {loading && <div className="bg-white rounded-xl border border-slate-200 h-40 animate-pulse" />}
 
         {!loading && form && (
+          <form onSubmit={handleAddUnit} className="bg-white rounded-xl border border-blue-200 shadow-sm p-6 space-y-4 mb-6">
+            <p className="font-semibold text-slate-700">Add a Unit</p>
+            <p className="text-xs text-slate-500">Adds a new unit to this association. You can invite the owner afterward from the dashboard.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Unit number <span className="text-red-400">*</span></label>
+                <input value={unitForm.unit_number} onChange={e => setUnitForm(f => ({ ...f, unit_number: e.target.value }))}
+                  placeholder="e.g. 101"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Street address</label>
+                <input value={unitForm.street_address} onChange={e => setUnitForm(f => ({ ...f, street_address: e.target.value }))}
+                  placeholder="123 Ocean Dr"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                <input value={unitForm.city} onChange={e => setUnitForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">State</label>
+                  <input value={unitForm.state} maxLength={2} onChange={e => setUnitForm(f => ({ ...f, state: e.target.value }))}
+                    placeholder="FL"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Zip</label>
+                  <input value={unitForm.zip} onChange={e => setUnitForm(f => ({ ...f, zip: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Owner name</label>
+                <input value={unitForm.owner_primary} onChange={e => setUnitForm(f => ({ ...f, owner_primary: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Owner email</label>
+                <input type="email" value={unitForm.email_primary} onChange={e => setUnitForm(f => ({ ...f, email_primary: e.target.value }))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            {unitMsg && <p className="text-sm text-green-600">{unitMsg}</p>}
+            <button type="submit" disabled={addingUnit}
+              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-5 rounded-lg text-sm disabled:opacity-60">
+              {addingUnit ? 'Adding…' : 'Add Unit'}
+            </button>
+          </form>
+        )}
+
+        {!loading && form && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <p className="font-semibold text-slate-700">Association Info</p>
@@ -171,60 +225,6 @@ export default function AdminSettings() {
               className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-60"
             >
               {saving ? 'Saving…' : 'Save Settings'}
-            </button>
-          </form>
-        )}
-
-        {!loading && form && (
-          <form onSubmit={handleAddUnit} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4 mt-6">
-            <p className="font-semibold text-slate-700">Add a Unit</p>
-            <p className="text-xs text-slate-500">Adds a new unit to this association. You can invite the owner afterward from the dashboard.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Unit number <span className="text-red-400">*</span></label>
-                <input value={unitForm.unit_number} onChange={e => setUnitForm(f => ({ ...f, unit_number: e.target.value }))}
-                  placeholder="e.g. 101"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Street address</label>
-                <input value={unitForm.street_address} onChange={e => setUnitForm(f => ({ ...f, street_address: e.target.value }))}
-                  placeholder="123 Ocean Dr"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <input value={unitForm.city} onChange={e => setUnitForm(f => ({ ...f, city: e.target.value }))}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">State</label>
-                  <input value={unitForm.state} maxLength={2} onChange={e => setUnitForm(f => ({ ...f, state: e.target.value }))}
-                    placeholder="FL"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Zip</label>
-                  <input value={unitForm.zip} onChange={e => setUnitForm(f => ({ ...f, zip: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Owner name</label>
-                <input value={unitForm.owner_primary} onChange={e => setUnitForm(f => ({ ...f, owner_primary: e.target.value }))}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Owner email</label>
-                <input type="email" value={unitForm.email_primary} onChange={e => setUnitForm(f => ({ ...f, email_primary: e.target.value }))}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
-            {unitMsg && <p className="text-sm text-green-600">{unitMsg}</p>}
-            <button type="submit" disabled={addingUnit}
-              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-5 rounded-lg text-sm disabled:opacity-60">
-              {addingUnit ? 'Adding…' : 'Add Unit'}
             </button>
           </form>
         )}
