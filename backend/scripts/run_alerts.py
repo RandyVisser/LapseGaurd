@@ -22,9 +22,6 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # contact the association chose: a specific PM, the first PM, or the President.
 _SENDER_EMAIL_SQL = """
 (CASE
-   WHEN COALESCE(h.email_sender_role, 'property_manager') = 'president'
-     THEN (SELECT pu.email_primary FROM units pu
-           WHERE pu.hoa_id = h.id AND lower(coalesce(pu.assoc_title,'')) = 'president' LIMIT 1)
    WHEN h.email_sender_unit_id IS NOT NULL
      THEN (SELECT su.email_primary FROM units su WHERE su.id = h.email_sender_unit_id)
    ELSE (SELECT mu.email_primary FROM units mu

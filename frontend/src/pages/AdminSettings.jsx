@@ -253,49 +253,79 @@ export default function AdminSettings() {
               {/* Who owner emails are sent from */}
               <div className="pt-4 mt-4 border-t border-slate-100">
                 <p className="text-sm font-medium text-slate-700 mb-2">Send owner emails from</p>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="radio" name="email_sender_role" value="property_manager"
-                      checked={form.email_sender_role === 'property_manager'}
-                      onChange={() => setForm(f => ({ ...f, email_sender_role: 'property_manager' }))}
-                      className="border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    Property Manager
-                  </label>
-                  {form.email_sender_role === 'property_manager' && (contacts?.property_managers?.length > 1) && (
-                    <select
-                      value={form.email_sender_unit_id || ''}
-                      onChange={e => setForm(f => ({ ...f, email_sender_unit_id: e.target.value }))}
-                      className="ml-6 w-full sm:w-96 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                      <option value="">Select a property manager…</option>
-                      {contacts.property_managers.map(pm => (
-                        <option key={pm.unit_id} value={pm.unit_id}>
-                          {pm.name || 'Unnamed'}{pm.email ? ` (${pm.email})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  {form.email_sender_role === 'property_manager' && contacts?.property_managers?.length === 1 && (
-                    <p className="text-xs text-slate-400 ml-6">{contacts.property_managers[0].name || 'Property Manager'}{contacts.property_managers[0].email ? ` · ${contacts.property_managers[0].email}` : ''}</p>
-                  )}
-                  {form.email_sender_role === 'property_manager' && (!contacts?.property_managers || contacts.property_managers.length === 0) && (
-                    <p className="text-xs text-amber-600 ml-6">No property manager on this association yet — add one from the dashboard.</p>
-                  )}
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="radio" name="email_sender_role" value="president"
-                      checked={form.email_sender_role === 'president'}
-                      onChange={() => setForm(f => ({ ...f, email_sender_role: 'president' }))}
-                      className="border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    President
-                  </label>
-                  {form.email_sender_role === 'president' && (
-                    <p className="text-xs ml-6 text-slate-400">
-                      {contacts?.president
-                        ? `${contacts.president.name || 'President'}${contacts.president.email ? ` · ${contacts.president.email}` : ''}`
-                        : 'No board member titled "President" yet — set one via a unit\'s board title.'}
+                {(() => {
+                  const pms = contacts?.property_managers || []
+                  const board = contacts?.board_members || []
+                  // The currently selected contact (from either list) for the email warning
+                  const selectedUnitId = form.email_sender_role === 'property_manager'
+                    ? (form.email_sender_unit_id || (pms.length === 1 ? pms[0].unit_id : ''))
+                    : form.email_sender_unit_id
+                  const selected = [...pms, ...board].find(c => c.unit_id === selectedUnitId)
+                  const noEmail = selected && !selected.email
+                  return (
+                  <>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="radio" name="email_sender_role" value="property_manager"
+                        checked={form.email_sender_role === 'property_manager'}
+                        onChange={() => setForm(f => ({ ...f, email_sender_role: 'property_manager', email_sender_unit_id: '' }))}
+                        className="border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Property Manager
+                    </label>
+                    {form.email_sender_role === 'property_manager' && pms.length > 1 && (
+                      <select
+                        value={form.email_sender_unit_id || ''}
+                        onChange={e => setForm(f => ({ ...f, email_sender_unit_id: e.target.value }))}
+                        className="ml-6 w-full sm:w-96 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Select a property manager…</option>
+                        {pms.map(pm => (
+                          <option key={pm.unit_id} value={pm.unit_id}>
+                            {pm.name || 'Unnamed'}{pm.email ? ` (${pm.email})` : ' (no email)'}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {form.email_sender_role === 'property_manager' && pms.length === 1 && (
+                      <p className="text-xs text-slate-400 ml-6">{pms[0].name || 'Property Manager'}{pms[0].email ? ` · ${pms[0].email}` : ''}</p>
+                    )}
+                    {form.email_sender_role === 'property_manager' && pms.length === 0 && (
+                      <p className="text-xs text-amber-600 ml-6">No property manager on this association yet — add one from the dashboard.</p>
+                    )}
+
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="radio" name="email_sender_role" value="board_member"
+                        checked={form.email_sender_role === 'board_member'}
+                        onChange={() => setForm(f => ({ ...f, email_sender_role: 'board_member', email_sender_unit_id: '' }))}
+                        className="border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Specific Board Member
+                    </label>
+                    {form.email_sender_role === 'board_member' && (
+                      board.length > 0 ? (
+                        <select
+                          value={form.email_sender_unit_id || ''}
+                          onChange={e => setForm(f => ({ ...f, email_sender_unit_id: e.target.value }))}
+                          className="ml-6 w-full sm:w-96 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                          <option value="">Select a board member…</option>
+                          {board.map(bm => (
+                            <option key={bm.unit_id} value={bm.unit_id}>
+                              {bm.title ? `${bm.title} — ` : ''}{bm.name || 'Unnamed'}{bm.email ? ` (${bm.email})` : ' (no email)'}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-xs text-amber-600 ml-6">No board members on this association yet — set a board title on a unit first.</p>
+                      )
+                    )}
+                  </div>
+                  {noEmail && (
+                    <p className="text-xs text-red-600 mt-2 font-medium">
+                      ⚠ {selected.name || 'This contact'} has no email address on file. Add one (Edit Owner Info on their unit) — it's used as the reply-to on owner emails.
                     </p>
                   )}
-                </div>
-                <p className="text-xs text-slate-400 mt-2">Owner emails will show this person as the reply-to contact.</p>
+                  <p className="text-xs text-slate-400 mt-2">Owner emails will show this person as the reply-to contact.</p>
+                  </>
+                  )
+                })()}
               </div>
             </div>
 

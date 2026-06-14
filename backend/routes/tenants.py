@@ -62,9 +62,6 @@ async def _resolve_sender_email(conn, hoa_id) -> str | None:
     return await conn.fetchval(
         """
         SELECT CASE
-          WHEN COALESCE(h.email_sender_role, 'property_manager') = 'president'
-            THEN (SELECT email_primary FROM units WHERE hoa_id = h.id
-                  AND lower(coalesce(assoc_title,'')) = 'president' LIMIT 1)
           WHEN h.email_sender_unit_id IS NOT NULL
             THEN (SELECT email_primary FROM units WHERE id = h.email_sender_unit_id)
           ELSE (SELECT email_primary FROM units WHERE hoa_id = h.id

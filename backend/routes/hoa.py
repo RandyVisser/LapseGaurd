@@ -652,7 +652,7 @@ async def update_hoa(
         max(1, int(body.lapsed_reminder_days or 7)),
         body.noncompliant_reminders_enabled,
         max(1, int(body.noncompliant_reminder_days or 7)),
-        body.email_sender_role if body.email_sender_role in ("property_manager", "president") else "property_manager",
+        body.email_sender_role if body.email_sender_role in ("property_manager", "board_member") else "property_manager",
         body.email_sender_unit_id,
     )
     if not updated:
@@ -694,24 +694,28 @@ async def hoa_contacts(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Possible email senders for this association: its property managers and its
-    board president, for the 'send owner emails from' selector."""
+    """Possible email senders for this association: its property managers and all
+    active board members, for the 'send owner emails from' selector."""
     await _assert_hoa_access(user, hoa_id, conn)
     rows = await conn.fetch(
         """SELECT id, assoc_title, owner_primary, email_primary
-           FROM units WHERE hoa_id = $1
-             AND (lower(coalesce(assoc_title,'')) = 'property manager'
-                  OR lower(coalesce(assoc_title,'')) = 'president')""",
+           FROM units WHERE hoa_id = $1 AND coalesce(trim(assoc_title), '') <> ''
+           ORDER BY assoc_title, unit_number""",
         hoa_id,
     )
-    pms, president = [], None
+    pms, board = [], []
     for r in rows:
-        entry = {"unit_id": str(r["id"]), "name": r["owner_primary"], "email": r["email_primary"]}
-        if (r["assoc_title"] or "").strip().lower() == "president":
-            president = entry
-        else:
+        entry = {
+            "unit_id": str(r["id"]),
+            "name": r["owner_primary"],
+            "email": r["email_primary"],
+            "title": r["assoc_title"],
+        }
+        if (r["assoc_title"] or "").strip().lower() == "property manager":
             pms.append(entry)
-    return {"property_managers": pms, "president": president}
+        else:
+            board.append(entry)
+    return {"property_managers": pms, "board_members": board}
 
 
 @router.get("/hoa/{hoa_id}/email-previews")
