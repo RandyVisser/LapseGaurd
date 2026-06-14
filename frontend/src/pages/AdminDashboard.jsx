@@ -141,9 +141,9 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile
   const steps = [
     {
       title: 'Add your units',
-      detail: 'Import your unit list from a CSV, or add units one at a time.',
+      detail: 'Import your unit list from a CSV or Excel file, or add units one at a time.',
       done: summary.total_units > 0,
-      action: !isMobile && { label: 'Import CSV', onClick: onImportClick },
+      action: { label: 'Import units', onClick: onImportClick },
     },
     {
       title: 'Set your insurance requirements',
