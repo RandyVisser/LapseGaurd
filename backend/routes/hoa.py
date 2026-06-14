@@ -144,6 +144,7 @@ class HoaOut(BaseModel):
     invite_reminders_enabled: bool = True
     invite_reminder_days: int = 7
     alerts_enabled: bool = True
+    alert_days: List[int] = [30, 7, 1]
 
 
 class HoaUpdate(BaseModel):
@@ -152,6 +153,7 @@ class HoaUpdate(BaseModel):
     sunbiz_doc_number: Optional[str] = None
     alerts_enabled: bool = True
     alert_lead_days: int = 30
+    alert_days: List[int] = [30, 7, 1]
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
@@ -178,6 +180,7 @@ _HOA_SEARCH_FIELDS = """
     h.invite_reminders_enabled,
     h.invite_reminder_days,
     h.alerts_enabled,
+    h.alert_days,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     COALESCE(h.corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
     COALESCE(h.sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number
@@ -221,6 +224,7 @@ async def list_hoas(
             invite_reminders_enabled=r["invite_reminders_enabled"] if r["invite_reminders_enabled"] is not None else True,
             invite_reminder_days=r["invite_reminder_days"] if r["invite_reminder_days"] is not None else 7,
             alerts_enabled=r["alerts_enabled"] if r["alerts_enabled"] is not None else True,
+            alert_days=list(r["alert_days"]) if r["alert_days"] else [30, 7, 1],
         )
         for r in rows
     ]
@@ -560,6 +564,9 @@ async def update_hoa(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     await _assert_hoa_access(user, hoa_id, conn)
+    # Reminder milestones drive the lead window; status flips use the largest one
+    alert_days = sorted({int(d) for d in (body.alert_days or [])}, reverse=True) or [30, 7, 1]
+    lead_days = max(alert_days)
     updated = await conn.fetchrow(
         """UPDATE hoas SET
             name = $1,
@@ -575,16 +582,17 @@ async def update_hoa(
             invite_reminder_days = $12,
             corp_name = $13,
             sunbiz_doc_number = $14,
-            alerts_enabled = $15
+            alerts_enabled = $15,
+            alert_days = $16
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required,
-                     invite_reminders_enabled, invite_reminder_days, alerts_enabled,
+                     invite_reminders_enabled, invite_reminder_days, alerts_enabled, alert_days,
                      COALESCE(corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = hoas.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
                      COALESCE(sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = hoas.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number""",
         body.name,
-        body.alert_lead_days,
+        lead_days,
         body.ho6_coverage_a_min,
         body.ho6_coverage_e_min,
         body.ho6_wind_required,
@@ -598,6 +606,7 @@ async def update_hoa(
         (body.corp_name or "").strip() or None,
         (body.sunbiz_doc_number or "").strip() or None,
         body.alerts_enabled,
+        alert_days,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -622,6 +631,7 @@ async def update_hoa(
         invite_reminders_enabled=updated["invite_reminders_enabled"],
         invite_reminder_days=updated["invite_reminder_days"],
         alerts_enabled=updated["alerts_enabled"],
+        alert_days=list(updated["alert_days"]) if updated["alert_days"] else [30, 7, 1],
     )
 
 

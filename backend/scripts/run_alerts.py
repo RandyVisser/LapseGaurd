@@ -67,7 +67,8 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             t.email AS tenant_email,
             u.unit_number,
             h.name AS hoa_name,
-            COALESCE(h.alert_lead_days, 30) AS alert_lead_days
+            COALESCE(h.alert_lead_days, 30) AS alert_lead_days,
+            COALESCE(h.alert_days, '{30,7,1}') AS alert_days
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
@@ -82,56 +83,58 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
     count = 0
     for row in rows:
         exp = row["expiration_date"]
+        days_until = (exp - today).days
         threshold = today + timedelta(days=row["alert_lead_days"])
+        milestones = sorted({int(d) for d in (row["alert_days"] or [])}, reverse=True)
 
         # Lapsed always wins; "expiring" only upgrades an active policy so we
         # never stomp non_compliant / pending_review set by AI validation
         if exp < today:
             new_status = "lapsed"
-            alert_type = "lapsed"
         elif exp <= threshold:
             new_status = "expiring" if row["status"] == "active" else row["status"]
-            alert_type = "expiring"
         else:
             new_status = row["status"]
-            alert_type = None
 
         if new_status != row["status"]:
             await conn.execute(
                 "UPDATE policies SET status = $1 WHERE id = $2",
-                new_status,
-                row["policy_id"],
+                new_status, row["policy_id"],
             )
 
-        if alert_type is None:
-            continue
+        # Pick which reminder/lapse milestone applies right now
+        if days_until < 0:
+            alert_type, throttle_days = "lapsed", 7
+        else:
+            # smallest enabled milestone that the policy has crossed into
+            applicable = min((m for m in milestones if m >= days_until), default=None)
+            if applicable is None:
+                continue
+            alert_type, throttle_days = f"renewal_{applicable}", applicable + 1
 
         already_sent = await conn.fetchval(
-            """
+            f"""
             SELECT 1 FROM alert_log
             WHERE tenant_id = $1 AND alert_type = $2
-              AND sent_at > NOW() - INTERVAL '7 days'
+              AND sent_at > NOW() - INTERVAL '{throttle_days} days'
             LIMIT 1
             """,
-            row["tenant_id"],
-            alert_type,
+            row["tenant_id"], alert_type,
         )
         if already_sent:
             continue
 
+        # The email template distinguishes lapsed vs upcoming
+        template_kind = "lapsed" if alert_type == "lapsed" else "expiring"
         subject, html = renewal_notice_html(
-            row["tenant_name"],
-            row["unit_number"],
-            row["hoa_name"],
-            row["expiration_date"],
-            alert_type,
+            row["tenant_name"], row["unit_number"], row["hoa_name"],
+            row["expiration_date"], template_kind,
         )
         sent = await send_email(row["tenant_email"], subject, html)
         if sent:
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
-                row["tenant_id"],
-                alert_type,
+                row["tenant_id"], alert_type,
             )
             count += 1
             print(f"[alerts] Sent {alert_type} alert to {row['tenant_email']}")

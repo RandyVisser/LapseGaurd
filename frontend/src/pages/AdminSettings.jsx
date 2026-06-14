@@ -54,6 +54,7 @@ export default function AdminSettings() {
           corp_name: hoa.corp_name || '',
           sunbiz_doc_number: hoa.sunbiz_doc_number || '',
           alerts_enabled: hoa.alerts_enabled ?? true,
+          alert_days: hoa.alert_days?.length ? hoa.alert_days : [30, 7, 1],
           alert_lead_days: hoa.alert_lead_days ?? 30,
           ho6_coverage_a_min: hoa.ho6_coverage_a_min ?? '',
           ho6_coverage_e_min: hoa.ho6_coverage_e_min ?? '',
@@ -224,19 +225,27 @@ export default function AdminSettings() {
               </label>
               {form.alerts_enabled && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Send renewal alerts how many days before expiration?
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Send renewal reminders
                 </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number" min="7" max="180" step="1"
-                    value={form.alert_lead_days}
-                    onChange={e => setForm(f => ({ ...f, alert_lead_days: e.target.value }))}
-                    className="w-28 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-slate-500">days</span>
+                <div className="flex flex-col gap-2">
+                  {[30, 7, 1].map(d => (
+                    <label key={d} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={(form.alert_days || []).includes(d)}
+                        onChange={e => setForm(f => {
+                          const set = new Set(f.alert_days || [])
+                          if (e.target.checked) set.add(d); else set.delete(d)
+                          return { ...f, alert_days: [...set].sort((a, b) => b - a) }
+                        })}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {d} {d === 1 ? 'day' : 'days'} prior
+                    </label>
+                  ))}
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Default is 30. Tenants receive one email per 7-day window.</p>
+                <p className="text-xs text-slate-400 mt-2">By default, unit owners receive emails 30 days, 7 days, and 1 day prior to their renewal.</p>
               </div>
               )}
 
