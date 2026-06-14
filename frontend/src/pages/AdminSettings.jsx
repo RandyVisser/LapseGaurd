@@ -238,9 +238,9 @@ export default function AdminSettings() {
               <div className="flex flex-wrap gap-2">
                 {[
                   { key: 'invite', label: 'Invite' },
+                  { key: 'non_compliant', label: 'Non-Compliant' },
                   { key: 'renewal', label: 'Renewal' },
                   { key: 'expired', label: 'Expired Policy' },
-                  { key: 'non_compliant', label: 'Non-Compliant' },
                 ].map(b => (
                   <button key={b.key} type="button"
                     onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
@@ -490,9 +490,9 @@ export default function AdminSettings() {
               <div className="flex gap-1 px-3 pt-3 flex-wrap">
                 {[
                   { key: 'invite', label: 'Invite' },
+                  { key: 'non_compliant', label: 'Non-Compliant' },
                   { key: 'renewal', label: 'Renewal' },
                   { key: 'expired', label: 'Expired Policy' },
-                  { key: 'non_compliant', label: 'Non-Compliant' },
                 ].map(b => (
                   <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg ${previewKind === b.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
