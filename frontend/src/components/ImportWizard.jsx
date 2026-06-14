@@ -166,7 +166,7 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
           {/* ── Preview ────────────────────────────────────────────── */}
           {(stage === 'preview' || stage === 'committing') && data && (
             <div className="space-y-5">
-              {/* Counts + issues */}
+              {/* Counts */}
               <div className="flex flex-wrap gap-3 text-sm">
                 <span className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 font-medium border border-green-200">
                   {importable} unit{importable !== 1 ? 's' : ''} ready to import
@@ -175,23 +175,6 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                   {rows.length} row{rows.length !== 1 ? 's' : ''} in file
                 </span>
               </div>
-              {issueItems.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide mb-1">Hover a warning to see the rows</p>
-                  <ul className="text-xs text-amber-800 space-y-1">
-                    {issueItems.map(it => (
-                      <li
-                        key={it.key}
-                        onMouseEnter={() => setHoverIssue(it.key)}
-                        onMouseLeave={() => setHoverIssue(null)}
-                        className="cursor-default rounded px-1 -mx-1 hover:bg-amber-100"
-                      >
-                        • {it.text}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
               {/* Column mapping */}
               <div>
@@ -225,6 +208,26 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                   <p className="text-xs text-red-600 mt-2">Pick the column that holds the unit number — it's required.</p>
                 )}
               </div>
+
+              {/* Warnings sit directly above the table so hovering reveals the
+                  highlighted rows without them scrolling out of view */}
+              {issueItems.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 -mb-2">
+                  <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide mb-1">Hover a warning to highlight those rows below</p>
+                  <ul className="text-xs text-amber-800 space-y-1">
+                    {issueItems.map(it => (
+                      <li
+                        key={it.key}
+                        onMouseEnter={() => setHoverIssue(it.key)}
+                        onMouseLeave={() => setHoverIssue(null)}
+                        className="cursor-default rounded px-1 -mx-1 hover:bg-amber-100"
+                      >
+                        • {it.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Sample — scrolls on its own so long lists don't blow out the wizard */}
               <div>
