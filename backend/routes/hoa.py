@@ -147,6 +147,8 @@ class HoaOut(BaseModel):
     alert_days: List[int] = [30, 7, 1]
     lapsed_reminders_enabled: bool = True
     lapsed_reminder_days: int = 7
+    noncompliant_reminders_enabled: bool = True
+    noncompliant_reminder_days: int = 7
 
 
 class HoaUpdate(BaseModel):
@@ -158,6 +160,8 @@ class HoaUpdate(BaseModel):
     alert_days: List[int] = [30, 7, 1]
     lapsed_reminders_enabled: bool = True
     lapsed_reminder_days: int = 7
+    noncompliant_reminders_enabled: bool = True
+    noncompliant_reminder_days: int = 7
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
     ho6_wind_required: bool = False
@@ -187,6 +191,8 @@ _HOA_SEARCH_FIELDS = """
     h.alert_days,
     h.lapsed_reminders_enabled,
     h.lapsed_reminder_days,
+    h.noncompliant_reminders_enabled,
+    h.noncompliant_reminder_days,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
     COALESCE(h.corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
     COALESCE(h.sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number
@@ -233,6 +239,8 @@ async def list_hoas(
             alert_days=list(r["alert_days"]) if r["alert_days"] else [30, 7, 1],
             lapsed_reminders_enabled=r["lapsed_reminders_enabled"] if r["lapsed_reminders_enabled"] is not None else True,
             lapsed_reminder_days=r["lapsed_reminder_days"] if r["lapsed_reminder_days"] is not None else 7,
+            noncompliant_reminders_enabled=r["noncompliant_reminders_enabled"] if r["noncompliant_reminders_enabled"] is not None else True,
+            noncompliant_reminder_days=r["noncompliant_reminder_days"] if r["noncompliant_reminder_days"] is not None else 7,
         )
         for r in rows
     ]
@@ -593,13 +601,16 @@ async def update_hoa(
             alerts_enabled = $15,
             alert_days = $16,
             lapsed_reminders_enabled = $17,
-            lapsed_reminder_days = $18
+            lapsed_reminder_days = $18,
+            noncompliant_reminders_enabled = $19,
+            noncompliant_reminder_days = $20
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required,
                      invite_reminders_enabled, invite_reminder_days, alerts_enabled, alert_days,
                      lapsed_reminders_enabled, lapsed_reminder_days,
+                     noncompliant_reminders_enabled, noncompliant_reminder_days,
                      COALESCE(corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = hoas.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
                      COALESCE(sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = hoas.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number""",
         body.name,
@@ -620,6 +631,8 @@ async def update_hoa(
         alert_days,
         body.lapsed_reminders_enabled,
         max(1, int(body.lapsed_reminder_days or 7)),
+        body.noncompliant_reminders_enabled,
+        max(1, int(body.noncompliant_reminder_days or 7)),
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -647,6 +660,8 @@ async def update_hoa(
         alert_days=list(updated["alert_days"]) if updated["alert_days"] else [30, 7, 1],
         lapsed_reminders_enabled=updated["lapsed_reminders_enabled"],
         lapsed_reminder_days=updated["lapsed_reminder_days"],
+        noncompliant_reminders_enabled=updated["noncompliant_reminders_enabled"],
+        noncompliant_reminder_days=updated["noncompliant_reminder_days"],
     )
 
 

@@ -13,7 +13,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, invite_email_html
+from services.email import send_email, renewal_notice_html, invite_email_html, admin_notify_html
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -148,13 +148,60 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
     return count
 
 
+async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
+    """Remind owners whose policy is on file but doesn't meet the association's
+    requirements (Active · Non-Compliant), spaced by noncompliant_reminder_days,
+    until the policy is corrected (status changes off non_compliant)."""
+    rows = await conn.fetch(
+        """
+        SELECT p.tenant_id, t.name AS tenant_name, t.email AS tenant_email,
+               u.unit_number, h.name AS hoa_name,
+               COALESCE(h.noncompliant_reminder_days, 7) AS days
+        FROM policies p
+        JOIN tenants t ON t.id = p.tenant_id
+        JOIN units u ON u.id = t.unit_id
+        JOIN hoas h ON h.id = u.hoa_id
+        WHERE p.status = 'non_compliant'
+          AND p.superseded_by IS NULL
+          AND COALESCE(h.alerts_enabled, TRUE) = TRUE
+          AND COALESCE(h.noncompliant_reminders_enabled, TRUE) = TRUE
+          AND t.email IS NOT NULL
+        """,
+    )
+    count = 0
+    for row in rows:
+        already = await conn.fetchval(
+            f"""SELECT 1 FROM alert_log
+                WHERE tenant_id = $1 AND alert_type = 'non_compliant'
+                  AND sent_at > NOW() - INTERVAL '{int(row['days'])} days' LIMIT 1""",
+            row["tenant_id"],
+        )
+        if already:
+            continue
+        subject, html = admin_notify_html(
+            row["tenant_name"], row["unit_number"], row["hoa_name"],
+            "Your policy is on file but does not currently meet your association's "
+            "insurance requirements. Please upload an updated policy so your unit "
+            "shows as compliant.",
+        )
+        if await send_email(row["tenant_email"], subject, html):
+            await conn.execute(
+                "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'non_compliant')",
+                row["tenant_id"],
+            )
+            count += 1
+            print(f"[alerts] Sent non-compliant reminder to {row['tenant_email']}")
+    return count
+
+
 async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
     async with pool.acquire() as conn:
         count = await process_alerts(conn)
         reminders = await process_invite_reminders(conn)
+        noncompliant = await process_noncompliant_reminders(conn)
     await pool.close()
-    print(f"[alerts] Done. {count} alerts sent, {reminders} invite reminders sent.")
+    print(f"[alerts] Done. {count} alerts, {reminders} invite reminders, {noncompliant} non-compliant reminders sent.")
 
 
 if __name__ == "__main__":
