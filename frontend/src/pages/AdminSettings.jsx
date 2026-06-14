@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
-import { apiGet, apiPut, apiPost } from '../supabase'
+import { apiGet, apiPut, apiPost, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
 export default function AdminSettings() {
   const { hoaId } = useAuth()
+  const navigate = useNavigate()
   const [form, setForm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -16,6 +18,17 @@ export default function AdminSettings() {
   const [addingUnit, setAddingUnit] = useState(false)
   const [unitMsg, setUnitMsg] = useState('')
   const [showAddUnit, setShowAddUnit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteHoa() {
+    setDeleting(true); setError('')
+    try {
+      await apiDelete(`/hoa/${hoaId}`)
+      window.location.href = '/admin/dashboard'
+    } catch (err) { setError(err.message); setDeleting(false) }
+  }
 
   async function handleAddUnit(e) {
     e.preventDefault()
@@ -276,6 +289,45 @@ export default function AdminSettings() {
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
           </form>
+        )}
+
+        {!loading && form && (
+          <div className="bg-white rounded-xl border border-red-200 shadow-sm p-6 mt-6">
+            <p className="font-semibold text-red-700">Danger Zone</p>
+            <p className="text-xs text-slate-500 mt-1 mb-3">
+              Permanently delete this association and all of its units, owners, policies, invites, and documents. This cannot be undone.
+            </p>
+            <button type="button" onClick={() => { setShowDelete(true); setDeleteConfirm('') }}
+              className="border border-red-300 text-red-600 hover:bg-red-50 font-semibold py-2 px-4 rounded-lg text-sm">
+              Delete Association…
+            </button>
+          </div>
+        )}
+
+        {showDelete && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+              <h2 className="font-semibold text-red-700 mb-1">Delete {form?.name}?</h2>
+              <p className="text-sm text-slate-600 mb-4">
+                This permanently removes the association and every unit, owner, policy, invite, and document under it. This cannot be undone.
+              </p>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Type the association name to confirm</label>
+              <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder={form?.name}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-red-400" />
+              <div className="flex gap-2">
+                <button type="button" disabled={deleting || deleteConfirm.trim() !== (form?.name || '').trim()}
+                  onClick={handleDeleteHoa}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                  {deleting ? 'Deleting…' : 'Delete Association'}
+                </button>
+                <button type="button" onClick={() => setShowDelete(false)}
+                  className="flex-1 border border-slate-300 text-slate-600 font-semibold py-2 rounded-lg text-sm hover:bg-slate-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

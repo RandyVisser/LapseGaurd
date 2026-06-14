@@ -608,6 +608,24 @@ async def update_hoa(
     )
 
 
+@router.delete("/hoa/{hoa_id}")
+async def delete_hoa(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Delete an association and everything under it. Units cascade to their
+    tenants/policies/invites; documents and PM links are removed explicitly."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    hoa = await conn.fetchrow("SELECT name FROM hoas WHERE id = $1", hoa_id)
+    if not hoa:
+        raise HTTPException(status_code=404, detail="HOA not found")
+    await conn.execute("DELETE FROM documents WHERE hoa_id = $1", hoa_id)
+    await conn.execute("DELETE FROM property_manager_hoas WHERE hoa_id = $1", hoa_id)
+    await conn.execute("DELETE FROM hoas WHERE id = $1", hoa_id)
+    return {"deleted": True, "name": hoa["name"]}
+
+
 async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | None:
     """Build the compliance board report for one HOA. Returns
     {"to_email", "subject", "html"} or None if the HOA doesn't exist.
