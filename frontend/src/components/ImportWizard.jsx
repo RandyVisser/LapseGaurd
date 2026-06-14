@@ -1,18 +1,39 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { apiUpload, apiPost } from '../supabase'
 
 // Onboarding's first step: a property manager uploads their unit list (any
 // columns, CSV or Excel). The backend has Claude map their columns to our
 // schema; this wizard shows that mapping + a preview, lets the PM correct it,
 // then commits. Kept as its own component to stay out of the dashboard's way.
+
+// Light client-side mirrors of the backend normalization, used only to flag
+// rows live in the preview (the commit is still validated server-side).
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const UNIT_IN_ADDR = /\b(APT|UNIT|STE|SUITE|PH|#)\s*(\S+)/i
+
+function looksLikeDate(s) {
+  const v = (s || '').trim()
+  if (!v) return true // blank is fine (optional)
+  return (
+    /^\d{4}-\d{1,2}-\d{1,2}/.test(v) ||                 // ISO
+    /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(v) ||          // 1/15/2024, 01-15-24
+    /^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}/.test(v)      // Jan 15, 2024
+  )
+}
+
 export default function ImportWizard({ hoaId, onClose, onDone }) {
   const [stage, setStage] = useState('select') // select | preview | committing | done
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [data, setData] = useState(null)      // preview response
-  const [mapping, setMapping] = useState({})  // fieldKey -> header
+  const [data, setData] = useState(null)
+  const [mapping, setMapping] = useState({})
   const [result, setResult] = useState(null)
+  const [hoverIssue, setHoverIssue] = useState(null) // 'unit' | 'email' | 'date'
   const fileRef = useRef(null)
+
+  const fields = data?.fields || []
+  const headers = data?.headers || []
+  const rows = data?.rows || []
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
@@ -34,7 +55,6 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
   function setField(fieldKey, header) {
     setMapping(m => {
       const next = { ...m }
-      // a header maps to at most one field — clear it from any other field
       for (const k of Object.keys(next)) if (next[k] === header) delete next[k]
       if (header) next[fieldKey] = header
       else delete next[fieldKey]
@@ -42,26 +62,73 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
     })
   }
 
+  // Per-row analysis, recomputed whenever the mapping changes
+  const analysis = useMemo(() => {
+    const uCol = mapping.unit_number, sCol = mapping.street_address
+    const eCols = ['email_primary', 'email_secondary'].map(k => mapping[k]).filter(Boolean)
+    const dCol = mapping.purchase_date
+    return rows.map(r => {
+      const unitVal = uCol ? (r[uCol] || '').trim() : ''
+      const embedded = !unitVal && sCol && UNIT_IN_ADDR.test(r[sCol] || '')
+      const missingUnit = !unitVal && !embedded
+      const badEmails = eCols.filter(c => {
+        const v = (r[c] || '').trim()
+        return v && !EMAIL_RE.test(v)
+      })
+      const badDate = dCol ? !looksLikeDate(r[dCol]) : false
+      return { missingUnit, badEmails, badDate }
+    })
+  }, [rows, mapping])
+
+  const counts = useMemo(() => {
+    let unit = 0, email = 0, date = 0
+    for (const a of analysis) {
+      if (a.missingUnit) unit++
+      if (a.badEmails.length) email++
+      if (a.badDate) date++
+    }
+    return { unit, email, date }
+  }, [analysis])
+
+  const importable = analysis.filter(a => !a.missingUnit).length
+  const unitMapped = !!mapping.unit_number
+
+  const issueItems = [
+    counts.unit && { key: 'unit', text: `${counts.unit} row${counts.unit !== 1 ? 's have' : ' has'} no unit number — will be skipped` },
+    counts.email && { key: 'email', text: `${counts.email} email${counts.email !== 1 ? 's' : ''} look${counts.email === 1 ? 's' : ''} invalid — kept for you to fix` },
+    counts.date && { key: 'date', text: `${counts.date} purchase date${counts.date !== 1 ? 's' : ''} couldn't be read — left blank` },
+  ].filter(Boolean)
+
   async function handleCommit() {
     setBusy(true); setError(''); setStage('committing')
     try {
-      const res = await apiPost(`/hoa/${hoaId}/units/import/commit`, { mapping, rows: data.rows })
-      setResult(res)
-      setStage('done')
-      onDone?.()
+      const res = await apiPost(`/hoa/${hoaId}/units/import/commit`, { mapping, rows })
+      setResult(res); setStage('done'); onDone?.()
     } catch (err) {
-      setError(err.message)
-      setStage('preview')
+      setError(err.message); setStage('preview')
     } finally {
       setBusy(false)
     }
   }
 
-  const fields = data?.fields || []
-  const headers = data?.headers || []
-  const rows = data?.rows || []
-  const unitMapped = !!mapping.unit_number
-  const importable = unitMapped ? rows.filter(r => (r[mapping.unit_number] || '').trim()).length : 0
+  const shownFields = fields.filter(f => mapping[f.key])
+
+  function cellClass(fieldKey, a) {
+    if (hoverIssue === 'unit' && fieldKey === 'unit_number' && a.missingUnit)
+      return 'bg-red-100 ring-2 ring-inset ring-red-400'
+    if (hoverIssue === 'email' && a.badEmails.includes(mapping[fieldKey]))
+      return 'bg-amber-100 ring-2 ring-inset ring-amber-400'
+    if (hoverIssue === 'date' && fieldKey === 'purchase_date' && a.badDate)
+      return 'bg-amber-100 ring-2 ring-inset ring-amber-400'
+    return ''
+  }
+
+  function rowClass(a) {
+    if (hoverIssue === 'unit' && a.missingUnit) return 'bg-red-50'
+    if (hoverIssue === 'email' && a.badEmails.length) return 'bg-amber-50'
+    if (hoverIssue === 'date' && a.badDate) return 'bg-amber-50'
+    return ''
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
@@ -105,28 +172,46 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                   {importable} unit{importable !== 1 ? 's' : ''} ready to import
                 </span>
                 <span className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 border border-slate-200">
-                  {data.total_rows} row{data.total_rows !== 1 ? 's' : ''} in file
+                  {rows.length} row{rows.length !== 1 ? 's' : ''} in file
                 </span>
               </div>
-              {data.issues?.length > 0 && (
-                <ul className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
-                  {data.issues.map((s, i) => <li key={i}>• {s}</li>)}
-                </ul>
+              {issueItems.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide mb-1">Hover a warning to see the rows</p>
+                  <ul className="text-xs text-amber-800 space-y-1">
+                    {issueItems.map(it => (
+                      <li
+                        key={it.key}
+                        onMouseEnter={() => setHoverIssue(it.key)}
+                        onMouseLeave={() => setHoverIssue(null)}
+                        className="cursor-default rounded px-1 -mx-1 hover:bg-amber-100"
+                      >
+                        • {it.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {/* Column mapping */}
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Column matchup</p>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Column matchup</p>
+                <p className="text-xs text-slate-500 mb-3">
+                  Each row is a field <strong>we</strong> track, matched to the column from <strong>your</strong> file.
+                  Fix any that look wrong, or choose <em>“— not in file —”</em> if you don't have it.
+                  <span className="text-red-500"> *</span> is required.
+                </p>
                 <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
                   {fields.map(f => (
-                    <div key={f.key} className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-slate-600">
+                    <div key={f.key} className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-slate-600 flex-shrink-0">
                         {f.label}{f.required && <span className="text-red-500">*</span>}
                       </span>
+                      <span className="text-slate-300 text-xs">←</span>
                       <select
                         value={mapping[f.key] || ''}
                         onChange={e => setField(f.key, e.target.value)}
-                        className={`text-sm border rounded-lg px-2 py-1.5 max-w-[55%] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`text-sm border rounded-lg px-2 py-1.5 flex-1 min-w-0 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           f.required && !mapping[f.key] ? 'border-red-300 bg-red-50' : 'border-slate-200'
                         }`}
                       >
@@ -141,23 +226,27 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
                 )}
               </div>
 
-              {/* Sample */}
+              {/* Sample — scrolls on its own so long lists don't blow out the wizard */}
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Preview</p>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  Preview <span className="text-slate-300 normal-case font-normal tracking-normal">· all {rows.length} rows</span>
+                </p>
+                <div className="border border-slate-200 rounded-lg overflow-auto max-h-64">
                   <table className="w-full text-xs whitespace-nowrap">
-                    <thead className="bg-slate-50 border-b border-slate-200">
+                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                       <tr>
-                        {fields.filter(f => mapping[f.key]).map(f => (
+                        {shownFields.map(f => (
                           <th key={f.key} className="text-left px-3 py-2 font-semibold text-slate-500">{f.label}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {rows.slice(0, 8).map((r, i) => (
-                        <tr key={i}>
-                          {fields.filter(f => mapping[f.key]).map(f => (
-                            <td key={f.key} className="px-3 py-2 text-slate-600">{r[mapping[f.key]] || <span className="text-slate-300">—</span>}</td>
+                      {rows.map((r, i) => (
+                        <tr key={i} className={rowClass(analysis[i])}>
+                          {shownFields.map(f => (
+                            <td key={f.key} className={`px-3 py-2 text-slate-600 ${cellClass(f.key, analysis[i])}`}>
+                              {r[mapping[f.key]] || <span className="text-slate-300">—</span>}
+                            </td>
                           ))}
                         </tr>
                       ))}
