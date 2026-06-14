@@ -51,6 +51,8 @@ export default function AdminSettings() {
         const hoa = hoas.find(h => h.id === hoaId) || hoas[0]
         if (hoa) setForm({
           name: hoa.name || '',
+          corp_name: hoa.corp_name || '',
+          sunbiz_doc_number: hoa.sunbiz_doc_number || '',
           alert_lead_days: hoa.alert_lead_days ?? 30,
           ho6_coverage_a_min: hoa.ho6_coverage_a_min ?? '',
           ho6_coverage_e_min: hoa.ho6_coverage_e_min ?? '',
@@ -183,6 +185,28 @@ export default function AdminSettings() {
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">SunBiz Corp Name</label>
+                  <input
+                    type="text"
+                    value={form.corp_name}
+                    onChange={e => setForm(f => ({ ...f, corp_name: e.target.value }))}
+                    placeholder="e.g. Seaside Towers Condominium Association, Inc."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">SunBiz DOC #</label>
+                  <input
+                    type="text"
+                    value={form.sunbiz_doc_number}
+                    onChange={e => setForm(f => ({ ...f, sunbiz_doc_number: e.target.value }))}
+                    placeholder="e.g. N12000012345"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 

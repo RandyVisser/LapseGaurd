@@ -147,6 +147,8 @@ class HoaOut(BaseModel):
 
 class HoaUpdate(BaseModel):
     name: str
+    corp_name: Optional[str] = None
+    sunbiz_doc_number: Optional[str] = None
     alert_lead_days: int = 30
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None
@@ -174,8 +176,8 @@ _HOA_SEARCH_FIELDS = """
     h.invite_reminders_enabled,
     h.invite_reminder_days,
     (SELECT u.subdivision FROM units u WHERE u.hoa_id = h.id AND u.subdivision IS NOT NULL LIMIT 1) AS subdivision,
-    (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1) AS corp_name,
-    (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1) AS sunbiz_doc_number
+    COALESCE(h.corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = h.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
+    COALESCE(h.sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = h.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number
 """
 
 
@@ -566,12 +568,16 @@ async def update_hoa(
             ho6_named_insured_match_required = $8,
             ho6_property_address_match_required = $9,
             invite_reminders_enabled = $11,
-            invite_reminder_days = $12
+            invite_reminder_days = $12,
+            corp_name = $13,
+            sunbiz_doc_number = $14
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required,
-                     invite_reminders_enabled, invite_reminder_days""",
+                     invite_reminders_enabled, invite_reminder_days,
+                     COALESCE(corp_name, (SELECT u.corp_name FROM units u WHERE u.hoa_id = hoas.id AND u.corp_name IS NOT NULL LIMIT 1)) AS corp_name,
+                     COALESCE(sunbiz_doc_number, (SELECT u.sunbiz_doc_number FROM units u WHERE u.hoa_id = hoas.id AND u.sunbiz_doc_number IS NOT NULL LIMIT 1)) AS sunbiz_doc_number""",
         body.name,
         body.alert_lead_days,
         body.ho6_coverage_a_min,
@@ -584,6 +590,8 @@ async def update_hoa(
         hoa_id,
         body.invite_reminders_enabled,
         max(1, int(body.invite_reminder_days or 7)),
+        (body.corp_name or "").strip() or None,
+        (body.sunbiz_doc_number or "").strip() or None,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -595,6 +603,8 @@ async def update_hoa(
         id=str(updated["id"]),
         name=updated["name"],
         address=updated["address"],
+        corp_name=updated["corp_name"],
+        sunbiz_doc_number=updated["sunbiz_doc_number"],
         alert_lead_days=updated["alert_lead_days"] if updated["alert_lead_days"] is not None else 30,
         ho6_coverage_a_min=updated["ho6_coverage_a_min"],
         ho6_coverage_e_min=updated["ho6_coverage_e_min"],
