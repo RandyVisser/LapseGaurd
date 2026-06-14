@@ -6,6 +6,7 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
 QUOTE_FORM_URL = os.environ.get("QUOTE_FORM_URL", "")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
+INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
 async def send_email(to_email: str, subject: str, html: str) -> bool:
@@ -168,25 +169,58 @@ def invite_email_html(
     return subject, html
 
 
+def _step(num: str, title: str, desc: str) -> str:
+    return f"""
+    <tr>
+      <td valign="top" style="width:34px;padding:6px 0">
+        <div style="width:26px;height:26px;line-height:26px;text-align:center;
+             background:#1d4ed8;color:#ffffff;border-radius:50%;font-size:13px;
+             font-weight:700">{num}</div>
+      </td>
+      <td valign="top" style="padding:6px 0 6px 4px">
+        <div style="color:#111827;font-size:15px;font-weight:600">{title}</div>
+        <div style="color:#6b7280;font-size:13px;line-height:1.5;margin-top:2px">{desc}</div>
+      </td>
+    </tr>"""
+
+
 def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
     subject = f"Welcome to condo.insure — let's get {hoa_name} set up"
     dashboard_url = f"{APP_URL}/admin/dashboard"
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
-      {_header()}
-      <p style="color:#374151">Hi {admin_name},</p>
-      <p style="color:#374151">
-        Your <strong>{hoa_name}</strong> account is ready on condo.insure. Here's how to get started:
-      </p>
-      <ol style="color:#374151;padding-left:20px;line-height:2">
-        <li>Log in to your dashboard</li>
-        <li>Add your units (or import them from a CSV)</li>
-        <li>Invite unit-owners to upload their proof of insurance</li>
-        <li>Review uploaded policies and track compliance</li>
-      </ol>
-      {_btn(dashboard_url, "Go to Dashboard")}
-      {_footer()}
-    </div></body></html>"""
+    <html><body style="margin:0;background:#f1f5f9;
+          font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+      <div style="max-width:600px;margin:0 auto;padding:24px 12px">
+        {_header()}
+        <p style="color:#111827;font-size:16px;margin:0 0 4px">Hi {admin_name},</p>
+        <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 8px">
+          Your account for <strong>{hoa_name}</strong> is ready — you can sign in right now.
+          Here's the quickest path to a compliance dashboard that keeps itself up to date:
+        </p>
+
+        <table cellpadding="0" cellspacing="0" style="width:100%;margin:18px 0">
+          {_step("1", "Add your units",
+                 "Import your owner list in seconds — drop in a <strong>CSV or Excel</strong> file "
+                 "exactly as you have it. Your columns don't need to match ours; we read them "
+                 "automatically. (Or add units one at a time.)")}
+          {_step("2", "Invite your unit-owners",
+                 "Send each owner a secure link to upload their declaration page.")}
+          {_step("3", "Owners send in their dec pages — their way",
+                 f"They can upload through the portal, <strong>or simply email their dec page to "
+                 f"<a href='mailto:{INBOUND_ADDRESS}' style='color:#1d4ed8'>{INBOUND_ADDRESS}</a></strong> "
+                 "and it files itself. Even forwarding it to you works — you can submit on their behalf.")}
+          {_step("4", "Watch compliance update on its own",
+                 "We read each policy with AI, check it against your association's requirements, "
+                 "and flag anything that's missing, expiring, or non-compliant — automatically.")}
+        </table>
+
+        {_btn(dashboard_url, "Go to your dashboard")}
+
+        <p style="color:#9ca3af;font-size:13px;line-height:1.5;margin:16px 0 0">
+          Questions while you're getting set up? Just reply to this email.
+        </p>
+        {_footer()}
+      </div></body></html>"""
     return subject, html
 
 

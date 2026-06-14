@@ -109,13 +109,17 @@ async def signup_association(
         body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
     )
 
-    # Create Supabase admin user — email_confirm=False so they must verify their address
+    # Create the admin user already confirmed. The Supabase *admin* create-user
+    # endpoint does not send a confirmation email (only the public signup flow
+    # does), so email_confirm=False would leave them unable to sign in — they'd
+    # get "Email not confirmed" with no link to click. Signup is rate-limited
+    # (5/hour/IP) which is the real abuse guard here.
     try:
         user_id = await _create_supabase_user(
             body.email,
             body.password,
             {"role": "hoa_admin", "hoa_id": hoa_id},
-            email_confirm=False,
+            email_confirm=True,
         )
     except HTTPException:
         # Roll back HOA if user creation fails
