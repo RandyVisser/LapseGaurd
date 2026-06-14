@@ -1008,24 +1008,9 @@ export default function AdminTenantDetail() {
               <SectionLabel>Unit &amp; owner</SectionLabel>
               <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
 
-                {/* 4-col owner row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <FieldInput label="Owner name"        value={form.name}    onChange={tField('name')} />
-                  <FieldInput label="Owner email"       value={form.email}   onChange={tField('email')} type="email" />
-                  <FieldInput label="Owner phone"       value={form.phone}   onChange={tField('phone')} type="tel" placeholder="(555) 000-0000" />
+                {/* Association name — owner details are managed on the association page */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
-                </div>
-
-                {/* Owners on title — correct typos or update after a sale */}
-                <div className="pt-4 border-t border-slate-100">
-                  <SectionLabel>Unit owners on title</SectionLabel>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FieldInput label="Primary name"     value={ownerForm.owner_primary}   onChange={v => setOwnerForm(f => ({ ...f, owner_primary: v }))} />
-                    <FieldInput label="Primary email"    value={ownerForm.email_primary}   onChange={v => setOwnerForm(f => ({ ...f, email_primary: v }))} type="email" />
-                    <FieldInput label="Secondary name"   value={ownerForm.owner_secondary} onChange={v => setOwnerForm(f => ({ ...f, owner_secondary: v }))} />
-                    <FieldInput label="Secondary email"  value={ownerForm.email_secondary} onChange={v => setOwnerForm(f => ({ ...f, email_secondary: v }))} type="email" />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2">Use this to fix a typo or update the owner when a unit sells. Changes save with the Save button below.</p>
                 </div>
 
                 {/* Unit address */}
