@@ -116,6 +116,18 @@ Storage buckets (both public):
 Push to `main` → Railway auto-deploys both frontend and backend services.
 No build step needed locally — Railway handles it.
 
+## Scheduled alerts (cron)
+
+A Railway **cron service** runs daily to send all reminder emails (renewal
+30/7/1, lapsed, non-compliant, and pending invites). Config:
+- **Cron Schedule:** `0 13 * * *` (daily, 13:00 UTC ≈ 9am ET)
+- **Start command:** `python scripts/run_alerts.py` (connects to the DB directly;
+  needs DATABASE_URL, RESEND_API_KEY, FROM_EMAIL, APP_URL)
+- Alternative: `curl -X POST -H "x-api-key: $INTERNAL_API_KEY" $APP_API_URL/alerts/run`
+
+All reminders are evaluated each run and throttled per type/interval, so a daily
+cadence never double-sends.
+
 ## Test accounts
 
 HOA: "Test HOA" (id: 00000000-0000-0000-0000-000000000001)
