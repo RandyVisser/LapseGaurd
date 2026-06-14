@@ -99,6 +99,31 @@ async def _upload_to_storage(path: str, content: bytes, content_type: str) -> st
     return f"{SUPABASE_URL}/storage/v1/object/public/policy-documents/{path}"
 
 
+async def _record_bounce(conn, event_type: str, data: dict) -> None:
+    """Upsert the affected recipient(s) into email_bounces so the dashboard can
+    flag owners whose invite/notification didn't land."""
+    rcpts = data.get("to") or []
+    if isinstance(rcpts, str):
+        rcpts = [rcpts]
+    btype = "complaint" if "complain" in event_type else "bounce"
+    bounce = data.get("bounce") or {}
+    reason = None
+    if isinstance(bounce, dict):
+        reason = bounce.get("subType") or bounce.get("type") or bounce.get("message")
+    for r in rcpts:
+        _, addr = parseaddr(str(r))
+        if not addr:
+            continue
+        await conn.execute(
+            """INSERT INTO email_bounces (email, type, reason, updated_at)
+               VALUES ($1, $2, $3, now())
+               ON CONFLICT (email) DO UPDATE
+                 SET type = EXCLUDED.type, reason = EXCLUDED.reason, updated_at = now()""",
+            addr.lower(), btype, reason,
+        )
+        logger.info("Recorded %s for %s", btype, addr)
+
+
 def _addressed_to_intake(data: dict, intake: str) -> bool:
     """True if the inbound email was sent to the configured intake address
     (checked across to + cc). Handles recipients given as strings or objects."""
@@ -392,7 +417,13 @@ async def receive_inbound_email(
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     payload = json.loads(body)
-    if payload.get("type") != "email.received":
+    ptype = payload.get("type")
+    # Outbound bounces/complaints (e.g. an invite to a dead address) — record so
+    # the admin can see which owners never got their email
+    if ptype in ("email.bounced", "email.complained"):
+        await _record_bounce(conn, ptype, payload.get("data") or {})
+        return {"handled": True, "event": ptype}
+    if ptype != "email.received":
         return {"handled": False, "reason": "not an inbound email event"}
 
     data = payload.get("data") or {}

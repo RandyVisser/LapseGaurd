@@ -108,6 +108,8 @@ class UnitComplianceOut(BaseModel):
     status: PolicyStatus
     expiration_date: Optional[date] = None
     invite_sent: bool = False
+    account_status: str = "not_invited"  # verified | invited | not_invited
+    email_bounced: bool = False
 
 
 class ComplianceSummary(BaseModel):

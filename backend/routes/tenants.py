@@ -605,6 +605,75 @@ async def delete_tenant(
     return {"deleted": True}
 
 
+@router.post("/hoa/{hoa_id}/invite-all")
+async def invite_all_owners(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Invite every owner with an email on file who hasn't created an account
+    yet. Skips owners who already have an account and addresses we know have
+    bounced. Emails are sent concurrently; returns a tally."""
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    units = await conn.fetch(
+        """SELECT u.id AS unit_id, u.unit_number, u.assoc_title, trim(u.email_primary) AS email,
+                  h.name AS hoa_name
+           FROM units u JOIN hoas h ON h.id = u.hoa_id
+           WHERE u.hoa_id = $1 AND coalesce(trim(u.email_primary), '') <> ''""",
+        hoa_id,
+    )
+    if not units:
+        return {"sent": 0, "skipped": 0, "failed": 0, "bounced": 0, "already_active": 0, "total": 0}
+
+    bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
+
+    # Build the send list synchronously (DB), then fire emails concurrently
+    to_send = []  # (email, subject, html, token)
+    skipped = already_active = bounced_n = 0
+    for u in units:
+        email = u["email"]
+        has_account = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM tenants WHERE unit_id = $1 AND supabase_user_id IS NOT NULL)",
+            u["unit_id"],
+        )
+        if has_account:
+            already_active += 1
+            continue
+        if email.lower() in bounced:
+            bounced_n += 1
+            continue
+        invite = await conn.fetchrow(
+            "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL "
+            "ORDER BY created_at DESC LIMIT 1",
+            u["unit_id"], email,
+        )
+        if not invite:
+            invite = await conn.fetchrow(
+                "INSERT INTO unit_invites (unit_id, email) VALUES ($1, $2) RETURNING token",
+                u["unit_id"], email,
+            )
+        is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
+        subject, html = invite_email_html(
+            email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
+            is_property_manager=is_pm,
+        )
+        to_send.append((email, subject, html, invite["token"]))
+
+    results = await asyncio.gather(*(send_email(e, s, h) for e, s, h, _ in to_send))
+    sent_tokens = [to_send[i][3] for i, ok in enumerate(results) if ok]
+    failed = len(results) - len(sent_tokens)
+    if sent_tokens:
+        await conn.execute(
+            "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = ANY($1::uuid[])", sent_tokens,
+        )
+    return {
+        "sent": len(sent_tokens), "failed": failed, "bounced": bounced_n,
+        "already_active": already_active, "total": len(units),
+    }
+
+
 @router.post("/unit/{unit_id}/invite")
 async def invite_tenant(
     unit_id: str,

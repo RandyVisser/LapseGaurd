@@ -281,7 +281,10 @@ async def list_units(
             t.name AS tenant_name,
             t.email AS tenant_email,
             t.id AS tenant_id,
-            EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
+            EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite,
+            EXISTS(SELECT 1 FROM tenants ta WHERE ta.unit_id = u.id AND ta.supabase_user_id IS NOT NULL) AS has_account,
+            EXISTS(SELECT 1 FROM email_bounces b WHERE u.email_primary IS NOT NULL
+                   AND lower(b.email) = lower(u.email_primary)) AS email_bounced
         FROM units u
         LEFT JOIN LATERAL (
             SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
@@ -323,6 +326,9 @@ async def list_units(
             status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
             expiration_date=exp_dates.get(r["tenant_id"]),
             invite_sent=r["has_invite"],
+            account_status=("verified" if r["has_account"]
+                            else "invited" if r["has_invite"] else "not_invited"),
+            email_bounced=r["email_bounced"],
         )
         for r in rows
     ]
