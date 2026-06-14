@@ -87,10 +87,25 @@ function TitlePill({ title }) {
   )
 }
 
+// Where an owner is in the onboarding funnel: invited → signed up → (bounced)
+function OwnerStatusBadge({ status, bounced }) {
+  if (bounced) return (
+    <span title="Invite email bounced — check the address" className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-300 whitespace-nowrap">✉ Bounced</span>
+  )
+  const map = {
+    verified:    ['bg-green-100 text-green-800 border-green-300', '✓ Active', 'Owner has created an account'],
+    invited:     ['bg-amber-100 text-amber-800 border-amber-300', 'Invited', 'Invited — waiting on them to sign up'],
+    not_invited: ['bg-slate-100 text-slate-500 border-slate-200', 'Not invited', 'No invite sent yet'],
+  }
+  const [cls, label, title] = map[status] || map.not_invited
+  return <span title={title} className={`text-xs font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>{label}</span>
+}
+
 // All available table columns. `group` drives the picker layout; columns
 // without a group are the always-sensible core set shown by default.
 const COLUMNS = [
   { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
+  { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
@@ -130,7 +145,7 @@ const GETTING_STARTED_DISMISSED_KEY = 'lapseguard.gettingStarted.dismissed.v1'
 
 // First-run checklist for a brand-new association. Steps check themselves off
 // against live data; the panel disappears once everything is done (or dismissed).
-function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile }) {
+function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInviteAll, isMobile }) {
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(GETTING_STARTED_DISMISSED_KEY) === 'true' } catch { return false }
   })
@@ -153,8 +168,9 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, isMobile
     },
     {
       title: 'Invite unit owners',
-      detail: 'Use the ⋯ menu on a unit row to email owners a secure signup link.',
+      detail: 'Email every owner a secure signup link at once, or use the ⋯ menu on a single row.',
       done: summary.invites_sent > 0,
+      action: { label: 'Invite all owners', onClick: onInviteAll },
     },
     {
       title: 'Watch policies roll in',
@@ -420,6 +436,8 @@ export default function AdminDashboard() {
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [importOpen, setImportOpen] = useState(false)
+  const [invitingAll, setInvitingAll] = useState(false)
+  const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
@@ -642,6 +660,24 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handleInviteAll() {
+    if (!hoaId || hoaId === '__all__') return
+    if (!window.confirm("Send an invite to every owner with an email on file who hasn't signed up yet?")) return
+    setInvitingAll(true); setInviteAllMsg('')
+    try {
+      const r = await apiPost(`/hoa/${hoaId}/invite-all`, {})
+      const parts = [`${r.sent} invite${r.sent !== 1 ? 's' : ''} sent`]
+      if (r.already_active) parts.push(`${r.already_active} already active`)
+      if (r.bounced) parts.push(`${r.bounced} skipped (bad address)`)
+      if (r.failed) parts.push(`${r.failed} failed`)
+      setInviteAllMsg(parts.join(' · '))
+      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+      setSummary(s); setUnits(u)
+      setTimeout(() => setInviteAllMsg(''), 8000)
+    } catch (e) { setError(e.message) }
+    finally { setInvitingAll(false) }
+  }
+
   async function handleSendBoardReport() {
     if (!hoaId || hoaId === '__all__') return
     setSendingReport(true)
@@ -808,6 +844,13 @@ export default function AdminDashboard() {
                   Import units
                 </button>
                 <button
+                  onClick={handleInviteAll}
+                  disabled={invitingAll || !hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  {invitingAll ? 'Inviting…' : 'Invite all owners'}
+                </button>
+                <button
                   onClick={handleSendBoardReport}
                   disabled={sendingReport || !hoaId || hoaId === '__all__'}
                   className={TOOLBAR_BTN}
@@ -815,6 +858,7 @@ export default function AdminDashboard() {
                   {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
                 </button>
               </div>
+              {inviteAllMsg && <p className="text-xs text-green-600">{inviteAllMsg}</p>}
               {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
             </div>
           )}
@@ -829,6 +873,7 @@ export default function AdminDashboard() {
               return h ? (h.ho6_coverage_a_min != null || h.ho6_coverage_e_min != null) : false
             })()}
             onImportClick={() => setImportOpen(true)}
+            onInviteAll={handleInviteAll}
             isMobile={isMobile}
           />
         )}
@@ -1076,13 +1121,22 @@ export default function AdminDashboard() {
             )}
           </div>
           {isMobile && (
-            <button
-              onClick={() => setImportOpen(true)}
-              disabled={!hoaId || hoaId === '__all__'}
-              className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50 flex-shrink-0"
-            >
-              Import
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleInviteAll}
+                disabled={invitingAll || !hoaId || hoaId === '__all__'}
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+              >
+                {invitingAll ? '…' : 'Invite all'}
+              </button>
+              <button
+                onClick={() => setImportOpen(true)}
+                disabled={!hoaId || hoaId === '__all__'}
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+              >
+                Import
+              </button>
+            </div>
           )}
           {!isMobile && (
             <div className="flex items-center gap-2">
@@ -1122,6 +1176,9 @@ export default function AdminDashboard() {
                       <p className="text-sm text-slate-500 truncate">
                         {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
                       </p>
+                      <div className="mt-1">
+                        <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} />
+                      </div>
                     </div>
                     <div className="flex-shrink-0">
                       <StatusBadge status={u.status} expirationDate={u.expiration_date} />
