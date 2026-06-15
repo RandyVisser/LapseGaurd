@@ -159,6 +159,7 @@ def invite_email_html(
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
+    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
@@ -236,8 +237,16 @@ def invite_email_html(
         only take a few minutes.
       </p>
       <p style="color:#374151">
-        If you do not currently have insurance or have questions regarding your
-        coverage, please contact your insurance agent or carrier for assistance.
+        If you do not currently have HO-6 coverage, you can get a new quote in minutes:
+      </p>
+      <div style="text-align:center;margin:4px 0 8px">
+        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+           font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
+           text-decoration:none">Get a New HO-6 Quote</a>
+      </div>
+      <p style="color:#374151">
+        If you have questions regarding your coverage, please contact your insurance
+        agent or carrier for assistance.
       </p>
       <p style="color:#374151">
         Thank you for your prompt attention and cooperation in helping the Association
