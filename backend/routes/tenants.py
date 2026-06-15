@@ -56,17 +56,27 @@ class TenantUpdate(BaseModel):
 router = APIRouter()
 
 
-async def _resolve_sender_email(conn, hoa_id) -> str | None:
-    """The reply-to contact the association chose for owner emails: a specific PM,
-    the first PM, or the President."""
-    return await conn.fetchval(
+async def _resolve_sender(conn, hoa_id):
+    """The contact the association chose to send owner emails as: the selected unit
+    (a specific PM/board member) or the first PM. Returns a row with name, title,
+    email, and the association's corp name for the email signature."""
+    return await conn.fetchrow(
         """
-        SELECT CASE
-          WHEN h.email_sender_unit_id IS NOT NULL
-            THEN (SELECT email_primary FROM units WHERE id = h.email_sender_unit_id)
-          ELSE (SELECT email_primary FROM units WHERE hoa_id = h.id
-                AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1)
-        END
+        WITH su AS (
+          SELECT u.owner_primary AS name, u.assoc_title AS title, u.email_primary AS email
+          FROM units u, hoas h
+          WHERE h.id = $1 AND u.id = COALESCE(
+            h.email_sender_unit_id,
+            (SELECT id FROM units WHERE hoa_id = h.id
+               AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1))
+        )
+        SELECT
+          (SELECT name FROM su) AS name,
+          (SELECT title FROM su) AS title,
+          (SELECT email FROM su) AS email,
+          COALESCE(h.corp_name,
+            (SELECT corp_name FROM units WHERE hoa_id = h.id AND corp_name IS NOT NULL LIMIT 1),
+            h.name) AS corp_name
         FROM hoas h WHERE h.id = $1
         """,
         hoa_id,
@@ -647,7 +657,8 @@ async def invite_all_owners(
         return {"sent": 0, "skipped": 0, "failed": 0, "bounced": 0, "already_active": 0, "total": 0}
 
     bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
-    sender_email = await _resolve_sender_email(conn, hoa_id)
+    sender = await _resolve_sender(conn, hoa_id)
+    sender_email = sender["email"] if sender else None
 
     # Build the send list synchronously (DB), then fire emails concurrently.
     # Primary and secondary owners each get their own individually-addressed email.
@@ -688,6 +699,9 @@ async def invite_all_owners(
             subject, html = invite_email_html(
                 email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
                 is_property_manager=is_pm, sender_email=sender_email, recipient_name=name,
+                corp_name=sender["corp_name"] if sender else None,
+                sender_name=sender["name"] if sender else None,
+                sender_title=sender["title"] if sender else None,
             )
             to_send.append((email, subject, html, invite["token"]))
 
@@ -748,7 +762,8 @@ async def invite_tenant(
         )
 
     invite_url = f"{APP_URL}/join/{invite['token']}"
-    sender_email = await _resolve_sender_email(conn, row["hoa_id"])
+    sender = await _resolve_sender(conn, row["hoa_id"])
+    sender_email = sender["email"] if sender else None
     # Greet the specific owner this address belongs to
     em = (body.email or "").strip().lower()
     if em and em == (row["email_secondary"] or "").strip().lower():
@@ -758,6 +773,9 @@ async def invite_tenant(
     subject, html = invite_email_html(
         body.email, row["unit_number"], row["hoa_name"], invite_url,
         is_property_manager=is_pm, sender_email=sender_email, recipient_name=recipient_name,
+        corp_name=sender["corp_name"] if sender else None,
+        sender_name=sender["name"] if sender else None,
+        sender_title=sender["title"] if sender else None,
     )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:

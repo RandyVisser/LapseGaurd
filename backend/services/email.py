@@ -141,6 +141,9 @@ def invite_email_html(
     is_property_manager: bool = False,
     sender_email: str | None = None,
     recipient_name: str | None = None,
+    corp_name: str | None = None,
+    sender_name: str | None = None,
+    sender_title: str | None = None,
 ) -> tuple[str, str]:
     subject = f"Action requested — {hoa_name} insurance compliance"
     greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
@@ -160,7 +163,15 @@ def invite_email_html(
         This link is unique to you ({email}) and can only be used once.
       </p>"""
     else:
-        sig_email = f'<br>{sender_email}' if sender_email else ''
+        # Signature block: corp name, signer name, title, "For the Board", email
+        sig_lines = [
+            (corp_name or hoa_name),
+            (sender_name or "").strip() or None,
+            (sender_title or "").strip() or "Property Manager",
+            "For the Board",
+            (sender_email or "").strip() or None,
+        ]
+        signature = "<br>".join(line for line in sig_lines if line)
         body = f"""
       <p style="color:#374151">{greeting},</p>
       <p style="color:#374151">
@@ -221,8 +232,7 @@ def invite_email_html(
       </p>
       <p style="color:#374151;margin-top:20px">
         Sincerely,<br>
-        {hoa_name}<br>
-        Property Manager / Board of Directors{sig_email}
+        {signature}
       </p>
       <p style="color:#9ca3af;font-size:12px;margin-top:12px">
         This link is unique to you ({email}) and can only be used once.

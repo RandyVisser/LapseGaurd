@@ -20,14 +20,12 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
 # SQL expression (for a query joined on `hoas h`) resolving the email reply-to
 # contact the association chose: a specific PM, the first PM, or the President.
-_SENDER_EMAIL_SQL = """
-(CASE
-   WHEN h.email_sender_unit_id IS NOT NULL
-     THEN (SELECT su.email_primary FROM units su WHERE su.id = h.email_sender_unit_id)
-   ELSE (SELECT mu.email_primary FROM units mu
-         WHERE mu.hoa_id = h.id AND lower(coalesce(mu.assoc_title,'')) = 'property manager' LIMIT 1)
- END)
-"""
+# The chosen sender unit: a specifically selected PM/board member, else first PM
+_SENDER_UNIT_SQL = """COALESCE(h.email_sender_unit_id,
+   (SELECT id FROM units WHERE hoa_id = h.id
+      AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1))"""
+
+_SENDER_EMAIL_SQL = """(SELECT su.email_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """)"""
 
 
 async def process_invite_reminders(conn: asyncpg.Connection) -> int:
@@ -39,7 +37,12 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
         SELECT i.token, i.email, u.unit_number, u.assoc_title,
                u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                h.name AS hoa_name,
-               """ + _SENDER_EMAIL_SQL + """ AS sender_email
+               """ + _SENDER_EMAIL_SQL + """ AS sender_email,
+               (SELECT su.owner_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_name,
+               (SELECT su.assoc_title FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_title,
+               COALESCE(h.corp_name,
+                 (SELECT corp_name FROM units WHERE hoa_id = h.id AND corp_name IS NOT NULL LIMIT 1),
+                 h.name) AS corp_name
         FROM unit_invites i
         JOIN units u ON u.id = i.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -60,6 +63,8 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
             row["email"], row["unit_number"], row["hoa_name"], invite_url,
             is_property_manager=is_pm, sender_email=row.get("sender_email"),
             recipient_name=recipient_name,
+            corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
+            sender_title=row.get("sender_title"),
         )
         sent = await send_email(row["email"], subject, html, reply_to=row.get("sender_email"))
         if sent:

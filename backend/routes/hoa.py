@@ -731,16 +731,26 @@ async def email_previews(
     name = hoa["name"] if hoa else "Your Association"
     today = date.today()
 
-    sender_email = await conn.fetchval(
-        """SELECT CASE WHEN h.email_sender_unit_id IS NOT NULL
-                       THEN (SELECT email_primary FROM units WHERE id = h.email_sender_unit_id)
-                       ELSE (SELECT email_primary FROM units WHERE hoa_id = h.id
-                             AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1) END
-           FROM hoas h WHERE h.id = $1""",
+    sender = await conn.fetchrow(
+        """SELECT (SELECT owner_primary FROM units WHERE id = su) AS name,
+                  (SELECT assoc_title FROM units WHERE id = su) AS title,
+                  (SELECT email_primary FROM units WHERE id = su) AS email,
+                  COALESCE(h.corp_name,
+                    (SELECT corp_name FROM units WHERE hoa_id = h.id AND corp_name IS NOT NULL LIMIT 1),
+                    h.name) AS corp_name
+           FROM (SELECT h.*, COALESCE(h.email_sender_unit_id,
+                   (SELECT id FROM units WHERE hoa_id = h.id
+                      AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1)) AS su
+                 FROM hoas h WHERE h.id = $1) h""",
         hoa_id,
     )
-    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample",
-                                     sender_email=sender_email, recipient_name="Jane Smith")
+    inv_s, inv_h = invite_email_html(
+        "owner@example.com", "101", name, "https://www.condo.insure/join/sample",
+        sender_email=(sender["email"] if sender else None), recipient_name="Jane Smith",
+        corp_name=(sender["corp_name"] if sender else None),
+        sender_name=(sender["name"] if sender else None),
+        sender_title=(sender["title"] if sender else None),
+    )
     ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
     nc_s, nc_h = admin_notify_html(
