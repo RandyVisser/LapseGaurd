@@ -5,7 +5,9 @@ import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 
-const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || ''
+// Owner-facing quote link (revenue lead). Falls back to the same URL the admin
+// page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
+const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://www.universalcondo.com/quote'
 
 // One unambiguous answer per status — the page leads with this.
 const STATUS_HERO = {
