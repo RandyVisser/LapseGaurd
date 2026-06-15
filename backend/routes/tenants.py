@@ -636,7 +636,7 @@ async def invite_all_owners(
 
     units = await conn.fetch(
         """SELECT u.id AS unit_id, u.unit_number, u.assoc_title, trim(u.email_primary) AS email,
-                  h.name AS hoa_name
+                  u.owner_primary, u.owner_secondary, h.name AS hoa_name
            FROM units u JOIN hoas h ON h.id = u.hoa_id
            WHERE u.hoa_id = $1 AND coalesce(trim(u.email_primary), '') <> ''""",
         hoa_id,
@@ -676,6 +676,7 @@ async def invite_all_owners(
         subject, html = invite_email_html(
             email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
             is_property_manager=is_pm, sender_email=sender_email,
+            owner_primary=u["owner_primary"], owner_secondary=u["owner_secondary"],
         )
         to_send.append((email, subject, html, invite["token"]))
 
@@ -701,7 +702,7 @@ async def invite_tenant(
 ):
     row = await conn.fetchrow(
         """
-        SELECT u.unit_number, u.assoc_title, u.hoa_id, h.name AS hoa_name
+        SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary, h.name AS hoa_name
         FROM units u JOIN hoas h ON h.id = u.hoa_id
         WHERE u.id = $1
         """,
@@ -739,6 +740,7 @@ async def invite_tenant(
     subject, html = invite_email_html(
         body.email, row["unit_number"], row["hoa_name"], invite_url,
         is_property_manager=is_pm, sender_email=sender_email,
+        owner_primary=row["owner_primary"], owner_secondary=row["owner_secondary"],
     )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:

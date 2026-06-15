@@ -739,7 +739,8 @@ async def email_previews(
            FROM hoas h WHERE h.id = $1""",
         hoa_id,
     )
-    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample", sender_email=sender_email)
+    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample",
+                                     sender_email=sender_email, owner_primary="Jane Smith", owner_secondary="John Smith")
     ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
     nc_s, nc_h = admin_notify_html(

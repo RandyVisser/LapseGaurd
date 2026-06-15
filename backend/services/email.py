@@ -140,8 +140,12 @@ def invite_email_html(
     invite_url: str,
     is_property_manager: bool = False,
     sender_email: str | None = None,
+    owner_primary: str | None = None,
+    owner_secondary: str | None = None,
 ) -> tuple[str, str]:
     subject = f"Action requested — {hoa_name} insurance compliance"
+    _names = [n.strip() for n in (owner_primary, owner_secondary) if n and n.strip()]
+    greeting = "Dear " + (" and ".join(_names) if _names else "Unit Owner")
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
@@ -160,7 +164,7 @@ def invite_email_html(
     else:
         sig_email = f'<br>{sender_email}' if sender_email else ''
         body = f"""
-      <p style="color:#374151">Dear Unit Owner,</p>
+      <p style="color:#374151">{greeting},</p>
       <p style="color:#374151">
         To help maintain accurate insurance records and simplify compliance with our
         condominium insurance requirements, the Association has partnered with
