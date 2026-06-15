@@ -411,9 +411,10 @@ def invite_email_html(
       </p>
       <p style="color:#111827;font-weight:600;margin-top:12px">3. Get Added to Additional Associations</p>
       <p style="color:#374151">
-        If you manage other associations that use Condo.insure, simply have the
-        association administrator add your account email and all communities will be
-        accessible from your single dashboard.
+        If you manage other associations, you can bring them onto Condo.insure too. If
+        an association is already using Condo.insure, simply have its administrator add
+        your account email. If it isn't set up yet, you can sign it up to get started.
+        Either way, all of your communities will be accessible from your single dashboard.
       </p>
 
       <p style="color:#374151">
