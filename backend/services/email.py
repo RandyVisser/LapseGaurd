@@ -199,6 +199,104 @@ def renewal_reminder_html(
     return subject, html
 
 
+def expired_email_html(
+    unit_number: str,
+    hoa_name: str,
+    portal_url: str,
+    expiration_date,
+    reminder_days: int = 7,
+    recipient_name: str | None = None,
+    sender_email: str | None = None,
+    corp_name: str | None = None,
+    sender_name: str | None = None,
+    sender_title: str | None = None,
+    unit_address: str | None = None,
+) -> tuple[str, str]:
+    """Notice for owners whose policy has expired and no updated docs received."""
+    try:
+        date_str = expiration_date.strftime("%B %-d, %Y")
+    except (AttributeError, ValueError):
+        date_str = str(expiration_date)
+    subject = f"Action required — your insurance policy has expired ({hoa_name})"
+    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    re_parts = [p for p in [(unit_address or "").strip(),
+                            (f"Unit {unit_number}" if unit_number else "")] if p]
+    re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
+               f'{", ".join(re_parts)}</p>') if re_parts else ""
+    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    contact_parts = [
+        (sender_name or "").strip() or None,
+        (sender_title or "").strip() or None,
+        (corp_name or hoa_name),
+        (sender_email or "").strip() or None,
+    ]
+    contact = "<br>".join(p for p in contact_parts if p)
+
+    body = f"""
+      {re_line}
+      <p style="color:#374151">{greeting},</p>
+      <p style="color:#374151">
+        Our records indicate that the insurance policy on file for your unit expired on
+        <strong>{date_str}</strong> and we have not yet received updated documentation.
+      </p>
+      <p style="color:#374151">
+        To remain in compliance with your Association's insurance requirements, please
+        take one of the following actions as soon as possible:
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">1. Upload Your Renewed Declaration Page</p>
+      <p style="color:#374151">
+        If your policy has already been renewed, please upload your updated Declaration
+        Page through the Condo.insure portal.
+      </p>
+      {_btn(portal_url, "Upload Updated Documents")}
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">2. Get a New Quote</p>
+      <p style="color:#374151">
+        If your policy has not yet been renewed or you are looking to switch providers,
+        you can get a free quote directly through Condo.insure.
+      </p>
+      <div style="text-align:center;margin:4px 0 8px">
+        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+           font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
+           text-decoration:none">Get a Quote →</a>
+      </div>
+
+      <p style="color:#374151">
+        Please be aware that failure to maintain active insurance coverage that meets
+        your Association's requirements may result in action by the Association. Please
+        refer to your governing documents or contact your Association for more information.
+      </p>
+      <p style="color:#6b7280;font-size:13px;margin-top:12px">
+        Please note that Condo.insure does not provide insurance advice or recommend
+        specific coverage. We are only verifying compliance with the insurance
+        requirements established by the Association.
+      </p>
+      <p style="color:#374151">
+        If you believe your policy is current or if you have questions regarding your
+        compliance status, please contact:
+      </p>
+      <p style="color:#374151">{contact or hoa_name}</p>
+      <p style="color:#374151">
+        This notice will be resent every {reminder_days} days until updated
+        documentation is received. We encourage you to act promptly to avoid any
+        further follow-up.
+      </p>
+      <p style="color:#374151;margin-top:20px">
+        Thank you,<br>
+        Condo.insure Compliance Team<br>
+        On behalf of {corp_name or hoa_name}
+      </p>"""
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      {body}
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def admin_notify_html(
     tenant_name: str,
     unit_number: str,

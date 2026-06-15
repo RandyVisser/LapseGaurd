@@ -17,7 +17,8 @@ from services.audit import log_audit
 from services.compliance import evaluate_compliance
 from services.email import (
     board_report_html, send_email,
-    invite_email_html, renewal_notice_html, renewal_reminder_html, admin_notify_html, noncompliant_email_html,
+    invite_email_html, renewal_notice_html, renewal_reminder_html, expired_email_html,
+    admin_notify_html, noncompliant_email_html,
 )
 from services.importer import (
     parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
@@ -762,7 +763,8 @@ async def email_previews(
     r30_s, r30_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=30), 30, **_ren_kw)
     r7_s, r7_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=7), 7, **_ren_kw)
     r1_s, r1_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=1), 1, **_ren_kw)
-    exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
+    exp_s, exp_h = expired_email_html("101", name, "https://www.condo.insure/tenant/dashboard",
+                                      today - timedelta(days=3), reminder_days=7, **_ren_kw)
     nc_s, nc_h = noncompliant_email_html(
         "101", name, "https://www.condo.insure/tenant/dashboard",
         recipient_name="Jane Smith", sender_email=(sender["email"] if sender else None),

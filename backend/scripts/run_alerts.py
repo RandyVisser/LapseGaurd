@@ -14,7 +14,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, renewal_reminder_html, invite_email_html, admin_notify_html, noncompliant_email_html, format_address
+from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -166,14 +166,18 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         if already_sent:
             continue
 
+        em = (row["tenant_email"] or "").strip().lower()
+        recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
         if alert_type == "lapsed":
-            subject, html = renewal_notice_html(
-                row["tenant_name"], row["unit_number"], row["hoa_name"],
-                row["expiration_date"], "lapsed",
+            subject, html = expired_email_html(
+                row["unit_number"], row["hoa_name"], f"{APP_URL}/tenant/dashboard",
+                row["expiration_date"], reminder_days=row["lapsed_reminder_days"],
+                recipient_name=recipient_name, sender_email=row.get("sender_email"),
+                corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
+                sender_title=row.get("sender_title"),
+                unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
             )
         else:
-            em = (row["tenant_email"] or "").strip().lower()
-            recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
             subject, html = renewal_reminder_html(
                 row["unit_number"], row["hoa_name"], f"{APP_URL}/tenant/dashboard",
                 row["expiration_date"], days_until,
