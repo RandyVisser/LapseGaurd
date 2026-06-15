@@ -761,6 +761,10 @@ async def email_previews(
         sender_name=(sender["name"] if sender else None),
         sender_title=(sender["title"] if sender else None),
         unit_address="123 Ocean Dr, Miami, FL 33139",
+        items=[
+            "Coverage A (Dwelling) below association minimum — requires at least $250,000, document shows $115,095",
+            "Association requires wind coverage — this HO6 policy excludes wind",
+        ],
     )
     return {
         "invite": {"subject": inv_s, "html": inv_h},

@@ -5,6 +5,7 @@ Run standalone:  python scripts/run_alerts.py
 Called by route: POST /alerts/run
 """
 import asyncio
+import json
 import os
 import sys
 from datetime import date, timedelta
@@ -183,7 +184,7 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
     until the policy is corrected (status changes off non_compliant)."""
     rows = await conn.fetch(
         """
-        SELECT p.tenant_id, t.name AS tenant_name, t.email AS tenant_email,
+        SELECT p.tenant_id, p.extracted_data, t.name AS tenant_name, t.email AS tenant_email,
                u.unit_number, u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                u.street_address, u.city, u.state, u.zip, h.name AS hoa_name,
                COALESCE(h.noncompliant_reminder_days, 7) AS days,
@@ -215,12 +216,17 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
             continue
         em = (row["tenant_email"] or "").strip().lower()
         recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
+        # Pull the specific failing items from the policy's stored validation
+        raw = row.get("extracted_data")
+        ext = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        items = (ext.get("validation") or {}).get("flags") or []
         subject, html = noncompliant_email_html(
             row["unit_number"], row["hoa_name"], f"{APP_URL}/tenant/dashboard",
             recipient_name=recipient_name, sender_email=row.get("sender_email"),
             corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
             sender_title=row.get("sender_title"),
             unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
+            items=items,
         )
         if await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email")):
             await conn.execute(

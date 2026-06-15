@@ -276,92 +276,75 @@ def noncompliant_email_html(
     sender_name: str | None = None,
     sender_title: str | None = None,
     unit_address: str | None = None,
+    items: list | None = None,
 ) -> tuple[str, str]:
-    """Reminder for owners whose policy is on file but non-compliant. Copies the
-    invite email's language — tweak freely; it's independent of the invite."""
-    subject = f"Action requested — {hoa_name} insurance compliance"
+    """Compliance-review notice for owners whose policy is on file but does not
+    meet the association's requirements. Lists the specific failing items."""
+    subject = f"Insurance compliance review — {hoa_name}"
     greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
     re_parts = [p for p in [(unit_address or "").strip(),
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    sig_lines = [
-        (corp_name or hoa_name),
+
+    item_list = [str(i).strip() for i in (items or []) if str(i).strip()]
+    items_html = ("".join(f"<li>{i}</li>" for i in item_list)
+                  if item_list else "<li>One or more association requirements are not met.</li>")
+
+    # Contact line for the association / property manager
+    contact_parts = [
         (sender_name or "").strip() or None,
-        (sender_title or "").strip() or "Property Manager",
-        "For the Board",
+        (sender_title or "").strip() or None,
+        (corp_name or hoa_name),
         (sender_email or "").strip() or None,
     ]
-    signature = "<br>".join(line for line in sig_lines if line)
-    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    contact = "<br>".join(p for p in contact_parts if p)
 
     body = f"""
       {re_line}
       <p style="color:#374151">{greeting},</p>
+      <p style="color:#374151">Thank you for submitting your insurance information through Condo.insure.</p>
       <p style="color:#374151">
-        To help maintain accurate insurance records and simplify compliance with our
-        condominium insurance requirements, the Association has partnered with
-        <strong>Condo.insure</strong>, a secure online insurance compliance platform.
-      </p>
-
-      <p style="color:#111827;font-weight:700;margin-top:20px">Why am I receiving this notice?</p>
-      <p style="color:#374151">
-        The Association's governing documents require unit owners to maintain insurance
-        for portions of their unit that are not covered by the Association's master
-        policy. In addition, maintaining appropriate insurance helps protect you from
-        losses involving personal property, interior improvements, liability claims,
-        loss assessments, and other expenses that may not be covered by the
-        Association's insurance policy.
+        We have completed our review of the Declaration Page provided and have
+        determined that the policy does not currently meet one or more of the
+        insurance requirements established by the Association.
       </p>
       <p style="color:#374151">
-        To streamline this process, the Association will now use Condo.insure to
-        collect and track unit-owner insurance information.
+        Please contact your insurance agent or insurance company to discuss the items
+        listed below and obtain updated coverage, if necessary.
       </p>
 
-      <p style="color:#111827;font-weight:700;margin-top:20px">What do I need to do?</p>
-      <p style="color:#374151">Visit the secure compliance portal and:</p>
-      {_btn(portal_url, "Open the Compliance Portal")}
-      <ol style="color:#374151;padding-left:20px;margin-top:8px">
-        <li>Confirm your contact information.</li>
-        <li>Upload one of the following:
-          <ul style="padding-left:18px;margin:6px 0">
-            <li>Your current HO-6 Condominium Unit Owners Policy Declaration Page</li>
-            <li>A Certificate of Insurance showing active coverage</li>
-          </ul>
-        </li>
-        <li>Submit the information at your earliest convenience.</li>
-      </ol>
-
-      <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
-      <ul style="color:#374151;padding-left:20px">
-        <li>Insurance carrier name</li>
-        <li>Policy number</li>
-        <li>Effective and expiration dates</li>
-        <li>Named insured(s)</li>
-        <li>Proof of active coverage</li>
+      <p style="color:#111827;font-weight:700;margin-top:20px">Items Requiring Attention</p>
+      <ul style="color:#b91c1c;padding-left:20px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding-top:10px;padding-bottom:10px">
+        {items_html}
       </ul>
 
-      <p style="color:#374151">There is no cost to you to use the compliance portal.</p>
       <p style="color:#374151">
-        If you already maintain condominium unit-owner insurance, the process should
-        only take a few minutes.
+        Once the requested changes have been made, please upload an updated
+        Declaration Page through the Condo.insure portal for review.
+      </p>
+      {_btn(portal_url, "Upload Updated Documents")}
+
+      <p style="color:#6b7280;font-size:13px;margin-top:16px">
+        Please note that Condo.insure does not provide insurance advice or recommend
+        specific coverage. We are only verifying compliance with the insurance
+        requirements established by the Association.
       </p>
       <p style="color:#374151">
-        Don't have an HO-6 policy yet, or want to compare your current rate? Get a
-        fast, no-obligation HO-6 quote in minutes:
+        If you believe the information submitted already satisfies the Association's
+        requirements, or if you have questions regarding the compliance review, please
+        contact:
       </p>
-      <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
-           font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">Get a New HO-6 Quote</a>
-      </div>
+      <p style="color:#374151">{contact or hoa_name}</p>
+
       <p style="color:#374151">
-        Thank you for your prompt attention and cooperation in helping the Association
-        maintain accurate insurance records.
+        We appreciate your prompt attention to this matter and look forward to
+        receiving your updated documentation.
       </p>
       <p style="color:#374151;margin-top:20px">
-        Sincerely,<br>
-        {signature}
+        Thank you,<br>
+        Condo.insure Compliance Team<br>
+        On behalf of {corp_name or hoa_name}
       </p>"""
 
     html = f"""
