@@ -268,7 +268,12 @@ function RowActionsMenu({ items }) {
     if (!open && btnRef.current) {
       // fixed positioning so the menu isn't clipped by the table's scroll container
       const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 176) })
+      // Flip the menu above the button when there isn't room below (bottom of page)
+      const menuHeight = items.length * 38 + 8
+      const top = (r.bottom + menuHeight > window.innerHeight - 8)
+        ? Math.max(8, r.top - menuHeight - 4)
+        : r.bottom + 4
+      setPos({ top, left: Math.max(8, r.right - 176) })
     }
     setOpen(o => !o)
   }
