@@ -367,7 +367,6 @@ def invite_email_html(
     if is_property_manager:
         subject = f"Welcome to Condo.insure — {hoa_name}"
         pm_greeting = "Dear " + ((recipient_name or "").strip() or "Property Manager")
-        support_link = "mailto:support@condo.insure"
         body = f"""
       <p style="color:#374151">{pm_greeting},</p>
       <p style="color:#374151">
@@ -417,16 +416,6 @@ def invite_email_html(
         accessible from your single dashboard.
       </p>
 
-      <p style="color:#111827;font-weight:700;margin-top:20px">Need Help?</p>
-      <p style="color:#374151">
-        If you have any questions about setting up your account or navigating the
-        platform, our support team is here to help.
-      </p>
-      <div style="margin:4px 0 8px">
-        <a href="{support_link}" style="color:#1d4ed8;font-weight:600;font-size:14px;text-decoration:none">
-          Contact Support →
-        </a>
-      </div>
       <p style="color:#374151">
         We look forward to working with you and making insurance compliance easier for
         you and the communities you manage.
