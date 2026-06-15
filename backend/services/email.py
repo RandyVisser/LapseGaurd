@@ -4,7 +4,9 @@ import httpx
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
-QUOTE_FORM_URL = os.environ.get("QUOTE_FORM_URL", "")
+# Default to the agency quote page (matches the frontend); QUOTE_FORM_URL can
+# override with a real lead-capture form that reads the prefilled params.
+QUOTE_FORM_URL = os.environ.get("QUOTE_FORM_URL") or "https://www.universalcondo.com/quote"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
@@ -491,9 +493,7 @@ def board_report_html(
 
 
 def _build_quote_url(tenant_name: str, unit_number: str) -> str:
-    if not QUOTE_FORM_URL:
-        return APP_URL
     from urllib.parse import urlencode
-    params = urlencode({"tenant_name": tenant_name, "unit": unit_number})
+    params = urlencode({"tenant_name": tenant_name or "", "unit": unit_number or ""})
     sep = "&" if "?" in QUOTE_FORM_URL else "?"
     return f"{QUOTE_FORM_URL}{sep}{params}"
