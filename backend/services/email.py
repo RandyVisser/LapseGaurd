@@ -299,6 +299,7 @@ def noncompliant_email_html(
         (sender_email or "").strip() or None,
     ]
     contact = "<br>".join(p for p in contact_parts if p)
+    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
 
     body = f"""
       {re_line}
@@ -324,6 +325,16 @@ def noncompliant_email_html(
         Declaration Page through the Condo.insure portal for review.
       </p>
       {_btn(portal_url, "Upload Updated Documents")}
+
+      <p style="color:#374151;margin-top:8px">
+        Need updated coverage, or want to compare your current rate? Get a fast,
+        no-obligation HO-6 quote in minutes:
+      </p>
+      <div style="text-align:center;margin:4px 0 8px">
+        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+           font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
+           text-decoration:none">Get a New HO-6 Quote</a>
+      </div>
 
       <p style="color:#6b7280;font-size:13px;margin-top:16px">
         Please note that Condo.insure does not provide insurance advice or recommend
