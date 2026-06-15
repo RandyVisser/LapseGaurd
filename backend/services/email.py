@@ -365,16 +365,77 @@ def invite_email_html(
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
+        subject = f"Welcome to Condo.insure — {hoa_name}"
+        pm_greeting = "Dear " + ((recipient_name or "").strip() or "Property Manager")
+        support_link = "mailto:support@condo.insure"
         body = f"""
-      <p style="color:#374151">Hi,</p>
+      <p style="color:#374151">{pm_greeting},</p>
       <p style="color:#374151">
-        Your condo association <strong>{hoa_name}</strong> has invited you to join
-        condo.insure as a <strong>property manager</strong>. Once you create your
-        account you can track unit-owner insurance compliance, manage documents,
-        and stay on top of renewals — all in one place.
+        Welcome to Condo.insure! You have been added as a Property Manager for
+        <strong>{hoa_name}</strong>. We're excited to have you on board and wanted to
+        take a moment to introduce you to the platform and walk you through getting started.
       </p>
-      {_btn(invite_url, "Create Your Account")}
-      <p style="color:#6b7280;font-size:13px;margin-top:8px">
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">What is Condo.insure?</p>
+      <p style="color:#374151">
+        Condo.insure is an insurance compliance management platform designed to simplify
+        the process of collecting, reviewing, and tracking unit owner insurance
+        documentation on behalf of homeowner and condominium associations.
+      </p>
+      <p style="color:#374151">With Condo.insure, you can:</p>
+      <ul style="color:#374151;padding-left:20px">
+        <li>Collect and store unit owner Declaration Pages in one centralized place</li>
+        <li>Automatically verify that unit owner policies meet the Association's insurance requirements</li>
+        <li>Send automated compliance notices and renewal reminders to unit owners</li>
+        <li>Monitor the compliance status of all units in real time</li>
+        <li>Manage multiple associations from a single account</li>
+      </ul>
+      <p style="color:#374151">
+        As a Property Manager, your account gives you the ability to be added to
+        multiple associations — so once you're set up, onboarding additional communities
+        you manage is simple.
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">Setting Up Your Account</p>
+      <p style="color:#374151">Follow these steps to get started:</p>
+      <p style="color:#111827;font-weight:600;margin-top:12px">1. Create Your Account</p>
+      <p style="color:#374151">
+        Click the button below to set up your Condo.insure account. If you already have
+        an account, simply log in and your new association will appear in your dashboard.
+      </p>
+      {_btn(invite_url, "Create Account / Log In")}
+      <p style="color:#111827;font-weight:600;margin-top:12px">2. Access Your Association</p>
+      <p style="color:#374151">
+        Once logged in, <strong>{hoa_name}</strong> will be available in your dashboard.
+        From there you can view unit compliance status, manage unit owner information,
+        and configure association-specific insurance requirements.
+      </p>
+      <p style="color:#111827;font-weight:600;margin-top:12px">3. Get Added to Additional Associations</p>
+      <p style="color:#374151">
+        If you manage other associations that use Condo.insure, simply have the
+        association administrator add your account email and all communities will be
+        accessible from your single dashboard.
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">Need Help?</p>
+      <p style="color:#374151">
+        If you have any questions about setting up your account or navigating the
+        platform, our support team is here to help.
+      </p>
+      <div style="margin:4px 0 8px">
+        <a href="{support_link}" style="color:#1d4ed8;font-weight:600;font-size:14px;text-decoration:none">
+          Contact Support →
+        </a>
+      </div>
+      <p style="color:#374151">
+        We look forward to working with you and making insurance compliance easier for
+        you and the communities you manage.
+      </p>
+      <p style="color:#374151;margin-top:20px">
+        Thank you,<br>
+        The Condo.insure Team
+      </p>
+      <p style="color:#9ca3af;font-size:12px;margin-top:12px">
         This link is unique to you ({email}) and can only be used once.
       </p>"""
     else:
