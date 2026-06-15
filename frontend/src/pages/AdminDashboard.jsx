@@ -161,6 +161,11 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
       action: { label: 'Import units', onClick: onImportClick },
     },
     {
+      title: 'Add board members & property manager',
+      detail: 'For a board member: find their unit → ⋯ Actions → Edit Owner Info, then set their Board Title and email. To add your first property manager, click the Property Managers card above; to add more, use ⋯ Actions on a property manager.',
+      done: (summary.board_members ?? 0) > 0 || (summary.property_managers ?? 0) > 0,
+    },
+    {
       title: 'Set your insurance requirements',
       detail: 'Coverage minimums, wind, and matching rules — the AI checks every uploaded policy against these.',
       done: requirementsSet,
@@ -214,7 +219,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
         </p>
         <button onClick={dismiss} className="text-xs text-blue-500 hover:text-blue-700">Dismiss</button>
       </div>
-      <ol className="grid sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+      <ol className="grid sm:grid-cols-2 lg:grid-cols-3 divide-y divide-slate-100">
         {steps.map((step, i) => (
           <li key={step.title} className={`px-5 py-4 ${step.done ? 'bg-slate-50/50' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
