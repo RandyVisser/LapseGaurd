@@ -280,12 +280,11 @@ def invite_email_html(
         This link is unique to you ({email}) and can only be used once.
       </p>"""
     else:
-        # Signature block: corp name, signer name, title, "For the Board", email
+        # Signature block: name, title, association, email
         sig_lines = [
-            (corp_name or hoa_name),
             (sender_name or "").strip() or None,
             (sender_title or "").strip() or "Property Manager",
-            "For the Board",
+            (corp_name or hoa_name),
             (sender_email or "").strip() or None,
         ]
         signature = "<br>".join(line for line in sig_lines if line)
