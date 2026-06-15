@@ -164,7 +164,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         template_kind = "lapsed" if alert_type == "lapsed" else "expiring"
         subject, html = renewal_notice_html(
             row["tenant_name"], row["unit_number"], row["hoa_name"],
-            row["expiration_date"], template_kind,
+            row["expiration_date"], template_kind, days_until=days_until,
         )
         sent = await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email"))
         if sent:

@@ -752,7 +752,9 @@ async def email_previews(
         sender_title=(sender["title"] if sender else None),
         unit_address="123 Ocean Dr, Miami, FL 33139",
     )
-    ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
+    r30_s, r30_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring", days_until=30)
+    r7_s, r7_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=7), "expiring", days_until=7)
+    r1_s, r1_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=1), "expiring", days_until=1)
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
     nc_s, nc_h = noncompliant_email_html(
         "101", name, "https://www.condo.insure/tenant/dashboard",
@@ -768,7 +770,9 @@ async def email_previews(
     )
     return {
         "invite": {"subject": inv_s, "html": inv_h},
-        "renewal": {"subject": ren_s, "html": ren_h},
+        "renewal_30": {"subject": r30_s, "html": r30_h},
+        "renewal_7": {"subject": r7_s, "html": r7_h},
+        "renewal_1": {"subject": r1_s, "html": r1_h},
         "expired": {"subject": exp_s, "html": exp_h},
         "non_compliant": {"subject": nc_s, "html": nc_h},
     }

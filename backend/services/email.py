@@ -57,15 +57,25 @@ def renewal_notice_html(
     hoa_name: str,
     expiration_date,
     status: str,
+    days_until: int | None = None,
 ) -> tuple[str, str]:
     exp_str = expiration_date.isoformat() if expiration_date else "unknown"
 
     if status == "lapsed":
         subject = "Action required — your insurance policy has lapsed"
         body = f"Your condo insurance policy expired on <strong>{exp_str}</strong> and is no longer active."
+    elif days_until is not None and days_until <= 1:
+        subject = "Final notice — your insurance policy expires tomorrow"
+        body = (f"Your condo insurance policy expires on <strong>{exp_str}</strong> — that's "
+                f"<strong>tomorrow</strong>. Please renew today to avoid a lapse in coverage.")
+    elif days_until is not None and days_until <= 7:
+        subject = "Reminder — your insurance policy expires in 1 week"
+        body = (f"Your condo insurance policy expires on <strong>{exp_str}</strong>, about a "
+                f"<strong>week</strong> from now. Please renew soon so your coverage stays active.")
     else:
-        subject = "Your condo insurance policy is expiring soon"
-        body = f"Your condo insurance policy expires on <strong>{exp_str}</strong>. Now is a great time to renew."
+        subject = "Your condo insurance policy is expiring in 30 days"
+        body = (f"Your condo insurance policy expires on <strong>{exp_str}</strong>, about "
+                f"<strong>30 days</strong> from now. Now is a great time to renew.")
 
     quote_url = _build_quote_url(tenant_name, unit_number)
     portal_url = f"{APP_URL}/tenant/dashboard"

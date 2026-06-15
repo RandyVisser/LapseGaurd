@@ -239,7 +239,9 @@ export default function AdminSettings() {
                 {[
                   { key: 'invite', label: 'Invite' },
                   { key: 'non_compliant', label: 'Non-Compliant' },
-                  { key: 'renewal', label: 'Renewal' },
+                  { key: 'renewal_30', label: 'Renewal 30' },
+                  { key: 'renewal_7', label: 'Renewal 7' },
+                  { key: 'renewal_1', label: 'Renewal 1' },
                   { key: 'expired', label: 'Expired Policy' },
                 ].map(b => (
                   <button key={b.key} type="button"
@@ -521,7 +523,9 @@ export default function AdminSettings() {
                 {[
                   { key: 'invite', label: 'Invite' },
                   { key: 'non_compliant', label: 'Non-Compliant' },
-                  { key: 'renewal', label: 'Renewal' },
+                  { key: 'renewal_30', label: 'Renewal 30' },
+                  { key: 'renewal_7', label: 'Renewal 7' },
+                  { key: 'renewal_1', label: 'Renewal 1' },
                   { key: 'expired', label: 'Expired Policy' },
                 ].map(b => (
                   <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
