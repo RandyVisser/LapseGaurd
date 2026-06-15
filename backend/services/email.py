@@ -237,17 +237,14 @@ def invite_email_html(
         only take a few minutes.
       </p>
       <p style="color:#374151">
-        If you do not currently have HO-6 coverage, you can get a new quote in minutes:
+        Don't have an HO-6 policy yet, or want to compare your current rate? Get a
+        fast, no-obligation HO-6 quote in minutes:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
         <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">Get a New HO-6 Quote</a>
       </div>
-      <p style="color:#374151">
-        If you have questions regarding your coverage, please contact your insurance
-        agent or carrier for assistance.
-      </p>
       <p style="color:#374151">
         Thank you for your prompt attention and cooperation in helping the Association
         maintain accurate insurance records.
@@ -296,6 +293,7 @@ def noncompliant_email_html(
         (sender_email or "").strip() or None,
     ]
     signature = "<br>".join(line for line in sig_lines if line)
+    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
 
     body = f"""
       {re_line}
@@ -349,9 +347,14 @@ def noncompliant_email_html(
         only take a few minutes.
       </p>
       <p style="color:#374151">
-        If you do not currently have insurance or have questions regarding your
-        coverage, please contact your insurance agent or carrier for assistance.
+        Don't have an HO-6 policy yet, or want to compare your current rate? Get a
+        fast, no-obligation HO-6 quote in minutes:
       </p>
+      <div style="text-align:center;margin:4px 0 8px">
+        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+           font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
+           text-decoration:none">Get a New HO-6 Quote</a>
+      </div>
       <p style="color:#374151">
         Thank you for your prompt attention and cooperation in helping the Association
         maintain accurate insurance records.
