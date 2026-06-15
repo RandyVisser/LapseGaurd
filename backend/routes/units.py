@@ -655,9 +655,17 @@ async def approve_policy(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Admin marks a pending-review policy as reviewed; status is recomputed from expiration date."""
-    row = await conn.fetchrow("SELECT * FROM policies WHERE id = $1", policy_id)
+    row = await conn.fetchrow(
+        """SELECT p.*, u.hoa_id FROM policies p
+           JOIN tenants t ON t.id = p.tenant_id
+           JOIN units u ON u.id = t.unit_id
+           WHERE p.id = $1""",
+        policy_id,
+    )
     if row is None:
         raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     new_status = _compute_status(row["expiration_date"])
 

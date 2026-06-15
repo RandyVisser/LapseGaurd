@@ -437,6 +437,9 @@ async def bulk_notify_tenants(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, hoa_id, conn)
+
     if not body.tenant_ids:
         return {"queued": 0}
 
