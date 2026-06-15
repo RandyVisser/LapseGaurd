@@ -116,7 +116,7 @@ export default function AdminSettings() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
-      <main className="max-w-xl mx-auto px-4 py-8">
+      <main className="max-w-[50rem] mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-slate-800">Association Settings</h1>
           {!loading && form && (
