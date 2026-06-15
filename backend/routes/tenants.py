@@ -723,6 +723,38 @@ async def invite_all_owners(
     }
 
 
+@router.get("/unit/{unit_id}/invite-preview")
+async def invite_preview(
+    unit_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Render the exact invite email this unit would receive (owner or PM version)."""
+    row = await conn.fetchrow(
+        """SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary,
+                  u.street_address, u.city, u.state, u.zip, h.name AS hoa_name
+           FROM units u JOIN hoas h ON h.id = u.hoa_id WHERE u.id = $1""",
+        unit_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
+    sender = await _resolve_sender(conn, row["hoa_id"])
+    subject, html = invite_email_html(
+        "owner@example.com", row["unit_number"], row["hoa_name"], f"{APP_URL}/join/preview",
+        is_property_manager=is_pm,
+        sender_email=sender["email"] if sender else None,
+        recipient_name=row["owner_primary"] or "Unit Owner",
+        corp_name=sender["corp_name"] if sender else None,
+        sender_name=sender["name"] if sender else None,
+        sender_title=sender["title"] if sender else None,
+        unit_address=format_address(row["street_address"], row["city"], row["state"], row["zip"]),
+    )
+    return {"subject": subject, "html": html}
+
+
 @router.post("/unit/{unit_id}/invite")
 async def invite_tenant(
     unit_id: str,

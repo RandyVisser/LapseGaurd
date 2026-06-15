@@ -449,6 +449,15 @@ export default function AdminDashboard() {
   const [invitingAll, setInvitingAll] = useState(false)
   const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [emailPreview, setEmailPreview] = useState(null)
+
+  async function openInvitePreview(unitId) {
+    try {
+      const p = await apiGet(`/unit/${unitId}/invite-preview`)
+      setEmailPreview(p)
+    } catch (err) { setError(err.message) }
+  }
+
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
   const [addingPm, setAddingPm] = useState(false)
@@ -1056,6 +1065,21 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {emailPreview && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setEmailPreview(null)}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Subject</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{emailPreview.subject}</p>
+                </div>
+                <button onClick={() => setEmailPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">×</button>
+              </div>
+              <iframe title="Invite preview" srcDoc={emailPreview.html} className="flex-1 w-full border-0" style={{ minHeight: '420px' }} />
+            </div>
+          </div>
+        )}
+
         {soldUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
@@ -1333,6 +1357,10 @@ export default function AdminDashboard() {
                           {
                             label: 'Send Invite',
                             onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                          },
+                          {
+                            label: 'Preview Invite email',
+                            onClick: () => openInvitePreview(u.unit_id),
                           },
                           {
                             label: 'Edit PM…',
