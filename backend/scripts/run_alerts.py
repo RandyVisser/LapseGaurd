@@ -14,7 +14,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, invite_email_html, admin_notify_html, noncompliant_email_html, format_address
+from services.email import send_email, renewal_notice_html, renewal_reminder_html, invite_email_html, admin_notify_html, noncompliant_email_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -91,14 +91,20 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             p.status,
             t.name AS tenant_name,
             t.email AS tenant_email,
-            u.unit_number,
+            u.unit_number, u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
+            u.street_address, u.city, u.state, u.zip,
             h.name AS hoa_name,
             COALESCE(h.alert_lead_days, 30) AS alert_lead_days,
             COALESCE(h.alert_days, '{30,7,1}') AS alert_days,
             COALESCE(h.alerts_enabled, TRUE) AS alerts_enabled,
             COALESCE(h.lapsed_reminders_enabled, TRUE) AS lapsed_reminders_enabled,
             COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days,
-            """ + _SENDER_EMAIL_SQL + """ AS sender_email
+            """ + _SENDER_EMAIL_SQL + """ AS sender_email,
+            (SELECT su.owner_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_name,
+            (SELECT su.assoc_title FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_title,
+            COALESCE(h.corp_name,
+              (SELECT corp_name FROM units WHERE hoa_id = h.id AND corp_name IS NOT NULL LIMIT 1),
+              h.name) AS corp_name
         FROM policies p
         JOIN tenants t ON t.id = p.tenant_id
         JOIN units u ON u.id = t.unit_id
@@ -160,12 +166,22 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         if already_sent:
             continue
 
-        # The email template distinguishes lapsed vs upcoming
-        template_kind = "lapsed" if alert_type == "lapsed" else "expiring"
-        subject, html = renewal_notice_html(
-            row["tenant_name"], row["unit_number"], row["hoa_name"],
-            row["expiration_date"], template_kind, days_until=days_until,
-        )
+        if alert_type == "lapsed":
+            subject, html = renewal_notice_html(
+                row["tenant_name"], row["unit_number"], row["hoa_name"],
+                row["expiration_date"], "lapsed",
+            )
+        else:
+            em = (row["tenant_email"] or "").strip().lower()
+            recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
+            subject, html = renewal_reminder_html(
+                row["unit_number"], row["hoa_name"], f"{APP_URL}/tenant/dashboard",
+                row["expiration_date"], days_until,
+                recipient_name=recipient_name, sender_email=row.get("sender_email"),
+                corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
+                sender_title=row.get("sender_title"),
+                unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
+            )
         sent = await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email"))
         if sent:
             await conn.execute(

@@ -17,7 +17,7 @@ from services.audit import log_audit
 from services.compliance import evaluate_compliance
 from services.email import (
     board_report_html, send_email,
-    invite_email_html, renewal_notice_html, admin_notify_html, noncompliant_email_html,
+    invite_email_html, renewal_notice_html, renewal_reminder_html, admin_notify_html, noncompliant_email_html,
 )
 from services.importer import (
     parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
@@ -752,9 +752,16 @@ async def email_previews(
         sender_title=(sender["title"] if sender else None),
         unit_address="123 Ocean Dr, Miami, FL 33139",
     )
-    r30_s, r30_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring", days_until=30)
-    r7_s, r7_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=7), "expiring", days_until=7)
-    r1_s, r1_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=1), "expiring", days_until=1)
+    _ren_kw = dict(
+        recipient_name="Jane Smith", sender_email=(sender["email"] if sender else None),
+        corp_name=(sender["corp_name"] if sender else None),
+        sender_name=(sender["name"] if sender else None),
+        sender_title=(sender["title"] if sender else None),
+        unit_address="123 Ocean Dr, Miami, FL 33139",
+    )
+    r30_s, r30_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=30), 30, **_ren_kw)
+    r7_s, r7_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=7), 7, **_ren_kw)
+    r1_s, r1_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=1), 1, **_ren_kw)
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
     nc_s, nc_h = noncompliant_email_html(
         "101", name, "https://www.condo.insure/tenant/dashboard",
