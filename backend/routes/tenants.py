@@ -645,6 +645,7 @@ async def invite_all_owners(
         return {"sent": 0, "skipped": 0, "failed": 0, "bounced": 0, "already_active": 0, "total": 0}
 
     bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
+    sender_email = await _resolve_sender_email(conn, hoa_id)
 
     # Build the send list synchronously (DB), then fire emails concurrently
     to_send = []  # (email, subject, html, token)
@@ -674,11 +675,10 @@ async def invite_all_owners(
         is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
         subject, html = invite_email_html(
             email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
-            is_property_manager=is_pm,
+            is_property_manager=is_pm, sender_email=sender_email,
         )
         to_send.append((email, subject, html, invite["token"]))
 
-    sender_email = await _resolve_sender_email(conn, hoa_id)
     results = await asyncio.gather(*(send_email(e, s, h, reply_to=sender_email) for e, s, h, _ in to_send))
     sent_tokens = [to_send[i][3] for i, ok in enumerate(results) if ok]
     failed = len(results) - len(sent_tokens)
@@ -735,10 +735,11 @@ async def invite_tenant(
         )
 
     invite_url = f"{APP_URL}/join/{invite['token']}"
-    subject, html = invite_email_html(
-        body.email, row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
-    )
     sender_email = await _resolve_sender_email(conn, row["hoa_id"])
+    subject, html = invite_email_html(
+        body.email, row["unit_number"], row["hoa_name"], invite_url,
+        is_property_manager=is_pm, sender_email=sender_email,
+    )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:
         raise HTTPException(status_code=502, detail="Failed to send invite email")

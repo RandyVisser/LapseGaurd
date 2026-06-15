@@ -139,34 +139,97 @@ def invite_email_html(
     hoa_name: str,
     invite_url: str,
     is_property_manager: bool = False,
+    sender_email: str | None = None,
 ) -> tuple[str, str]:
-    subject = f"You've been invited to join {hoa_name} on condo.insure"
+    subject = f"Action requested — {hoa_name} insurance compliance"
+
+    # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
-        intro = f"""
-        Your condo association <strong>{hoa_name}</strong> has invited you to join
-        condo.insure as a <strong>property manager</strong>.
-      </p>
-      <p style="color:#374151">
-        Once you create your account you can track unit-owner insurance compliance,
-        manage documents, and stay on top of renewals — all in one place."""
-    else:
-        intro = f"""
-        Your condo association <strong>{hoa_name}</strong> has invited you to set up
-        your insurance compliance profile for <strong>Unit {unit_number}</strong>.
-      </p>
-      <p style="color:#374151">
-        Once you create your account you can upload your proof of insurance,
-        track your policy status, and receive renewal reminders — all in one place."""
-    html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
-      {_header()}
+        body = f"""
       <p style="color:#374151">Hi,</p>
-      <p style="color:#374151">{intro}
+      <p style="color:#374151">
+        Your condo association <strong>{hoa_name}</strong> has invited you to join
+        condo.insure as a <strong>property manager</strong>. Once you create your
+        account you can track unit-owner insurance compliance, manage documents,
+        and stay on top of renewals — all in one place.
       </p>
       {_btn(invite_url, "Create Your Account")}
       <p style="color:#6b7280;font-size:13px;margin-top:8px">
         This link is unique to you ({email}) and can only be used once.
+      </p>"""
+    else:
+        sig_email = f'<br>{sender_email}' if sender_email else ''
+        body = f"""
+      <p style="color:#374151">Dear Unit Owner,</p>
+      <p style="color:#374151">
+        To help maintain accurate insurance records and simplify compliance with our
+        condominium insurance requirements, the Association has partnered with
+        <strong>Condo.insure</strong>, a secure online insurance compliance platform.
       </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">Why am I receiving this notice?</p>
+      <p style="color:#374151">
+        The Association's governing documents require unit owners to maintain insurance
+        for portions of their unit that are not covered by the Association's master
+        policy. In addition, maintaining appropriate insurance helps protect you from
+        losses involving personal property, interior improvements, liability claims,
+        loss assessments, and other expenses that may not be covered by the
+        Association's insurance policy.
+      </p>
+      <p style="color:#374151">
+        To streamline this process, the Association will now use Condo.insure to
+        collect and track unit-owner insurance information.
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">What do I need to do?</p>
+      <p style="color:#374151">Visit the secure compliance portal and:</p>
+      {_btn(invite_url, "Open the Compliance Portal")}
+      <ol style="color:#374151;padding-left:20px;margin-top:8px">
+        <li>Confirm your contact information.</li>
+        <li>Upload one of the following:
+          <ul style="padding-left:18px;margin:6px 0">
+            <li>Your current HO-6 Condominium Unit Owners Policy Declaration Page</li>
+            <li>A Certificate of Insurance showing active coverage</li>
+          </ul>
+        </li>
+        <li>Submit the information at your earliest convenience.</li>
+      </ol>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
+      <ul style="color:#374151;padding-left:20px">
+        <li>Insurance carrier name</li>
+        <li>Policy number</li>
+        <li>Effective and expiration dates</li>
+        <li>Named insured(s)</li>
+        <li>Proof of active coverage</li>
+      </ul>
+
+      <p style="color:#374151">There is no cost to you to use the compliance portal.</p>
+      <p style="color:#374151">
+        If you already maintain condominium unit-owner insurance, the process should
+        only take a few minutes.
+      </p>
+      <p style="color:#374151">
+        If you do not currently have insurance or have questions regarding your
+        coverage, please contact your insurance agent or carrier for assistance.
+      </p>
+      <p style="color:#374151">
+        Thank you for your prompt attention and cooperation in helping the Association
+        maintain accurate insurance records.
+      </p>
+      <p style="color:#374151;margin-top:20px">
+        Sincerely,<br>
+        {hoa_name}<br>
+        Property Manager / Board of Directors{sig_email}
+      </p>
+      <p style="color:#9ca3af;font-size:12px;margin-top:12px">
+        This link is unique to you ({email}) and can only be used once.
+      </p>"""
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      {body}
       {_footer()}
     </div></body></html>"""
     return subject, html

@@ -53,7 +53,8 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
         is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
         invite_url = f"{APP_URL}/join/{row['token']}"
         subject, html = invite_email_html(
-            row["email"], row["unit_number"], row["hoa_name"], invite_url, is_property_manager=is_pm
+            row["email"], row["unit_number"], row["hoa_name"], invite_url,
+            is_property_manager=is_pm, sender_email=row.get("sender_email"),
         )
         sent = await send_email(row["email"], subject, html, reply_to=row.get("sender_email"))
         if sent:

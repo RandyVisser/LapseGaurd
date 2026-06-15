@@ -731,7 +731,15 @@ async def email_previews(
     name = hoa["name"] if hoa else "Your Association"
     today = date.today()
 
-    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample")
+    sender_email = await conn.fetchval(
+        """SELECT CASE WHEN h.email_sender_unit_id IS NOT NULL
+                       THEN (SELECT email_primary FROM units WHERE id = h.email_sender_unit_id)
+                       ELSE (SELECT email_primary FROM units WHERE hoa_id = h.id
+                             AND lower(coalesce(assoc_title,'')) = 'property manager' LIMIT 1) END
+           FROM hoas h WHERE h.id = $1""",
+        hoa_id,
+    )
+    inv_s, inv_h = invite_email_html("owner@example.com", "101", name, "https://www.condo.insure/join/sample", sender_email=sender_email)
     ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")
     nc_s, nc_h = admin_notify_html(
