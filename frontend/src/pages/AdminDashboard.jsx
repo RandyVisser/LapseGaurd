@@ -162,7 +162,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
     },
     {
       title: 'Add board members & property manager',
-      detail: 'For a board member: find their unit → ⋯ Actions → Edit Owner Info, then set their Board Title and email. To add your first property manager, click the Property Managers card above; to add more, use ⋯ Actions on a property manager.',
+      detail: 'Find their unit → ⋯ Actions → Edit Owner Info, then set their Board Title and email. To add a property manager, click the Property Managers card below.',
       done: (summary.board_members ?? 0) > 0 || (summary.property_managers ?? 0) > 0,
     },
     {
