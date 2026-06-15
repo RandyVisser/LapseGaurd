@@ -36,7 +36,8 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     an invite is re-sent only once its last send is older than that window."""
     rows = await conn.fetch(
         """
-        SELECT i.token, i.email, u.unit_number, u.assoc_title, u.owner_primary, u.owner_secondary,
+        SELECT i.token, i.email, u.unit_number, u.assoc_title,
+               u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                h.name AS hoa_name,
                """ + _SENDER_EMAIL_SQL + """ AS sender_email
         FROM unit_invites i
@@ -53,10 +54,12 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     for row in rows:
         is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
         invite_url = f"{APP_URL}/join/{row['token']}"
+        em = (row["email"] or "").strip().lower()
+        recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else row.get("owner_primary")
         subject, html = invite_email_html(
             row["email"], row["unit_number"], row["hoa_name"], invite_url,
             is_property_manager=is_pm, sender_email=row.get("sender_email"),
-            owner_primary=row.get("owner_primary"), owner_secondary=row.get("owner_secondary"),
+            recipient_name=recipient_name,
         )
         sent = await send_email(row["email"], subject, html, reply_to=row.get("sender_email"))
         if sent:

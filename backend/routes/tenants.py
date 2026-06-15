@@ -635,10 +635,12 @@ async def invite_all_owners(
     await _assert_hoa_access(user, hoa_id, conn)
 
     units = await conn.fetch(
-        """SELECT u.id AS unit_id, u.unit_number, u.assoc_title, trim(u.email_primary) AS email,
+        """SELECT u.id AS unit_id, u.unit_number, u.assoc_title,
+                  trim(u.email_primary) AS email_primary, trim(u.email_secondary) AS email_secondary,
                   u.owner_primary, u.owner_secondary, h.name AS hoa_name
            FROM units u JOIN hoas h ON h.id = u.hoa_id
-           WHERE u.hoa_id = $1 AND coalesce(trim(u.email_primary), '') <> ''""",
+           WHERE u.hoa_id = $1
+             AND (coalesce(trim(u.email_primary), '') <> '' OR coalesce(trim(u.email_secondary), '') <> '')""",
         hoa_id,
     )
     if not units:
@@ -647,38 +649,47 @@ async def invite_all_owners(
     bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
     sender_email = await _resolve_sender_email(conn, hoa_id)
 
-    # Build the send list synchronously (DB), then fire emails concurrently
+    # Build the send list synchronously (DB), then fire emails concurrently.
+    # Primary and secondary owners each get their own individually-addressed email.
     to_send = []  # (email, subject, html, token)
-    skipped = already_active = bounced_n = 0
+    seen_emails: set = set()
+    total = already_active = bounced_n = 0
     for u in units:
-        email = u["email"]
         has_account = await conn.fetchval(
             "SELECT EXISTS(SELECT 1 FROM tenants WHERE unit_id = $1 AND supabase_user_id IS NOT NULL)",
             u["unit_id"],
         )
-        if has_account:
-            already_active += 1
-            continue
-        if email.lower() in bounced:
-            bounced_n += 1
-            continue
-        invite = await conn.fetchrow(
-            "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL "
-            "ORDER BY created_at DESC LIMIT 1",
-            u["unit_id"], email,
-        )
-        if not invite:
+        is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
+        recipients = [(u["email_primary"], u["owner_primary"]), (u["email_secondary"], u["owner_secondary"])]
+        for email, name in recipients:
+            if not email:
+                continue
+            total += 1
+            key = (str(u["unit_id"]), email.lower())
+            if key in seen_emails:  # primary == secondary email — only once
+                continue
+            seen_emails.add(key)
+            if has_account:
+                already_active += 1
+                continue
+            if email.lower() in bounced:
+                bounced_n += 1
+                continue
             invite = await conn.fetchrow(
-                "INSERT INTO unit_invites (unit_id, email) VALUES ($1, $2) RETURNING token",
+                "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL "
+                "ORDER BY created_at DESC LIMIT 1",
                 u["unit_id"], email,
             )
-        is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
-        subject, html = invite_email_html(
-            email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
-            is_property_manager=is_pm, sender_email=sender_email,
-            owner_primary=u["owner_primary"], owner_secondary=u["owner_secondary"],
-        )
-        to_send.append((email, subject, html, invite["token"]))
+            if not invite:
+                invite = await conn.fetchrow(
+                    "INSERT INTO unit_invites (unit_id, email) VALUES ($1, $2) RETURNING token",
+                    u["unit_id"], email,
+                )
+            subject, html = invite_email_html(
+                email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
+                is_property_manager=is_pm, sender_email=sender_email, recipient_name=name,
+            )
+            to_send.append((email, subject, html, invite["token"]))
 
     results = await asyncio.gather(*(send_email(e, s, h, reply_to=sender_email) for e, s, h, _ in to_send))
     sent_tokens = [to_send[i][3] for i, ok in enumerate(results) if ok]
@@ -689,7 +700,7 @@ async def invite_all_owners(
         )
     return {
         "sent": len(sent_tokens), "failed": failed, "bounced": bounced_n,
-        "already_active": already_active, "total": len(units),
+        "already_active": already_active, "total": total,
     }
 
 
@@ -702,7 +713,8 @@ async def invite_tenant(
 ):
     row = await conn.fetchrow(
         """
-        SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary, h.name AS hoa_name
+        SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary,
+               u.email_primary, u.email_secondary, h.name AS hoa_name
         FROM units u JOIN hoas h ON h.id = u.hoa_id
         WHERE u.id = $1
         """,
@@ -737,10 +749,15 @@ async def invite_tenant(
 
     invite_url = f"{APP_URL}/join/{invite['token']}"
     sender_email = await _resolve_sender_email(conn, row["hoa_id"])
+    # Greet the specific owner this address belongs to
+    em = (body.email or "").strip().lower()
+    if em and em == (row["email_secondary"] or "").strip().lower():
+        recipient_name = row["owner_secondary"]
+    else:
+        recipient_name = row["owner_primary"]
     subject, html = invite_email_html(
         body.email, row["unit_number"], row["hoa_name"], invite_url,
-        is_property_manager=is_pm, sender_email=sender_email,
-        owner_primary=row["owner_primary"], owner_secondary=row["owner_secondary"],
+        is_property_manager=is_pm, sender_email=sender_email, recipient_name=recipient_name,
     )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:

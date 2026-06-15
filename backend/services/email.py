@@ -140,12 +140,10 @@ def invite_email_html(
     invite_url: str,
     is_property_manager: bool = False,
     sender_email: str | None = None,
-    owner_primary: str | None = None,
-    owner_secondary: str | None = None,
+    recipient_name: str | None = None,
 ) -> tuple[str, str]:
     subject = f"Action requested — {hoa_name} insurance compliance"
-    _names = [n.strip() for n in (owner_primary, owner_secondary) if n and n.strip()]
-    greeting = "Dear " + (" and ".join(_names) if _names else "Unit Owner")
+    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
