@@ -133,6 +133,11 @@ def admin_notify_html(
     return subject, html
 
 
+def format_address(street, city, state, zip_) -> str:
+    cs = " ".join(p for p in [(state or "").strip(), (zip_ or "").strip()] if p)
+    return ", ".join(p for p in [(street or "").strip(), (city or "").strip(), cs] if p)
+
+
 def invite_email_html(
     email: str,
     unit_number: str,
@@ -144,9 +149,14 @@ def invite_email_html(
     corp_name: str | None = None,
     sender_name: str | None = None,
     sender_title: str | None = None,
+    unit_address: str | None = None,
 ) -> tuple[str, str]:
     subject = f"Action requested — {hoa_name} insurance compliance"
     greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    re_parts = [p for p in [(unit_address or "").strip(),
+                            (f"Unit {unit_number}" if unit_number else "")] if p]
+    re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
+               f'{", ".join(re_parts)}</p>') if re_parts else ""
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
@@ -173,6 +183,7 @@ def invite_email_html(
         ]
         signature = "<br>".join(line for line in sig_lines if line)
         body = f"""
+      {re_line}
       <p style="color:#374151">{greeting},</p>
       <p style="color:#374151">
         To help maintain accurate insurance records and simplify compliance with our

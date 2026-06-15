@@ -15,7 +15,7 @@ from services.compliance import evaluate_compliance
 from services.storage import signed_url
 import asyncio
 import os
-from services.email import send_email, admin_notify_html, invite_email_html
+from services.email import send_email, admin_notify_html, invite_email_html, format_address
 
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
@@ -647,7 +647,8 @@ async def invite_all_owners(
     units = await conn.fetch(
         """SELECT u.id AS unit_id, u.unit_number, u.assoc_title,
                   trim(u.email_primary) AS email_primary, trim(u.email_secondary) AS email_secondary,
-                  u.owner_primary, u.owner_secondary, h.name AS hoa_name
+                  u.owner_primary, u.owner_secondary, u.street_address, u.city, u.state, u.zip,
+                  h.name AS hoa_name
            FROM units u JOIN hoas h ON h.id = u.hoa_id
            WHERE u.hoa_id = $1
              AND (coalesce(trim(u.email_primary), '') <> '' OR coalesce(trim(u.email_secondary), '') <> '')""",
@@ -702,6 +703,7 @@ async def invite_all_owners(
                 corp_name=sender["corp_name"] if sender else None,
                 sender_name=sender["name"] if sender else None,
                 sender_title=sender["title"] if sender else None,
+                unit_address=format_address(u["street_address"], u["city"], u["state"], u["zip"]),
             )
             to_send.append((email, subject, html, invite["token"]))
 
@@ -728,7 +730,8 @@ async def invite_tenant(
     row = await conn.fetchrow(
         """
         SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary,
-               u.email_primary, u.email_secondary, h.name AS hoa_name
+               u.email_primary, u.email_secondary, u.street_address, u.city, u.state, u.zip,
+               h.name AS hoa_name
         FROM units u JOIN hoas h ON h.id = u.hoa_id
         WHERE u.id = $1
         """,
@@ -776,6 +779,7 @@ async def invite_tenant(
         corp_name=sender["corp_name"] if sender else None,
         sender_name=sender["name"] if sender else None,
         sender_title=sender["title"] if sender else None,
+        unit_address=format_address(row["street_address"], row["city"], row["state"], row["zip"]),
     )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:

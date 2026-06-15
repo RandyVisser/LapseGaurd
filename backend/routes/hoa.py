@@ -750,6 +750,7 @@ async def email_previews(
         corp_name=(sender["corp_name"] if sender else None),
         sender_name=(sender["name"] if sender else None),
         sender_title=(sender["title"] if sender else None),
+        unit_address="123 Ocean Dr, Miami, FL 33139",
     )
     ren_s, ren_h = renewal_notice_html("Jane Smith", "101", name, today + timedelta(days=30), "expiring")
     exp_s, exp_h = renewal_notice_html("Jane Smith", "101", name, today - timedelta(days=3), "lapsed")

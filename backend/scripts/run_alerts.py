@@ -13,7 +13,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, invite_email_html, admin_notify_html
+from services.email import send_email, renewal_notice_html, invite_email_html, admin_notify_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -36,6 +36,7 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
         """
         SELECT i.token, i.email, u.unit_number, u.assoc_title,
                u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
+               u.street_address, u.city, u.state, u.zip,
                h.name AS hoa_name,
                """ + _SENDER_EMAIL_SQL + """ AS sender_email,
                (SELECT su.owner_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_name,
@@ -65,6 +66,7 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
             recipient_name=recipient_name,
             corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
             sender_title=row.get("sender_title"),
+            unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
         )
         sent = await send_email(row["email"], subject, html, reply_to=row.get("sender_email"))
         if sent:
