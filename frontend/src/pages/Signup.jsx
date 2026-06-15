@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_URL || '/api'
 export default function Signup() {
   const [form, setForm] = useState({
     association_name: '', address: '', admin_name: '', email: '', password: '',
-    ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: false, ho6_additional_interest_required: false,
+    ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
   })
   const [loading, setLoading] = useState(false)
