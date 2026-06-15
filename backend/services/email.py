@@ -258,6 +258,107 @@ def invite_email_html(
     return subject, html
 
 
+def noncompliant_email_html(
+    unit_number: str,
+    hoa_name: str,
+    portal_url: str,
+    recipient_name: str | None = None,
+    sender_email: str | None = None,
+    corp_name: str | None = None,
+    sender_name: str | None = None,
+    sender_title: str | None = None,
+    unit_address: str | None = None,
+) -> tuple[str, str]:
+    """Reminder for owners whose policy is on file but non-compliant. Copies the
+    invite email's language — tweak freely; it's independent of the invite."""
+    subject = f"Action requested — {hoa_name} insurance compliance"
+    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    re_parts = [p for p in [(unit_address or "").strip(),
+                            (f"Unit {unit_number}" if unit_number else "")] if p]
+    re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
+               f'{", ".join(re_parts)}</p>') if re_parts else ""
+    sig_lines = [
+        (corp_name or hoa_name),
+        (sender_name or "").strip() or None,
+        (sender_title or "").strip() or "Property Manager",
+        "For the Board",
+        (sender_email or "").strip() or None,
+    ]
+    signature = "<br>".join(line for line in sig_lines if line)
+
+    body = f"""
+      {re_line}
+      <p style="color:#374151">{greeting},</p>
+      <p style="color:#374151">
+        To help maintain accurate insurance records and simplify compliance with our
+        condominium insurance requirements, the Association has partnered with
+        <strong>Condo.insure</strong>, a secure online insurance compliance platform.
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">Why am I receiving this notice?</p>
+      <p style="color:#374151">
+        The Association's governing documents require unit owners to maintain insurance
+        for portions of their unit that are not covered by the Association's master
+        policy. In addition, maintaining appropriate insurance helps protect you from
+        losses involving personal property, interior improvements, liability claims,
+        loss assessments, and other expenses that may not be covered by the
+        Association's insurance policy.
+      </p>
+      <p style="color:#374151">
+        To streamline this process, the Association will now use Condo.insure to
+        collect and track unit-owner insurance information.
+      </p>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">What do I need to do?</p>
+      <p style="color:#374151">Visit the secure compliance portal and:</p>
+      {_btn(portal_url, "Open the Compliance Portal")}
+      <ol style="color:#374151;padding-left:20px;margin-top:8px">
+        <li>Confirm your contact information.</li>
+        <li>Upload one of the following:
+          <ul style="padding-left:18px;margin:6px 0">
+            <li>Your current HO-6 Condominium Unit Owners Policy Declaration Page</li>
+            <li>A Certificate of Insurance showing active coverage</li>
+          </ul>
+        </li>
+        <li>Submit the information at your earliest convenience.</li>
+      </ol>
+
+      <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
+      <ul style="color:#374151;padding-left:20px">
+        <li>Insurance carrier name</li>
+        <li>Policy number</li>
+        <li>Effective and expiration dates</li>
+        <li>Named insured(s)</li>
+        <li>Proof of active coverage</li>
+      </ul>
+
+      <p style="color:#374151">There is no cost to you to use the compliance portal.</p>
+      <p style="color:#374151">
+        If you already maintain condominium unit-owner insurance, the process should
+        only take a few minutes.
+      </p>
+      <p style="color:#374151">
+        If you do not currently have insurance or have questions regarding your
+        coverage, please contact your insurance agent or carrier for assistance.
+      </p>
+      <p style="color:#374151">
+        Thank you for your prompt attention and cooperation in helping the Association
+        maintain accurate insurance records.
+      </p>
+      <p style="color:#374151;margin-top:20px">
+        Sincerely,<br>
+        {signature}
+      </p>"""
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      {body}
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def _step(num: str, title: str, desc: str) -> str:
     return f"""
     <tr>
