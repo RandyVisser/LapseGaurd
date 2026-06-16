@@ -104,6 +104,9 @@ async def update_unit_owner(
     if (new_title or "").lower() == "property manager" or (unit["assoc_title"] or "").strip().lower() == "property manager":
         new_title = unit["assoc_title"]
 
+    email_primary = (body.email_primary or "").strip() or None
+    email_secondary = (body.email_secondary or "").strip() or None
+
     await conn.execute(
         """UPDATE units SET
                owner_primary = $2,
@@ -115,9 +118,22 @@ async def update_unit_owner(
         unit_id,
         (body.owner_primary or "").strip() or None,
         (body.owner_secondary or "").strip() or None,
-        (body.email_primary or "").strip() or None,
-        (body.email_secondary or "").strip() or None,
+        email_primary,
+        email_secondary,
         new_title,
+    )
+
+    # If the owner was replaced (email no longer matches), a still-pending invite
+    # to the prior owner is stale — drop it so the unit stops showing "Invite
+    # Sent" for someone who's no longer the owner. A plain typo fix (same email)
+    # keeps its invite, and accepted invites are always left intact.
+    current_emails = [e.lower() for e in (email_primary, email_secondary) if e]
+    await conn.execute(
+        """DELETE FROM unit_invites
+           WHERE unit_id = $1 AND accepted_at IS NULL
+             AND lower(email) <> ALL($2::text[])""",
+        unit_id,
+        current_emails,
     )
     return {"updated": True}
 

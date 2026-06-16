@@ -579,9 +579,13 @@ export default function AdminDashboard() {
     try {
       await apiPatch(`/unit/${editUnit.unit_id}/owner`, editForm)
       setUnits(prev => prev.map(u => u.unit_id === editUnit.unit_id ? { ...u, ...editForm } : u))
-      // Board title changes affect the Board Members count
+      // Re-fetch both: board title changes affect the Board Members count, and
+      // replacing the owner's email clears a stale invite (Invite Sent count +
+      // the row's invite badge)
       if (hoaId && hoaId !== ALL_HOAS) {
-        apiGet(`/hoa/${hoaId}/compliance`).then(setSummary).catch(() => {})
+        Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+          .then(([s, u]) => { setSummary(s); setUnits(u) })
+          .catch(() => {})
       }
       setEditUnit(null)
     } catch (err) { setError(err.message) }
