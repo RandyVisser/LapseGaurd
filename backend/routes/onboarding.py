@@ -134,6 +134,11 @@ async def signup_association(
 
 @router.get("/invite/{token}")
 async def get_invite(token: str, conn: asyncpg.Connection = Depends(get_conn)):
+    # token is a UUID column — a malformed link should read as "not found", not 500
+    try:
+        uuid.UUID(str(token))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Invite not found")
     row = await conn.fetchrow(
         """
         SELECT i.id, i.email, i.accepted_at,

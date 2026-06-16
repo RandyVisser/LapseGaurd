@@ -57,22 +57,33 @@ app.include_router(inbound_router)
 app.include_router(feedback_router)
 
 
+def _cors_headers(request: Request) -> dict:
+    # Exception-handler responses bypass CORSMiddleware; without these the
+    # browser masks the error as a CORS failure
+    origin = request.headers.get("origin", "")
+    if origin and (origin in _allowed_origins or "*" in _allowed_origins):
+        return {"Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true"}
+    return {}
+
+
+@app.exception_handler(asyncpg.exceptions.DataError)
+async def data_error_handler(request: Request, exc: asyncpg.exceptions.DataError):
+    # Malformed input reaching a typed query (most often a non-UUID path param
+    # like /invite/sample or /hoa/__all__/...). Bad request, not a server fault —
+    # safety net so these never surface as 500s on any endpoint.
+    return JSONResponse(status_code=400, content={"detail": "Invalid request"},
+                        headers=_cors_headers(request))
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     import logging
     sentry_sdk.capture_exception(exc)
     logging.getLogger("uvicorn.error").exception("Unhandled error on %s %s", request.method, request.url.path)
-    # Include CORS headers manually — responses from exception handlers bypass
-    # CORSMiddleware, and without them the browser masks the 500 as a CORS error
-    origin = request.headers.get("origin", "")
-    headers = {}
-    if origin and (origin in _allowed_origins or "*" in _allowed_origins):
-        headers["Access-Control-Allow-Origin"] = origin
-        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
-        headers=headers,
+        headers=_cors_headers(request),
     )
 
 

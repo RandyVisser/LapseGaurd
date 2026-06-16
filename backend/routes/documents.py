@@ -70,6 +70,12 @@ async def list_hoa_documents(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
+    # Super-user "All Associations" view sends hoa_id='__all__' — no single HOA's
+    # documents to show, so return empty rather than erroring on a non-UUID id
+    try:
+        uuid.UUID(str(hoa_id))
+    except (ValueError, TypeError):
+        return []
     await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
