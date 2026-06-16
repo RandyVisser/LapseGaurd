@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
@@ -34,6 +35,12 @@ async def list_unit_documents(
     user: AuthUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
+    # Reject malformed ids before they reach a UUID-typed query (would 500)
+    try:
+        uuid.UUID(str(unit_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Unit not found")
+
     # Verify unit belongs to an HOA the user can access
     unit = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
     if unit is None:
