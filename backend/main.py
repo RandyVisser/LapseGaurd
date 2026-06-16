@@ -25,6 +25,7 @@ from routes.alerts import router as alerts_router
 from routes.tenants import router as tenants_router
 from routes.onboarding import router as onboarding_router
 from routes.inbound import router as inbound_router
+from routes.feedback import router as feedback_router
 
 
 @asynccontextmanager
@@ -53,6 +54,7 @@ app.include_router(alerts_router)
 app.include_router(tenants_router)
 app.include_router(onboarding_router)
 app.include_router(inbound_router)
+app.include_router(feedback_router)
 
 
 @app.exception_handler(Exception)
