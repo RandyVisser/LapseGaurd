@@ -44,6 +44,8 @@ const HOA_FIELD_OPTIONS = {
   sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
 }
 
+const ALL_HOAS = '__all__'
+
 export default function AdminDocuments() {
   const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
   const [docs, setDocs] = useState([])
@@ -63,6 +65,10 @@ export default function AdminDocuments() {
 
   function handleHoaFieldValueChange(value) {
     setHoaFieldValue(value)
+    if (value === ALL_HOAS) {
+      setSelectedHoaId(ALL_HOAS)
+      return
+    }
     const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
     const match = availableHoas.find(h => h[key] === value)
     if (match) setSelectedHoaId(match.id)
@@ -154,8 +160,10 @@ export default function AdminDocuments() {
       setFile(null)
       setFileInputKey(k => k + 1)
       setSuccess('Document uploaded.')
-      // Full reload so expiration highlighting and all derived state start fresh
-      setTimeout(() => window.location.reload(), 800)
+      // Re-fetch the docs list (refreshes expiration highlighting) without a full
+      // page reload, which would drop the selected association for PMs/super users
+      await load()
+      setTimeout(() => setSuccess(''), 4000)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -225,7 +233,7 @@ export default function AdminDocuments() {
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
           <header className="mb-6">
             <h1 className="text-xl font-bold text-slate-800">
-              {selectedHoa?.name || 'Shared Documents'}
+              {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Shared Documents')}
             </h1>
             {selectedHoa?.corp_name && (
               <p className="text-xs text-slate-400 mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
@@ -234,7 +242,19 @@ export default function AdminDocuments() {
               <p className="text-xs text-slate-400 mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
             )}
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {/* Primary: pick any association by name (works for every HOA,
+                    including signup-created ones with no PropRadar fields) */}
+                <select
+                  value={hoaId || ''}
+                  onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={ALL_HOAS}>All Associations</option>
+                  {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                    .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+                <span className="text-xs text-slate-300">or search by</span>
                 <select
                   value={hoaFieldType}
                   onChange={e => { setHoaFieldType(e.target.value); setHoaFieldValue('') }}
@@ -250,6 +270,7 @@ export default function AdminDocuments() {
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
+                  <option value={ALL_HOAS}>All</option>
                   {hoaFieldValues.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
