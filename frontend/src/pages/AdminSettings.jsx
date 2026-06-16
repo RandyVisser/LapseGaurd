@@ -4,14 +4,45 @@ import Nav from '../components/Nav'
 import { apiGet, apiPut, apiPost, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
+const HOA_FIELD_OPTIONS = {
+  name: { label: 'Association Name', key: 'name' },
+  corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
+  sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
+}
+
+const ALL_HOAS = '__all__'
+
 export default function AdminSettings() {
-  const { hoaId } = useAuth()
+  const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  // Association picker (super users / PMs) — mirrors the Dashboard & Documents pages
+  const [hoaFieldType, setHoaFieldType] = useState('name')
+  const [hoaFieldValue, setHoaFieldValue] = useState('')
+
+  const hoaFieldValues = (() => {
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const seen = new Set()
+    const vals = []
+    for (const h of availableHoas) {
+      const v = h[key]
+      if (v && !seen.has(v)) { seen.add(v); vals.push(v) }
+    }
+    return vals
+  })()
+
+  function handleHoaFieldValueChange(value) {
+    setHoaFieldValue(value)
+    if (value === ALL_HOAS) { setSelectedHoaId(ALL_HOAS); return }
+    const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
+    const match = availableHoas.find(h => h[key] === value)
+    if (match) setSelectedHoaId(match.id)
+  }
 
   // Add-a-unit state
   const [unitForm, setUnitForm] = useState({ unit_number: '', street_address: '', city: '', state: '', zip: '', owner_primary: '', email_primary: '' })
@@ -57,7 +88,8 @@ export default function AdminSettings() {
   }
 
   useEffect(() => {
-    if (!hoaId || hoaId === '__all__') return
+    if (!hoaId || hoaId === ALL_HOAS) { setForm(null); setLoading(false); return }
+    setLoading(true)
     apiGet('/hoas')
       .then(hoas => {
         const hoa = hoas.find(h => h.id === hoaId) || hoas[0]
@@ -117,19 +149,63 @@ export default function AdminSettings() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       <main className="max-w-[50rem] mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Association Settings</h1>
-          {!loading && form && (
-            <button type="button" onClick={() => { setShowAddUnit(true); setUnitMsg('') }}
-              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg text-sm">
-              + Add Unit
-            </button>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-slate-800">Association Settings</h1>
+            {!loading && form && (
+              <button type="button" onClick={() => { setShowAddUnit(true); setUnitMsg('') }}
+                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg text-sm">
+                + Add Unit
+              </button>
+            )}
+          </div>
+          {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {/* Primary: pick any association by name (works for every HOA,
+                  including signup-created ones with no PropRadar fields) */}
+              <select
+                value={hoaId || ''}
+                onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={ALL_HOAS}>All Associations</option>
+                {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                  .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+              </select>
+              <span className="text-xs text-slate-300">or search by</span>
+              <select
+                value={hoaFieldType}
+                onChange={e => { setHoaFieldType(e.target.value); setHoaFieldValue('') }}
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
+                  <option key={key} value={key}>{opt.label}</option>
+                ))}
+              </select>
+              <select
+                value={hoaFieldValue}
+                onChange={e => handleHoaFieldValueChange(e.target.value)}
+                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
+                <option value={ALL_HOAS}>All</option>
+                {hoaFieldValues.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 
         {unitMsg && <p className="text-sm text-green-600 mb-4">{unitMsg}</p>}
 
         {loading && <div className="bg-white rounded-xl border border-slate-200 h-40 animate-pulse" />}
+
+        {!loading && hoaId === ALL_HOAS && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+            Select a single association above to view and edit its settings.
+          </div>
+        )}
 
         {showAddUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
