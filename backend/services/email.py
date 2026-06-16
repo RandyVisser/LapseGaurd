@@ -539,7 +539,9 @@ def noncompliant_email_html(
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
 
-    item_list = [str(i).strip() for i in (items or []) if str(i).strip()]
+    # Escape — these come from policy validation flags, which embed parsed
+    # dec-page values (insurer/named-insured) from an owner-uploaded document
+    item_list = [_html.escape(str(i).strip()) for i in (items or []) if str(i).strip()]
     items_html = ("".join(f"<li>{i}</li>" for i in item_list)
                   if item_list else "<li>One or more association requirements are not met.</li>")
 
