@@ -160,23 +160,23 @@ export default function AdminSettings() {
             )}
           </div>
           {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <div className="flex items-center gap-2 mt-2">
               {/* Primary: pick any association by name (works for every HOA,
                   including signup-created ones with no PropRadar fields) */}
               <select
                 value={hoaId || ''}
                 onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={ALL_HOAS}>All Associations</option>
                 {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                   .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
-              <span className="text-xs text-slate-300">or search by</span>
+              <span className="text-xs text-slate-300 flex-shrink-0">or search by</span>
               <select
                 value={hoaFieldType}
                 onChange={e => { setHoaFieldType(e.target.value); setHoaFieldValue('') }}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-shrink-0 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
                   <option key={key} value={key}>{opt.label}</option>
@@ -185,7 +185,7 @@ export default function AdminSettings() {
               <select
                 value={hoaFieldValue}
                 onChange={e => handleHoaFieldValueChange(e.target.value)}
-                className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
                 <option value={ALL_HOAS}>All</option>
