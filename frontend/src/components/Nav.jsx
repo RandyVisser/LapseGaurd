@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
 export default function Nav({ role, title }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { role: actualRole } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleLogout() {
@@ -17,6 +19,8 @@ export default function Nav({ role, title }) {
         { to: '/admin/dashboard', label: 'Dashboard' },
         { to: '/admin/documents', label: 'Documents' },
         { to: '/admin/settings', label: 'Settings' },
+        // Feedback inbox — super-users only (Randy + dad)
+        ...(actualRole === 'super_user' ? [{ to: '/admin/feedback', label: 'Feedback' }] : []),
       ]
     : role === 'tenant'
       ? [
