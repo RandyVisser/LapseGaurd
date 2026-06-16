@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 import re
+import uuid
 from datetime import date, timedelta
 from typing import List, Optional
 
@@ -39,6 +40,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connection):
+    # Reject malformed ids (e.g. the "__all__" sentinel) up front so they never
+    # reach a UUID-typed query and blow up as a 500.
+    try:
+        uuid.UUID(str(hoa_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="HOA not found")
     if user.role == "super_user":
         return
     if user.role == "property_manager":
