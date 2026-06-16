@@ -463,7 +463,11 @@ export default function AdminDocuments() {
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                 onChange={e => setFile(e.target.files[0] || null)}
-                className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className={`w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
+                  file
+                    ? 'file:bg-green-100 file:text-green-800 hover:file:bg-green-200'
+                    : 'file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200'
+                }`}
               />
               {file && <p className="text-xs text-slate-500 mt-1">{file.name}</p>}
             </div>
