@@ -16,10 +16,17 @@ from pydantic import BaseModel, EmailStr
 
 from models.db import get_conn
 from fastapi import BackgroundTasks
-from services.email import send_email, invite_email_html, welcome_admin_html
+from services.email import (
+    send_email, invite_email_html, welcome_admin_html,
+    new_association_notification_html,
+)
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+# Internal heads-up when a new association signs up. Override in Railway if the
+# recipient ever changes.
+SIGNUP_ALERT_EMAIL = os.environ.get("SIGNUP_ALERT_EMAIL", "troy.visser@gmail.com")
 
 router = APIRouter()
 
@@ -128,6 +135,13 @@ async def signup_association(
 
     subject, html = welcome_admin_html(body.admin_name, body.association_name)
     background_tasks.add_task(send_email, body.email, subject, html)
+
+    # Internal heads-up that a new association joined
+    if SIGNUP_ALERT_EMAIL:
+        alert_subject, alert_html = new_association_notification_html(
+            body.association_name, body.address, body.admin_name, body.email,
+        )
+        background_tasks.add_task(send_email, SIGNUP_ALERT_EMAIL, alert_subject, alert_html)
 
     return {"hoa_id": hoa_id, "user_id": user_id}
 

@@ -676,6 +676,35 @@ def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
     return subject, html
 
 
+def new_association_notification_html(
+    association_name: str,
+    address: str,
+    admin_name: str,
+    admin_email: str,
+) -> tuple[str, str]:
+    """Internal heads-up email when a new association signs up."""
+    subject = f"🎉 New association joined: {association_name}"
+    rows = [
+        ("Association", association_name),
+        ("Address", address or "—"),
+        ("Admin", admin_name or "—"),
+        ("Admin email", admin_email),
+    ]
+    cells = "".join(
+        f"<tr>"
+        f"<td style='padding:4px 12px 4px 0;color:#6b7280;font-size:14px;white-space:nowrap;vertical-align:top'>{label}</td>"
+        f"<td style='padding:4px 0;color:#111827;font-size:14px'>{value}</td>"
+        f"</tr>"
+        for label, value in rows
+    )
+    html = f"""
+    <html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
+      <p style="color:#111827;font-size:16px;font-weight:600;margin:0 0 12px">A new association just signed up</p>
+      <table cellpadding="0" cellspacing="0" style="border-collapse:collapse">{cells}</table>
+    </body></html>"""
+    return subject, html
+
+
 def policy_upload_notification_html(
     tenant_name: str,
     unit_number: str,
