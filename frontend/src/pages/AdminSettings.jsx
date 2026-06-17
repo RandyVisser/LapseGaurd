@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { apiGet, apiPut, apiPost, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import BillingPanel from '../components/BillingPanel'
+
+// Billing stays hidden until switched on (set VITE_BILLING_ENABLED=true).
+const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true'
 
 const HOA_FIELD_OPTIONS = {
   name: { label: 'Association Name', key: 'name' },
@@ -615,6 +619,8 @@ export default function AdminSettings() {
             </div>
           </div>
         )}
+
+        {BILLING_ENABLED && !loading && form && <BillingPanel hoaId={hoaId} />}
 
         {/* Deleting an association is staff-only — a churned customer's data is
             retained (not destroyed) so they can be reactivated if they return. */}
