@@ -29,9 +29,6 @@ Do these **before** you hit record so the take is clean:
 4. **Pick a clean association name** you'll type at signup: **`Sunset Villas Condominium Association`**.
 5. **Zoom the browser to ~110–125%** so text is legible in the recording, and hide your
    bookmarks bar / personal tabs.
-6. **Heads-up (see "Known gotchas" at the bottom):** after signup the screen says "check
-   your email for a verification link" — no such email is sent, the account is active
-   immediately. Just go to **Sign in**. Don't wait for an email here.
 
 ---
 
@@ -58,7 +55,8 @@ Do these **before** you hit record so the take is clean:
 the property address, and set the insurance requirements every owner has to meet — minimum
 dwelling and liability coverage, and wind coverage, which matters here in Florida."
 
-> After submit you'll see a "Check your email" screen. **Skip it** — click **Go to sign in**.
+> After submit you'll see a "Your account is ready" screen. Click **Sign in** — the account is
+> active immediately, no email confirmation needed.
 
 ---
 
@@ -205,9 +203,6 @@ automatically. That's condo.insure — every owner's insurance, tracked and veri
 
 ## Known gotchas (fix or film around these)
 
-- **"Check your email" after signup is misleading.** The account is created already-confirmed,
-  so no verification email is sent — just go straight to **Sign in**. (Ask the dev to update
-  that success-screen copy if you want the demo to match the words on screen.)
 - **The owner invite needs a real inbox.** Demo emails in the CSV (`*.demo@gmail.com`) won't
   reach you. Swap Unit 204's email for a real alias before recording (see checklist #2).
 - **AI parsing takes ~10–30s.** Don't cut immediately after Submit — let the banner go from

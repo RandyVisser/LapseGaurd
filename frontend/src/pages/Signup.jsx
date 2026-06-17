@@ -47,12 +47,16 @@ export default function Signup() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md text-center">
-          <div className="text-4xl mb-4">📬</div>
-          <h1 className="text-2xl font-bold text-blue-800 mb-2">Check your email</h1>
+          <div className="text-4xl mb-4">🎉</div>
+          <h1 className="text-2xl font-bold text-blue-800 mb-2">Your account is ready</h1>
           <p className="text-slate-600 mb-6">
-            We sent a verification link to <strong>{form.email}</strong>. Click it to activate your account, then sign in.
+            Sign in with <strong>{form.email}</strong> and the password you just set to start
+            setting up {form.association_name || 'your association'}.
           </p>
-          <Link to="/login" className="text-blue-600 hover:underline text-sm">Go to sign in →</Link>
+          <Link to="/login"
+            className="inline-block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-6 rounded-lg text-sm">
+            Sign in →
+          </Link>
         </div>
       </div>
     )
