@@ -272,6 +272,9 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
 
   async function handleFileChange(e) {
     const file = e.target.files?.[0]
+    // Clear the input value so picking the *same* file again still fires
+    // onChange (otherwise a retry after an error appears to do nothing)
+    e.target.value = ''
     if (!file) return
     setUploading(true); setUploadErr('')
     try {
