@@ -23,8 +23,8 @@ Everything you need to record the two-sided product demo (manager + unit owner).
   makes the hand-off obvious. A lower-third caption works too.
 
 **Show the invite email arriving.**
-- Easiest: set Unit 204's email to a Gmail **`you+demo204@gmail.com`** alias — it lands in your
-  normal inbox but reads as a distinct owner address.
+- Unit 204's email is already set to **`troy@universalcondo.com`** — that's where the invite
+  lands. Have that inbox open on camera (or swap it for a Gmail `you+demo204@gmail.com` alias).
 - Don't want to show a real inbox? Preview the exact email from the manager side first
   (**Settings → Email Previews → Invite**), then cut to the real click-through. The invite link
   only exists in the delivered email, so you still need to receive one to open `/join/...`.
@@ -48,6 +48,6 @@ Everything you need to record the two-sided product demo (manager + unit owner).
 ## Quick start
 
 1. Open `walkthrough-script.md` and skim the **Pre-production checklist**.
-2. Edit `sample-units.csv` → set **Unit 204's** email to a real inbox you control.
+2. Confirm you can open **Unit 204's** inbox (`troy@universalcondo.com`) on camera.
 3. Record Act 1 (manager) then Act 2 (owner), following the scenes.
 4. Delete the demo association afterward.

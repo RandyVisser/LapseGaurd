@@ -18,10 +18,10 @@ Do these **before** you hit record so the take is clean:
    - Window A = the manager (Maria's *association*).
    - Window B = the unit owner (Maria Garcia). Keeping them separate avoids session
      collisions and makes the "two sides" obvious on screen.
-2. **A real inbox you control for the owner.** Open `demo/sample-units.csv` and change
-   **Unit 204's** `Owner Email` from `maria.garcia.demo@gmail.com` to an address you can
-   actually open on camera (a `you+demo204@gmail.com` alias is perfect — it lands in your
-   normal Gmail). The invite link is emailed, so you need to receive it.
+2. **A real inbox you control for the owner.** Unit 204's `Owner Email` in
+   `demo/sample-units.csv` is already set to **`troy@universalcondo.com`** — make sure you can
+   open that inbox on camera, since the invite link is emailed there. (Swap it for a different
+   address if you'd rather receive the invite somewhere else.)
 3. **Assets ready on the desktop:**
    - `demo/sample-units.csv` — the owner list to import.
    - `demo/sample-dec-page.pdf` — Maria Garcia's HO-6 declaration page to upload (it's
