@@ -128,9 +128,13 @@ export default function TenantDashboard() {
       if (file) {
         const ext = file.name.split('.').pop()
         const path = `${unitId}/${Date.now()}.${ext}`
+        // Path is timestamp-unique, so no upsert needed. upsert:true sends
+        // x-upsert, which makes Storage require UPDATE permission on top of
+        // INSERT — and only an INSERT RLS policy exists, so it 403s ("new row
+        // violates row-level security policy") and blocks every owner upload.
         const { error: uploadErr } = await supabase.storage
           .from('policy-documents')
-          .upload(path, file, { upsert: true })
+          .upload(path, file, { upsert: false })
         if (uploadErr) throw new Error(uploadErr.message)
         const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
         document_url = data.publicUrl
