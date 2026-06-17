@@ -64,6 +64,9 @@ export default function TenantDashboard() {
   const [success, setSuccess] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const pollRef = useRef(null)
+  const isMobile = useIsMobile()
+  // Collapses to a corner pill on mobile so it doesn't cover the page
+  const [helperExpanded, setHelperExpanded] = useState(false)
 
   useEffect(() => {
     if (!unitId) return
@@ -187,9 +190,6 @@ export default function TenantDashboard() {
   )
 
   // ── Next-steps helper box ─────────────────────────────────────────────
-  // Collapses to a corner pill on mobile so it doesn't cover the page
-  const isMobile = useIsMobile()
-  const [helperExpanded, setHelperExpanded] = useState(false)
   const nextSteps = []
   if (!policyLoading) {
     if (parsing) {
