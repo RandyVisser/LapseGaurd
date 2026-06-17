@@ -136,12 +136,24 @@ async def signup_association(
     subject, html = welcome_admin_html(body.admin_name, body.association_name)
     background_tasks.add_task(send_email, body.email, subject, html)
 
-    # Internal heads-up that a new association joined
-    if SIGNUP_ALERT_EMAIL:
+    # Internal heads-up that a new association joined — notify every super-user
+    # (both founders) plus any configured alert address, deduped. A notification
+    # problem must never fail the signup, so this is best-effort.
+    try:
         alert_subject, alert_html = new_association_notification_html(
             body.association_name, body.address, body.admin_name, body.email,
         )
-        background_tasks.add_task(send_email, SIGNUP_ALERT_EMAIL, alert_subject, alert_html)
+        su_rows = await conn.fetch(
+            "SELECT email FROM auth.users WHERE raw_app_meta_data->>'role' = 'super_user' AND email IS NOT NULL"
+        )
+        recipients = {r["email"] for r in su_rows}
+        if SIGNUP_ALERT_EMAIL:
+            recipients.add(SIGNUP_ALERT_EMAIL)
+        for to in recipients:
+            background_tasks.add_task(send_email, to, alert_subject, alert_html)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to queue new-association alert for %s", hoa_id)
 
     return {"hoa_id": hoa_id, "user_id": user_id}
 
