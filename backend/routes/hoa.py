@@ -801,7 +801,12 @@ async def delete_hoa(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Delete an association and everything under it. Units cascade to their
-    tenants/policies/invites; documents and PM links are removed explicitly."""
+    tenants/policies/invites; documents and PM links are removed explicitly.
+
+    Staff-only: a churned customer's association is retained (so they can be
+    reactivated), never self-deleted. Only super_users may remove one."""
+    if user.role != "super_user":
+        raise HTTPException(status_code=403, detail="Only condo.insure staff can delete an association.")
     await _assert_hoa_access(user, hoa_id, conn)
     hoa = await conn.fetchrow("SELECT name FROM hoas WHERE id = $1", hoa_id)
     if not hoa:

@@ -616,7 +616,9 @@ export default function AdminSettings() {
           </div>
         )}
 
-        {!loading && form && (
+        {/* Deleting an association is staff-only — a churned customer's data is
+            retained (not destroyed) so they can be reactivated if they return. */}
+        {!loading && form && role === 'super_user' && (
           <div className="bg-white rounded-xl border border-red-200 shadow-sm p-6 mt-6">
             <p className="font-semibold text-red-700">Danger Zone</p>
             <p className="text-xs text-slate-500 mt-1 mb-3">
