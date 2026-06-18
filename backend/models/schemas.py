@@ -110,6 +110,7 @@ class UnitComplianceOut(BaseModel):
     invite_sent: bool = False
     account_status: str = "not_invited"  # verified | invited | not_invited
     email_bounced: bool = False
+    is_admin: bool = False  # this unit-owner's email matches the association admin
 
 
 class ComplianceSummary(BaseModel):

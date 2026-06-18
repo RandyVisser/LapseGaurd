@@ -88,6 +88,23 @@ function TitlePill({ title }) {
   )
 }
 
+// Board cell: the board title (if any) plus an "Admin" badge when this
+// unit-owner is the association's admin account (email matches admin_email)
+function BoardCell({ unit }) {
+  if (!unit.assoc_title && !unit.is_admin) return <span className="text-slate-400">—</span>
+  return (
+    <span className="flex items-center gap-1.5 flex-wrap">
+      {unit.assoc_title && <TitlePill title={unit.assoc_title} />}
+      {unit.is_admin && (
+        <span title="Association admin — manages this account"
+          className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-100 text-blue-800 border-blue-300">
+          Admin
+        </span>
+      )}
+    </span>
+  )
+}
+
 // Where an owner is in the onboarding funnel: invited → signed up → (bounced)
 function OwnerStatusBadge({ status, bounced }) {
   if (bounced) return (
@@ -107,7 +124,7 @@ function OwnerStatusBadge({ status, bounced }) {
 const COLUMNS = [
   { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
   { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
-  { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
+  { key: 'assoc_title',            label: 'Board',                 render: u => <BoardCell unit={u} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
@@ -1281,6 +1298,9 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
                         {u.assoc_title && <TitlePill title={u.assoc_title} />}
+                        {u.is_admin && (
+                          <span title="Association admin" className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-100 text-blue-800 border-blue-300">Admin</span>
+                        )}
                       </div>
                       <p className="text-sm text-slate-500 truncate">
                         {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}

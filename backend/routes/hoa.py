@@ -341,7 +341,8 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, admin_email FROM hoas WHERE id = $1", hoa_id) or {})
+    admin_email = (hoa_reqs.pop("admin_email", None) or "").strip().lower()
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
@@ -374,6 +375,10 @@ async def list_units(
             account_status=("verified" if r["has_account"]
                             else "invited" if r["has_invite"] else "not_invited"),
             email_bounced=r["email_bounced"],
+            is_admin=bool(admin_email) and admin_email in {
+                (r["email_primary"] or "").strip().lower(),
+                (r["email_secondary"] or "").strip().lower(),
+            },
         )
         for r in rows
     ]
