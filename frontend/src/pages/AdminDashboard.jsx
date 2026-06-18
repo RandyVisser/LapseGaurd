@@ -155,8 +155,8 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
   const policiesReceived = summary.total_units - summary.missing
   const steps = [
     {
-      title: 'Add your units',
-      detail: 'Import your unit list from a CSV or Excel file, or add units one at a time.',
+      title: 'Review Units and Add Emails',
+      detail: 'Review the units in your association and add unit-owner email addresses so you can invite them. You can also import or add units from a CSV.',
       done: summary.total_units > 0,
       action: { label: 'Import units', onClick: onImportClick },
     },
