@@ -9,6 +9,7 @@ export default function Signup() {
     admin_name: '', email: '', password: '',
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
+    certify_authorized: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -221,6 +222,17 @@ export default function Signup() {
               Require association to be listed as additional interest on the policy
             </label>
           </div>
+
+          <label className="flex items-start gap-2 text-sm text-slate-600 pt-2 border-t border-slate-200">
+            <input
+              type="checkbox"
+              required
+              checked={form.certify_authorized}
+              onChange={e => setForm(f => ({ ...f, certify_authorized: e.target.checked }))}
+              className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+            />
+            <span>I certify that I am authorized by the Association to enroll this Association in condo.insure and to provide access to Association insurance compliance records.</span>
+          </label>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
