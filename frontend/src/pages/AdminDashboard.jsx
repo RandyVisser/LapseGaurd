@@ -454,6 +454,7 @@ export default function AdminDashboard() {
   const [importOpen, setImportOpen] = useState(false)
   const [addEmailsOpen, setAddEmailsOpen] = useState(false)
   const [invitingAll, setInvitingAll] = useState(false)
+  const [invitingAdmin, setInvitingAdmin] = useState(false)
   const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
@@ -713,6 +714,18 @@ export default function AdminDashboard() {
     finally { setInvitingAll(false) }
   }
 
+  async function handleInviteAdmin() {
+    if (!hoaId || hoaId === ALL_HOAS) return
+    if (!window.confirm("Invite this association's admin? They'll get an email to set their password and access the dashboard.")) return
+    setInvitingAdmin(true); setInviteAllMsg('')
+    try {
+      const r = await apiPost(`/hoa/${hoaId}/invite-admin`, {})
+      setInviteAllMsg(`Admin invited — set-up email sent to ${r.email}.`)
+      setTimeout(() => setInviteAllMsg(''), 8000)
+    } catch (e) { setError(e.message) }
+    finally { setInvitingAdmin(false) }
+  }
+
   async function handleSendBoardReport() {
     if (!hoaId || hoaId === '__all__') return
     setSendingReport(true)
@@ -885,6 +898,15 @@ export default function AdminDashboard() {
                 >
                   Add emails
                 </button>
+                {(role === 'super_user' || role === 'property_manager') && (
+                  <button
+                    onClick={handleInviteAdmin}
+                    disabled={invitingAdmin || !hoaId || hoaId === '__all__'}
+                    className={TOOLBAR_BTN}
+                  >
+                    {invitingAdmin ? 'Inviting…' : 'Invite admin'}
+                  </button>
+                )}
                 <button
                   onClick={handleInviteAll}
                   disabled={invitingAll || !hoaId || hoaId === '__all__'}

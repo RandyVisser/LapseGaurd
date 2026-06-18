@@ -5,17 +5,19 @@ Public onboarding routes — no auth required.
   POST /invite/{token}       — tenant accepts invite, creates account
 """
 import os
+import secrets
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 import asyncpg
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
+from auth.jwt import AuthUser, require_hoa_admin
 from models.db import get_conn
-from fastapi import BackgroundTasks
+from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
     new_association_notification_html,
@@ -23,6 +25,7 @@ from services.email import (
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
 # Internal heads-up when a new association signs up. Override in Railway if the
 # recipient ever changes.
@@ -98,6 +101,40 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict, *
     return resp.json()["id"]
 
 
+async def _generate_recovery_link(email: str) -> str | None:
+    """Ask Supabase for a set-password (recovery) link that lands the user on the
+    app's /reset-password page. Used to let an invited admin set their password."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{SUPABASE_URL}/auth/v1/admin/generate_link",
+            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+            json={"type": "recovery", "email": email, "redirect_to": f"{APP_URL}/reset-password"},
+        )
+    if resp.status_code in (200, 201):
+        data = resp.json()
+        return data.get("action_link") or (data.get("properties") or {}).get("action_link")
+    return None
+
+
+async def _queue_new_association_alert(conn, background_tasks, hoa_id, name, address, admin_name, email):
+    """Best-effort internal heads-up: notify every super-user plus the configured
+    alert address (deduped). Never raises — a notification problem must not fail
+    the caller."""
+    try:
+        subject, html = new_association_notification_html(name, address, admin_name, email)
+        su_rows = await conn.fetch(
+            "SELECT email FROM auth.users WHERE raw_app_meta_data->>'role' = 'super_user' AND email IS NOT NULL"
+        )
+        recipients = {r["email"] for r in su_rows}
+        if SIGNUP_ALERT_EMAIL:
+            recipients.add(SIGNUP_ALERT_EMAIL)
+        for to in recipients:
+            background_tasks.add_task(send_email, to, subject, html)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to queue new-association alert for %s", hoa_id)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.post("/onboard/association", status_code=201)
@@ -144,26 +181,55 @@ async def signup_association(
         subject, html = welcome_admin_html(body.admin_name, body.association_name)
         background_tasks.add_task(send_email, body.email, subject, html)
 
-    # Internal heads-up that a new association joined — notify every super-user
-    # (both founders) plus any configured alert address, deduped. A notification
-    # problem must never fail the signup, so this is best-effort.
-    try:
-        alert_subject, alert_html = new_association_notification_html(
-            body.association_name, body.address, body.admin_name, body.email,
-        )
-        su_rows = await conn.fetch(
-            "SELECT email FROM auth.users WHERE raw_app_meta_data->>'role' = 'super_user' AND email IS NOT NULL"
-        )
-        recipients = {r["email"] for r in su_rows}
-        if SIGNUP_ALERT_EMAIL:
-            recipients.add(SIGNUP_ALERT_EMAIL)
-        for to in recipients:
-            background_tasks.add_task(send_email, to, alert_subject, alert_html)
-    except Exception:
-        import logging
-        logging.getLogger(__name__).exception("Failed to queue new-association alert for %s", hoa_id)
+    await _queue_new_association_alert(
+        conn, background_tasks, hoa_id,
+        body.association_name, body.address, body.admin_name, body.email,
+    )
 
     return {"hoa_id": hoa_id, "user_id": user_id}
+
+
+@router.post("/hoa/{hoa_id}/invite-admin")
+async def invite_admin(
+    hoa_id: str,
+    background_tasks: BackgroundTasks,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Give the association's admin a login once their data is preloaded: create
+    their hoa_admin account (if needed), email them a welcome with a set-password
+    link, and fire the internal new-association alert."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    hoa = await conn.fetchrow("SELECT name, address, admin_email FROM hoas WHERE id = $1", hoa_id)
+    if hoa is None:
+        raise HTTPException(status_code=404, detail="Association not found")
+    admin_email = (hoa["admin_email"] or "").strip()
+    if not admin_email:
+        raise HTTPException(status_code=400, detail="No admin email on file for this association. Add one first.")
+
+    # Create the admin login if it doesn't exist yet. They'll set their own
+    # password via the recovery link below, so we seed a throwaway one.
+    try:
+        await _create_supabase_user(
+            admin_email,
+            secrets.token_urlsafe(24),
+            {"role": "hoa_admin", "hoa_id": hoa_id},
+            email_confirm=True,
+        )
+    except HTTPException as e:
+        # Already registered is fine — we just (re)send the set-password link.
+        if "already" not in str(e.detail).lower() and "registered" not in str(e.detail).lower():
+            raise
+
+    setup_url = await _generate_recovery_link(admin_email)
+    subject, html = welcome_admin_html(hoa["name"], hoa["name"], setup_url=setup_url)
+    background_tasks.add_task(send_email, admin_email, subject, html)
+
+    await _queue_new_association_alert(
+        conn, background_tasks, hoa_id, hoa["name"], hoa["address"], hoa["name"], admin_email,
+    )
+
+    return {"invited": True, "email": admin_email}
 
 
 @router.get("/invite/{token}")

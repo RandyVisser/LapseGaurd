@@ -635,18 +635,27 @@ def _step(num: str, title: str, desc: str) -> str:
     </tr>"""
 
 
-def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
+def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = None) -> tuple[str, str]:
     subject = f"Welcome to condo.insure — let's get {hoa_name} set up"
-    dashboard_url = f"{APP_URL}/admin/dashboard"
+    # setup_url => invited admin who must set a password first; otherwise they
+    # already have a login and can go straight to the dashboard.
+    cta_url = setup_url or f"{APP_URL}/admin/dashboard"
+    cta_label = "Set your password & sign in" if setup_url else "Go to your dashboard"
+    greeting = (admin_name or "").strip() or "there"
+    ready_line = (
+        f"Your association <strong>{hoa_name}</strong> is set up and ready. Set your password to sign in and take a look:"
+        if setup_url else
+        f"Your account for <strong>{hoa_name}</strong> is ready — you can sign in right now. "
+        "Here's the quickest path to a compliance dashboard that keeps itself up to date:"
+    )
     html = f"""
     <html><body style="margin:0;background:#f1f5f9;
           font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
       <div style="max-width:600px;margin:0 auto;padding:24px 12px">
         {_header()}
-        <p style="color:#111827;font-size:16px;margin:0 0 4px">Hi {admin_name},</p>
+        <p style="color:#111827;font-size:16px;margin:0 0 4px">Hi {greeting},</p>
         <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 8px">
-          Your account for <strong>{hoa_name}</strong> is ready — you can sign in right now.
-          Here's the quickest path to a compliance dashboard that keeps itself up to date:
+          {ready_line}
         </p>
 
         <table cellpadding="0" cellspacing="0" style="width:100%;margin:18px 0">
@@ -665,7 +674,7 @@ def welcome_admin_html(admin_name: str, hoa_name: str) -> tuple[str, str]:
                  "and flag anything that's missing, expiring, or non-compliant — automatically.")}
         </table>
 
-        {_btn(dashboard_url, "Go to your dashboard")}
+        {_btn(cta_url, cta_label)}
 
         <p style="color:#9ca3af;font-size:13px;line-height:1.5;margin:16px 0 0">
           Questions while you're getting set up? Just reply to this email.
