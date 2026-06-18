@@ -148,12 +148,12 @@ async def signup_association(
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
-        """INSERT INTO hoas (id, name, address, admin_email, unit_count, has_owner_emails,
+        """INSERT INTO hoas (id, name, address, admin_email, admin_name, unit_count, has_owner_emails,
                ho6_coverage_a_min, ho6_coverage_e_min,
                ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required,
                ho6_named_insured_match_required, ho6_property_address_match_required)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)""",
-        hoa_id, body.association_name, body.address, body.email,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)""",
+        hoa_id, body.association_name, body.address, body.email, body.admin_name,
         body.unit_count, body.has_owner_emails,
         body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
         body.ho6_additional_interest_required, body.ho6_policy_in_force_required,
@@ -200,7 +200,7 @@ async def invite_admin(
     their hoa_admin account (if needed), email them a welcome with a set-password
     link, and fire the internal new-association alert."""
     await _assert_hoa_access(user, hoa_id, conn)
-    hoa = await conn.fetchrow("SELECT name, address, admin_email FROM hoas WHERE id = $1", hoa_id)
+    hoa = await conn.fetchrow("SELECT name, address, admin_email, admin_name FROM hoas WHERE id = $1", hoa_id)
     if hoa is None:
         raise HTTPException(status_code=404, detail="Association not found")
     admin_email = (hoa["admin_email"] or "").strip()
@@ -222,11 +222,11 @@ async def invite_admin(
             raise
 
     setup_url = await _generate_recovery_link(admin_email)
-    subject, html = welcome_admin_html(hoa["name"], hoa["name"], setup_url=setup_url)
+    subject, html = welcome_admin_html(hoa["admin_name"] or "", hoa["name"], setup_url=setup_url)
     background_tasks.add_task(send_email, admin_email, subject, html)
 
     await _queue_new_association_alert(
-        conn, background_tasks, hoa_id, hoa["name"], hoa["address"], hoa["name"], admin_email,
+        conn, background_tasks, hoa_id, hoa["name"], hoa["address"], hoa["admin_name"] or "", admin_email,
     )
 
     return {"invited": True, "email": admin_email}
