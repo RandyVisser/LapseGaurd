@@ -51,12 +51,12 @@ export default function Landing() {
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
         <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 leading-tight">
-          Insurance compliance,<br />
+          Unit-owner insurance compliance,<br />
           <span className="text-blue-700">handled for your association.</span>
         </h1>
         <p className="mt-6 text-lg text-slate-500 max-w-2xl mx-auto">
-          condo.insure helps condo associations track unit owner insurance policies,
-          send automated renewal reminders, and verify dec pages — all in one place.
+          condo.insure helps condo associations track unit-owner insurance policies,
+          send automated renewal reminders, and verify declaration pages — all in one simple dashboard.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <button onClick={() => navigate('/signup')}
@@ -78,8 +78,8 @@ export default function Landing() {
             desc="Create your account, add your association name and address. Takes 60 seconds." />
           <Step number="2" title="Add your units and invite owners"
             desc="Add each unit number and send owners a personalized invite link by email." />
-          <Step number="3" title="Owners upload their dec pages"
-            desc="Each owner creates an account, uploads their insurance declaration page, and stays compliant." />
+          <Step number="3" title="Owners upload their declaration pages"
+            desc="Each owner creates an account, uploads their insurance declaration page, and receives reminders to stay compliant." />
           <Step number="4" title="You get a real-time compliance dashboard"
             desc="See who's active, expiring, or lapsed at a glance. Send reminders in one click." />
         </div>
@@ -93,10 +93,10 @@ export default function Landing() {
             desc="See every unit's insurance status at a glance — active, expiring, lapsed, or missing." />
           <Feature title="Automated renewal alerts"
             desc="Owners get email reminders before their policy lapses. No more manual follow-ups." />
-          <Feature title="AI dec page verification"
-            desc="Uploaded policies are automatically parsed and verified against submitted details." />
+          <Feature title="AI-assisted declaration page review"
+            desc="Uploaded declaration pages are parsed and checked against the association's insurance requirements." />
           <Feature title="Document center"
-            desc="Store and share association documents — wind mitigation reports, bylaws, and more." />
+            desc="Store shared association insurance documents — wind mitigation reports, master policy evidence, flood declaration pages, elevation certificates, bylaws, and more." />
           <Feature title="One-click owner invites"
             desc="Send personalized signup links to each unit owner. They're linked to their unit automatically." />
           <Feature title="Multi-association ready"
@@ -108,7 +108,7 @@ export default function Landing() {
       <section className="bg-blue-800 py-16 mt-8">
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-2xl font-bold text-white mb-4">
-            Ready to get your association compliant?
+            Ready to simplify unit-owner insurance compliance?
           </h2>
           <p className="text-blue-200 mb-8">
             Set up your association in minutes. No credit card required.
