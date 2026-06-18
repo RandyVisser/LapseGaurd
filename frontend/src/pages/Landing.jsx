@@ -76,11 +76,13 @@ export default function Landing() {
         <div className="space-y-8">
           <Step number="1" title="Sign up your association"
             desc="Create your account, add your association name and address. Takes 60 seconds." />
-          <Step number="2" title="Add your units and invite owners"
-            desc="Add each unit number and send owners a personalized invite link by email." />
-          <Step number="3" title="Owners upload their declaration pages"
+          <Step number="2" title="We build out your association"
+            desc="We use property-assessor records to build out your association automatically. Once it's ready, you'll get an invite to view your dashboard." />
+          <Step number="3" title="Review owner list, add emails, invite unit-owners"
+            desc="Review the owner list we built, fill in any missing email addresses, and send each unit-owner a personalized invite link." />
+          <Step number="4" title="Owners upload their declaration pages"
             desc="Each owner creates an account, uploads their insurance declaration page, and receives reminders to stay compliant." />
-          <Step number="4" title="You get a real-time compliance dashboard"
+          <Step number="5" title="You get a real-time compliance dashboard"
             desc="See who's active, expiring, or lapsed at a glance. Send reminders in one click." />
         </div>
       </section>
