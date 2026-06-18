@@ -7,7 +7,7 @@ import useIsMobile from '../hooks/useIsMobile'
 // Default to the agency quote page, but let VITE_QUOTE_FORM_URL override so a
 // real lead-capture form (with the owner/unit/HOA prefilled) can be swapped in
 // without a code change.
-const QUOTE_FORM_URL = import.meta.env.VITE_QUOTE_FORM_URL || 'https://www.universalcondo.com/quote'
+const QUOTE_FORM_URL = (import.meta.env.VITE_QUOTE_FORM_URL || 'https://www.universalcondo.com/quote').trim()
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
