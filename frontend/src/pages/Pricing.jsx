@@ -43,7 +43,7 @@ export default function Pricing() {
           Simple, transparent pricing
         </h1>
         <p className="mt-4 text-lg text-slate-500">
-          One plan with everything included. Pay only for the units you track, with no setup fees and no surprises.
+          One plan with everything included — no setup fees and no surprises.
         </p>
       </section>
 
