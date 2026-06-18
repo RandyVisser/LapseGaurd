@@ -54,7 +54,10 @@ class AssociationSignup(BaseModel):
     address: str
     admin_name: str
     email: EmailStr
-    password: str
+    # Optional: when present we create the login immediately (future self-signup).
+    # When absent, this is an onboarding request — we capture the association and
+    # the team preloads their data and invites them later.
+    password: str | None = None
     unit_count: int | None = None
     has_owner_emails: bool | None = None
     ho6_coverage_a_min: float | None = None
@@ -120,25 +123,26 @@ async def signup_association(
         body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
     )
 
-    # Create the admin user already confirmed. The Supabase *admin* create-user
-    # endpoint does not send a confirmation email (only the public signup flow
-    # does), so email_confirm=False would leave them unable to sign in — they'd
-    # get "Email not confirmed" with no link to click. Signup is rate-limited
-    # (5/hour/IP) which is the real abuse guard here.
-    try:
-        user_id = await _create_supabase_user(
-            body.email,
-            body.password,
-            {"role": "hoa_admin", "hoa_id": hoa_id},
-            email_confirm=True,
-        )
-    except HTTPException:
-        # Roll back HOA if user creation fails
-        await conn.execute("DELETE FROM hoas WHERE id = $1", hoa_id)
-        raise
+    # Only create a login when a password was supplied (future self-signup). The
+    # admin create-user endpoint sends no confirmation email, so email_confirm=True
+    # lets them sign in immediately. Without a password this is an onboarding
+    # request: we keep the HOA record and the team builds it out + invites them.
+    user_id = None
+    if body.password:
+        try:
+            user_id = await _create_supabase_user(
+                body.email,
+                body.password,
+                {"role": "hoa_admin", "hoa_id": hoa_id},
+                email_confirm=True,
+            )
+        except HTTPException:
+            # Roll back HOA if user creation fails
+            await conn.execute("DELETE FROM hoas WHERE id = $1", hoa_id)
+            raise
 
-    subject, html = welcome_admin_html(body.admin_name, body.association_name)
-    background_tasks.add_task(send_email, body.email, subject, html)
+        subject, html = welcome_admin_html(body.admin_name, body.association_name)
+        background_tasks.add_task(send_email, body.email, subject, html)
 
     # Internal heads-up that a new association joined — notify every super-user
     # (both founders) plus any configured alert address, deduped. A notification

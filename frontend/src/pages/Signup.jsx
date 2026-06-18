@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_URL || '/api'
 export default function Signup() {
   const [form, setForm] = useState({
     association_name: '', address: '', unit_count: '', has_owner_emails: '',
-    admin_name: '', email: '', password: '',
+    admin_name: '', email: '',
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
     certify_authorized: false,
@@ -68,16 +68,13 @@ export default function Signup() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md text-center">
-          <div className="text-4xl mb-4">🎉</div>
-          <h1 className="text-2xl font-bold text-blue-800 mb-2">Your account is ready</h1>
+          <div className="text-4xl mb-4">📬</div>
+          <h1 className="text-2xl font-bold text-blue-800 mb-2">Thanks — we're setting up your association</h1>
           <p className="text-slate-600 mb-6">
-            Sign in with <strong>{form.email}</strong> and the password you just set to start
-            setting up {form.association_name || 'your association'}.
+            We're building out {form.association_name || 'your association'} now. You'll get an
+            email at <strong>{form.email}</strong> when your dashboard is ready.
           </p>
-          <Link to="/login"
-            className="inline-block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-6 rounded-lg text-sm">
-            Sign in →
-          </Link>
+          <Link to="/" className="text-blue-600 hover:underline text-sm">← Back to home</Link>
         </div>
       </div>
     )
@@ -88,7 +85,7 @@ export default function Signup() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-xl">
         <Link to="/" className="text-sm text-blue-600 hover:underline mb-6 block">← Back</Link>
         <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your association</h1>
-        <p className="text-sm text-slate-500 mb-6">Create your condo.insure account</p>
+        <p className="text-sm text-slate-500 mb-6">Tell us about your association and we'll build it out and email you when it's ready.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
@@ -139,7 +136,6 @@ export default function Signup() {
           {[
             { label: 'Your Name', key: 'admin_name', placeholder: 'Jane Smith' },
             { label: 'Email', key: 'email', placeholder: 'jane@example.com', type: 'email' },
-            { label: 'Password', key: 'password', placeholder: '••••••••', type: 'password', hint: 'Minimum 8 characters' },
           ].map(renderField)}
 
           <div className="pt-2 border-t border-slate-200">
@@ -238,7 +234,7 @@ export default function Signup() {
 
           <button type="submit" disabled={loading}
             className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-60">
-            {loading ? 'Creating account…' : 'Create Account'}
+            {loading ? 'Submitting…' : 'Get Started'}
           </button>
         </form>
 
