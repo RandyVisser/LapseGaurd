@@ -222,7 +222,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onAddEma
       </div>
       <ol className="flex overflow-x-auto divide-x divide-slate-100">
         {steps.map((step, i) => (
-          <li key={step.title} className={`px-5 py-4 flex-shrink-0 w-64 ${step.done ? 'bg-slate-50/50' : ''}`}>
+          <li key={step.title} className={`px-5 py-4 flex-1 min-w-[15rem] ${step.done ? 'bg-slate-50/50' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
                 step.done ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
