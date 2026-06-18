@@ -171,7 +171,9 @@ export default function TenantDashboard() {
     ? (policy.extracted_data.validation.flags || [])
     : []
   const needsQuote = !policy || status === 'lapsed' || status === 'missing' || status === 'non_compliant'
-  const quoteUrl = `${QUOTE_FORM_URL}?${new URLSearchParams({
+  // Unit-owner quote button always points to the agency quote page, regardless
+  // of any VITE_QUOTE_FORM_URL override used elsewhere.
+  const quoteUrl = `https://www.universalcondo.com/quote?${new URLSearchParams({
     tenant_name: user?.user_metadata?.name || user?.email || '',
     unit: unitId || '',
     hoa: hoaId || '',
