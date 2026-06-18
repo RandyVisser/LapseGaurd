@@ -55,6 +55,8 @@ class AssociationSignup(BaseModel):
     admin_name: str
     email: EmailStr
     password: str
+    unit_count: int | None = None
+    has_owner_emails: bool | None = None
     ho6_coverage_a_min: float | None = None
     ho6_coverage_e_min: float | None = None
     ho6_wind_required: bool = False
@@ -106,11 +108,13 @@ async def signup_association(
     # Create HOA record
     hoa_id = str(uuid.uuid4())
     await conn.execute(
-        """INSERT INTO hoas (id, name, address, admin_email, ho6_coverage_a_min, ho6_coverage_e_min,
+        """INSERT INTO hoas (id, name, address, admin_email, unit_count, has_owner_emails,
+               ho6_coverage_a_min, ho6_coverage_e_min,
                ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required,
                ho6_named_insured_match_required, ho6_property_address_match_required)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)""",
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)""",
         hoa_id, body.association_name, body.address, body.email,
+        body.unit_count, body.has_owner_emails,
         body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
         body.ho6_additional_interest_required, body.ho6_policy_in_force_required,
         body.ho6_named_insured_match_required, body.ho6_property_address_match_required,

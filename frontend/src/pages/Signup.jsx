@@ -5,7 +5,8 @@ const API = import.meta.env.VITE_API_URL || '/api'
 
 export default function Signup() {
   const [form, setForm] = useState({
-    association_name: '', address: '', admin_name: '', email: '', password: '',
+    association_name: '', address: '', unit_count: '', has_owner_emails: '',
+    admin_name: '', email: '', password: '',
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
   })
@@ -15,6 +16,23 @@ export default function Signup() {
 
   function set(key) {
     return e => setForm(f => ({ ...f, [key]: e.target.value }))
+  }
+
+  function renderField({ label, key, placeholder, type, hint }) {
+    return (
+      <div key={key}>
+        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <input
+          type={type || 'text'}
+          required
+          value={form[key]}
+          onChange={set(key)}
+          placeholder={placeholder}
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+      </div>
+    )
   }
 
   async function handleSubmit(e) {
@@ -29,6 +47,8 @@ export default function Signup() {
           ...form,
           ho6_coverage_a_min: form.ho6_coverage_a_min ? Number(form.ho6_coverage_a_min) : null,
           ho6_coverage_e_min: form.ho6_coverage_e_min ? Number(form.ho6_coverage_e_min) : null,
+          unit_count: form.unit_count ? Number(form.unit_count) : null,
+          has_owner_emails: form.has_owner_emails === 'yes' ? true : form.has_owner_emails === 'no' ? false : null,
         }),
       })
       if (!res.ok) {
@@ -73,23 +93,53 @@ export default function Signup() {
           {[
             { label: 'Association Name', key: 'association_name', placeholder: 'Sunset Villas Condo Association' },
             { label: 'Address', key: 'address', placeholder: '123 Palm Ave, Miami, FL 33101' },
+          ].map(renderField)}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1"># of units in this association</label>
+            <input
+              type="number"
+              min="1"
+              required
+              value={form.unit_count}
+              onChange={set('unit_count')}
+              placeholder="e.g. 48"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Do you have email addresses for your unit-owners?</label>
+            <div className="flex gap-3 mt-1">
+              {['Yes', 'No'].map(opt => {
+                const val = opt.toLowerCase()
+                const active = form.has_owner_emails === val
+                return (
+                  <label key={val}
+                    className={`flex-1 flex items-center justify-center gap-2 border rounded-lg px-3 py-2 text-sm cursor-pointer ${
+                      active ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    }`}>
+                    <input
+                      type="radio"
+                      name="has_owner_emails"
+                      value={val}
+                      checked={active}
+                      onChange={() => setForm(f => ({ ...f, has_owner_emails: val }))}
+                      required
+                      className="sr-only"
+                    />
+                    {opt}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+
+          {[
             { label: 'Your Name', key: 'admin_name', placeholder: 'Jane Smith' },
             { label: 'Email', key: 'email', placeholder: 'jane@example.com', type: 'email' },
             { label: 'Password', key: 'password', placeholder: '••••••••', type: 'password', hint: 'Minimum 8 characters' },
-          ].map(({ label, key, placeholder, type, hint }) => (
-            <div key={key}>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-              <input
-                type={type || 'text'}
-                required
-                value={form[key]}
-                onChange={set(key)}
-                placeholder={placeholder}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
-            </div>
-          ))}
+          ].map(renderField)}
 
           <div className="pt-2 border-t border-slate-200">
             <p className="text-sm font-semibold text-slate-700 mb-1">HO-6 Policy Requirements</p>
