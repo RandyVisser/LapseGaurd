@@ -6,6 +6,9 @@ function NavBar() {
     <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
       <span className="text-xl font-bold text-blue-800">condo.insure</span>
       <div className="flex items-center gap-4">
+        <button onClick={() => navigate('/pricing')} className="text-sm text-slate-600 hover:text-slate-900">
+          Pricing
+        </button>
         <button onClick={() => navigate('/login')} className="text-sm text-slate-600 hover:text-slate-900">
           Sign in
         </button>
