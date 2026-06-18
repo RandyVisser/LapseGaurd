@@ -167,7 +167,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
     },
     {
       title: 'Set your insurance requirements',
-      detail: 'Coverage minimums, wind, and matching rules — the AI checks every uploaded policy against these.',
+      detail: 'Click Settings to amend coverage minimum limits, wind, and matching rules — the AI checks every uploaded policy against these.',
       done: requirementsSet,
       action: { label: 'Open Settings', href: '/admin/settings' },
     },
