@@ -7,6 +7,7 @@ import { apiGet, apiPost, apiPatch, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import ImportWizard from '../components/ImportWizard'
+import AddEmailsWizard from '../components/AddEmailsWizard'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -145,7 +146,7 @@ const GETTING_STARTED_DISMISSED_KEY = 'lapseguard.gettingStarted.dismissed.v1'
 
 // First-run checklist for a brand-new association. Steps check themselves off
 // against live data; the panel disappears once everything is done (or dismissed).
-function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInviteAll, isMobile }) {
+function GettingStartedPanel({ summary, requirementsSet, onImportClick, onAddEmailsClick, onInviteAll, isMobile }) {
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(GETTING_STARTED_DISMISSED_KEY) === 'true' } catch { return false }
   })
@@ -156,9 +157,9 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onInvite
   const steps = [
     {
       title: 'Review Units and Add Emails',
-      detail: 'Review the units in your association and add unit-owner email addresses so you can invite them. You can also import or add units from a CSV.',
+      detail: 'Review the units we built for your association and add unit-owner email addresses so you can invite them. Upload a list and we match it to your units by unit number — no duplicates.',
       done: summary.total_units > 0,
-      action: { label: 'Import units', onClick: onImportClick },
+      action: { label: 'Add emails', onClick: onAddEmailsClick },
     },
     {
       title: 'Add board members & property manager',
@@ -451,6 +452,7 @@ export default function AdminDashboard() {
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [importOpen, setImportOpen] = useState(false)
+  const [addEmailsOpen, setAddEmailsOpen] = useState(false)
   const [invitingAll, setInvitingAll] = useState(false)
   const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -877,6 +879,13 @@ export default function AdminDashboard() {
                   Import units
                 </button>
                 <button
+                  onClick={() => setAddEmailsOpen(true)}
+                  disabled={!hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  Add emails
+                </button>
+                <button
                   onClick={handleInviteAll}
                   disabled={invitingAll || !hoaId || hoaId === '__all__'}
                   className={TOOLBAR_BTN}
@@ -906,6 +915,7 @@ export default function AdminDashboard() {
               return h ? (h.ho6_coverage_a_min != null || h.ho6_coverage_e_min != null) : false
             })()}
             onImportClick={() => setImportOpen(true)}
+            onAddEmailsClick={() => setAddEmailsOpen(true)}
             onInviteAll={handleInviteAll}
             isMobile={isMobile}
           />
@@ -975,6 +985,20 @@ export default function AdminDashboard() {
           <ImportWizard
             hoaId={hoaId}
             onClose={() => setImportOpen(false)}
+            onDone={() => {
+              Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+                .then(([s, u]) => { setSummary(s); setUnits(u) })
+                .catch(() => {})
+            }}
+          />
+        )}
+
+        {/* Add-emails wizard */}
+        {addEmailsOpen && hoaId && hoaId !== '__all__' && (
+          <AddEmailsWizard
+            hoaId={hoaId}
+            existingUnits={units}
+            onClose={() => setAddEmailsOpen(false)}
             onDone={() => {
               Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
                 .then(([s, u]) => { setSummary(s); setUnits(u) })

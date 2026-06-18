@@ -1178,3 +1178,55 @@ async def import_units_commit(
             errors.append({"unit": unit, "reason": "could not import this row"})
             logger.warning("Import commit row failed (unit %s): %s", unit, e)
     return {"inserted": inserted, "skipped": skipped, "errors": errors[:50]}
+
+
+def _norm_unit(s: str | None) -> str:
+    """Normalize a unit number for matching: trim, uppercase, drop a leading
+    APT/UNIT/STE/SUITE/# prefix and stray '#'. So '204', 'Apt 204', '#204' and
+    '204 ' all match the same unit."""
+    s = (s or "").strip().upper()
+    s = re.sub(r"^(APT|UNIT|STE|SUITE|#)\.?\s*", "", s)
+    return s.replace("#", "").strip()
+
+
+@router.post("/hoa/{hoa_id}/units/emails/commit")
+async def add_emails_commit(
+    hoa_id: str,
+    body: ImportCommit,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Fill in unit-owner email addresses on EXISTING units, matched by unit
+    number. Only touches the email columns — never inserts a unit and never
+    changes names, addresses, or anything else. Rows with no matching unit are
+    reported back, not created."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    rows_db = await conn.fetch(
+        "SELECT id, unit_number FROM units WHERE hoa_id = $1 "
+        "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
+    by_norm: dict = {}
+    for r in rows_db:
+        by_norm.setdefault(_norm_unit(r["unit_number"]), r["id"])
+
+    updated = skipped = 0
+    unmatched: list = []
+    for raw in body.rows:
+        norm, _issues = normalize_row(raw, body.mapping)
+        unit = norm.get("unit_number")
+        email_p = (norm.get("email_primary") or "").strip() or None
+        email_s = (norm.get("email_secondary") or "").strip() or None
+        if not unit or (not email_p and not email_s):
+            skipped += 1
+            continue
+        uid = by_norm.get(_norm_unit(unit))
+        if uid is None:
+            unmatched.append(unit)
+            continue
+        if email_p and email_s:
+            await conn.execute("UPDATE units SET email_primary=$2, email_secondary=$3 WHERE id=$1", uid, email_p, email_s)
+        elif email_p:
+            await conn.execute("UPDATE units SET email_primary=$2 WHERE id=$1", uid, email_p)
+        else:
+            await conn.execute("UPDATE units SET email_secondary=$2 WHERE id=$1", uid, email_s)
+        updated += 1
+    return {"updated": updated, "skipped": skipped, "unmatched": unmatched[:50], "unmatched_count": len(unmatched)}
