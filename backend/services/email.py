@@ -4,9 +4,8 @@ import httpx
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
-# Default to the agency quote page (matches the frontend); QUOTE_FORM_URL can
-# override with a real lead-capture form that reads the prefilled params.
-QUOTE_FORM_URL = (os.environ.get("QUOTE_FORM_URL") or "https://www.universalcondo.com/quote").strip()
+# Quote links in emails point at the agency quote page.
+QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 

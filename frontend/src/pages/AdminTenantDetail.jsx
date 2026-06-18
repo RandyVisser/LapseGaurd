@@ -4,10 +4,8 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 import useIsMobile from '../hooks/useIsMobile'
 
-// Default to the agency quote page, but let VITE_QUOTE_FORM_URL override so a
-// real lead-capture form (with the owner/unit/HOA prefilled) can be swapped in
-// without a code change.
-const QUOTE_FORM_URL = (import.meta.env.VITE_QUOTE_FORM_URL || 'https://www.universalcondo.com/quote').trim()
+// Quote button points at the agency quote page.
+const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

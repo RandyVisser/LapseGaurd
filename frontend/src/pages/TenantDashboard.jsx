@@ -7,9 +7,8 @@ import useIsMobile from '../hooks/useIsMobile'
 
 // Owner-facing quote link (revenue lead). Falls back to the same URL the admin
 // page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
-// .trim() guards against a stray newline/space in the env value, which would
-// otherwise corrupt the URL (Typeform bounces malformed links to its explore page).
-const QUOTE_FORM_URL = (import.meta.env.VITE_QUOTE_FORM_URL || 'https://www.universalcondo.com/quote').trim()
+// Quote link points at the agency quote page.
+const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
 
 // One unambiguous answer per status — the page leads with this.
 const STATUS_HERO = {
