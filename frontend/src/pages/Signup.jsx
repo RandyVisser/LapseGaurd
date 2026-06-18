@@ -85,7 +85,7 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-xl">
         <Link to="/" className="text-sm text-blue-600 hover:underline mb-6 block">← Back</Link>
         <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your association</h1>
         <p className="text-sm text-slate-500 mb-6">Create your condo.insure account</p>
