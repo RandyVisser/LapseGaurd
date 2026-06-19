@@ -101,21 +101,6 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict, *
     return resp.json()["id"]
 
 
-async def _generate_recovery_link(email: str) -> str | None:
-    """Ask Supabase for a set-password (recovery) link that lands the user on the
-    app's /reset-password page. Used to let an invited admin set their password."""
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{SUPABASE_URL}/auth/v1/admin/generate_link",
-            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
-            json={"type": "recovery", "email": email, "redirect_to": f"{APP_URL}/reset-password"},
-        )
-    if resp.status_code in (200, 201):
-        data = resp.json()
-        return data.get("action_link") or (data.get("properties") or {}).get("action_link")
-    return None
-
-
 async def _queue_new_association_alert(conn, background_tasks, hoa_id, name, address, admin_name, email):
     """Best-effort internal heads-up: notify every super-user plus the configured
     alert address (deduped). Never raises — a notification problem must not fail
@@ -203,9 +188,10 @@ async def invite_admin(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Give the association's admin a login once their data is preloaded: create
-    their hoa_admin account (if needed), email them a welcome with a set-password
-    link, and fire the internal new-association alert."""
+    """Give the association's admin a login once their data is preloaded: issue a
+    single-use setup token, email a link to the set-password page, and fire the
+    internal new-association alert. The account is created when they submit the
+    form (see accept_admin_invite), so the emailed link is safe to prefetch."""
     await _assert_hoa_access(user, hoa_id, conn)
     hoa = await conn.fetchrow("SELECT name, address, admin_email, admin_name FROM hoas WHERE id = $1", hoa_id)
     if hoa is None:
@@ -219,21 +205,15 @@ async def invite_admin(
     if body.email and admin_email.lower() != (hoa["admin_email"] or "").strip().lower():
         await conn.execute("UPDATE hoas SET admin_email = $2 WHERE id = $1", hoa_id, admin_email)
 
-    # Create the admin login if it doesn't exist yet. They'll set their own
-    # password via the recovery link below, so we seed a throwaway one.
-    try:
-        await _create_supabase_user(
-            admin_email,
-            secrets.token_urlsafe(24),
-            {"role": "hoa_admin", "hoa_id": hoa_id},
-            email_confirm=True,
-        )
-    except HTTPException as e:
-        # Already registered is fine — we just (re)send the set-password link.
-        if "already" not in str(e.detail).lower() and "registered" not in str(e.detail).lower():
-            raise
+    # Fresh single-use token; drop any prior unaccepted ones for this association.
+    await conn.execute("DELETE FROM admin_invites WHERE hoa_id = $1 AND accepted_at IS NULL", hoa_id)
+    token = secrets.token_urlsafe(32)
+    await conn.execute(
+        "INSERT INTO admin_invites (hoa_id, email, token) VALUES ($1, $2, $3)",
+        hoa_id, admin_email, token,
+    )
 
-    setup_url = await _generate_recovery_link(admin_email)
+    setup_url = f"{APP_URL}/admin-setup/{token}"
     subject, html = welcome_admin_html(hoa["admin_name"] or "", hoa["name"], setup_url=setup_url)
     background_tasks.add_task(send_email, admin_email, subject, html)
 
@@ -242,6 +222,61 @@ async def invite_admin(
     )
 
     return {"invited": True, "email": admin_email}
+
+
+@router.get("/admin-invite/{token}")
+async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_conn)):
+    """Public — load the invite so the setup page can show who/what it's for.
+    A GET (e.g. a scanner prefetch) never consumes anything."""
+    row = await conn.fetchrow(
+        """SELECT ai.email, ai.accepted_at, h.name AS hoa_name
+           FROM admin_invites ai JOIN hoas h ON h.id = ai.hoa_id
+           WHERE ai.token = $1""",
+        token,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if row["accepted_at"]:
+        raise HTTPException(status_code=410, detail="This setup link has already been used.")
+    return {"email": row["email"], "hoa_name": row["hoa_name"]}
+
+
+class AdminInviteAccept(BaseModel):
+    password: str
+
+
+@router.post("/admin-invite/{token}", status_code=201)
+async def accept_admin_invite(
+    token: str,
+    body: AdminInviteAccept,
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Public — the admin sets their password here; only now is the login created
+    and the token consumed."""
+    async with conn.transaction():
+        row = await conn.fetchrow(
+            "SELECT id, email, hoa_id, accepted_at FROM admin_invites WHERE token = $1 FOR UPDATE",
+            token,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Invite not found")
+        if row["accepted_at"]:
+            raise HTTPException(status_code=410, detail="This setup link has already been used.")
+        try:
+            await _create_supabase_user(
+                row["email"], body.password,
+                {"role": "hoa_admin", "hoa_id": str(row["hoa_id"])},
+                email_confirm=True,
+            )
+        except HTTPException as e:
+            if "already" in str(e.detail).lower() or "registered" in str(e.detail).lower():
+                raise HTTPException(
+                    status_code=409,
+                    detail="An account already exists for this email. Use “Forgot password” on the sign-in page to set your password.",
+                )
+            raise
+        await conn.execute("UPDATE admin_invites SET accepted_at = NOW() WHERE id = $1", row["id"])
+    return {"ok": True}
 
 
 @router.get("/invite/{token}")

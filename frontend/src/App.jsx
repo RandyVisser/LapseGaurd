@@ -10,6 +10,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Join = lazy(() => import('./pages/Join'))
+const AdminSetup = lazy(() => import('./pages/AdminSetup'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/join/:token" element={<Join />} />
+            <Route path="/admin-setup/:token" element={<AdminSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
