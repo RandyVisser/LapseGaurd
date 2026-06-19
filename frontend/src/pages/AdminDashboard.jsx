@@ -80,27 +80,13 @@ function TrendChart({ data }) {
 
 function TitlePill({ title }) {
   if (!title) return <span className="text-slate-400">—</span>
-  const isPm = (title || '').trim().toLowerCase() === 'property manager'
+  const t = (title || '').trim().toLowerCase()
+  const cls = t === 'property manager' ? 'bg-purple-100 text-purple-800 border-purple-300'
+    : t === 'admin' ? 'bg-blue-100 text-blue-800 border-blue-300'
+    : 'bg-green-100 text-green-800 border-green-300'
   return (
-    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${isPm ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-green-100 text-green-800 border-green-300'}`}>
+    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${cls}`}>
       {title}
-    </span>
-  )
-}
-
-// Board cell: the board title (if any) plus an "Admin" badge when this
-// unit-owner is the association's admin account (email matches admin_email)
-function BoardCell({ unit }) {
-  if (!unit.assoc_title && !unit.is_admin) return <span className="text-slate-400">—</span>
-  return (
-    <span className="flex items-center gap-1.5 flex-wrap">
-      {unit.assoc_title && <TitlePill title={unit.assoc_title} />}
-      {unit.is_admin && (
-        <span title="Association admin — manages this account"
-          className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-100 text-blue-800 border-blue-300">
-          Admin
-        </span>
-      )}
     </span>
   )
 }
@@ -124,7 +110,7 @@ function OwnerStatusBadge({ status, bounced }) {
 const COLUMNS = [
   { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
   { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
-  { key: 'assoc_title',            label: 'Board',                 render: u => <BoardCell unit={u} /> },
+  { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
@@ -487,6 +473,9 @@ export default function AdminDashboard() {
 
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', email: '' })
+  const [addAdminFor, setAddAdminFor] = useState(null)
+  const [adminForm, setAdminForm] = useState({ name: '', email: '' })
+  const [addingAdmin, setAddingAdmin] = useState(false)
   const [addingPm, setAddingPm] = useState(false)
   const [soldUnit, setSoldUnit] = useState(null)
   const [soldForm, setSoldForm] = useState({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' })
@@ -653,6 +642,25 @@ export default function AdminDashboard() {
     finally { setAddingPm(false) }
   }
 
+  async function handleAddAdmin(e) {
+    e.preventDefault()
+    setAddingAdmin(true)
+    try {
+      const sourceUnitId = addAdminFor === 'new' ? (units[0]?.unit_id || null) : addAdminFor
+      await apiPost(`/hoa/${hoaId}/admin`, {
+        name: adminForm.name,
+        email: adminForm.email,
+        source_unit_id: sourceUnitId,
+      })
+      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+      setSummary(s); setUnits(u)
+      setActiveFilter('admin')
+      setAddAdminFor(null)
+      setAdminForm({ name: '', email: '' })
+    } catch (err) { setError(err.message) }
+    finally { setAddingAdmin(false) }
+  }
+
   async function handleInvite(e) {
     e.preventDefault()
     setInviting(true)
@@ -812,10 +820,10 @@ export default function AdminDashboard() {
   const filteredUnits = (() => {
     const filtered = units.filter(u => {
       if (activeFilter === 'all') {
-        if ((u.assoc_title || '').trim().toLowerCase() === 'property manager') return false
+        if (['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false
       } else {
-        if (activeFilter === 'board') { if (!u.assoc_title || u.assoc_title.trim().toLowerCase() === 'property manager') return false }
-        else if (activeFilter === 'admin') { if (!u.is_admin) return false }
+        if (activeFilter === 'board') { if (!u.assoc_title || ['property manager', 'admin'].includes(u.assoc_title.trim().toLowerCase())) return false }
+        else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
         else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
@@ -979,7 +987,10 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="Admins" value={summary.admins ?? 0} color="text-blue-700" active={activeFilter === 'admin'} onClick={() => setActiveFilter('admin')} />
+                  <StatCard compact label="Admins" value={summary.admins ?? 0} color="text-blue-700" active={activeFilter === 'admin'} onClick={() => {
+                    if ((summary.admins ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddAdminFor('new'); setAdminForm({ name: '', email: '' }) }
+                    else setActiveFilter('admin')
+                  }} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                   <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => {
                     if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', email: '' }) }
@@ -1127,8 +1138,10 @@ export default function AdminDashboard() {
         {editUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-              <h2 className="font-semibold text-slate-800 mb-1">{editIsPm ? 'Edit Property Manager' : 'Edit Owner Info'}</h2>
-              <p className="text-xs text-slate-400 mb-4">{editIsPm ? 'Update the property manager name or email.' : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
+              {(() => { const isAdminEdit = (editUnit.assoc_title || '').trim().toLowerCase() === 'admin'; return (<>
+              <h2 className="font-semibold text-slate-800 mb-1">{isAdminEdit ? 'Edit Admin' : editIsPm ? 'Edit Property Manager' : 'Edit Owner Info'}</h2>
+              <p className="text-xs text-slate-400 mb-4">{isAdminEdit ? 'Update the admin name or email.' : editIsPm ? 'Update the property manager name or email.' : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
+              </>) })()}
               <form onSubmit={handleSaveOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1281,6 +1294,39 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {addAdminFor && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-slate-800 mb-1">Add Admin</h2>
+              <p className="text-xs text-slate-400 mb-4">Adds an Admin entry for this association (no unit). Use <strong>Invite admin</strong> in the toolbar to give them a login.</p>
+              <form onSubmit={handleAddAdmin} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <input value={adminForm.name} onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Admin name"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <input type="email" value={adminForm.email} onChange={e => setAdminForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="admin@email.com"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={addingAdmin}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {addingAdmin ? 'Adding…' : 'Add Admin'}
+                  </button>
+                  <button type="button" onClick={() => setAddAdminFor(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* List toolbar — search + view controls, right above what they act on */}
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center flex-1 max-w-xs">
@@ -1347,9 +1393,6 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
                         {u.assoc_title && <TitlePill title={u.assoc_title} />}
-                        {u.is_admin && (
-                          <span title="Association admin" className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-100 text-blue-800 border-blue-300">Admin</span>
-                        )}
                       </div>
                       <p className="text-sm text-slate-500 truncate">
                         {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
@@ -1451,13 +1494,15 @@ export default function AdminDashboard() {
                 const tenantIdStr = u.tenant_id ? String(u.tenant_id) : null
                 const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
                 const isPm = (u.assoc_title || '').trim().toLowerCase() === 'property manager'
+                const isAdmin = (u.assoc_title || '').trim().toLowerCase() === 'admin'
+                const isContact = isPm || isAdmin  // unit-less rows (PM / Admin)
                 return (
                 <tr
                   key={u.unit_id}
-                  className={`hover:bg-slate-50 ${(!isPm && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+                  className={`hover:bg-slate-50 ${(!isContact && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
                 >
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    {tenantIdStr && !isPm ? (
+                    {tenantIdStr && !isContact ? (
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -1467,8 +1512,8 @@ export default function AdminDashboard() {
                     ) : null}
                   </td>
                   {activeColumns.map(c => (
-                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => { if (!isPm) openUnit(u) }}>
-                      {isPm && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
+                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => { if (!isContact) openUnit(u) }}>
+                      {isContact && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
                     </td>
                   ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
@@ -1493,6 +1538,17 @@ export default function AdminDashboard() {
                           {
                             label: 'Add New PM…',
                             onClick: () => { setAddPmFor(u.unit_id); setPmForm({ name: '', email: '' }) },
+                          },
+                          {
+                            label: 'Delete…',
+                            danger: true,
+                            disabled: deletingUnit && deleteUnitId === u.unit_id,
+                            onClick: () => handleDeleteUnit(u.unit_id),
+                          },
+                        ] : isAdmin ? [
+                          {
+                            label: 'Edit Admin…',
+                            onClick: () => openEditOwner(u, true),
                           },
                           {
                             label: 'Delete…',

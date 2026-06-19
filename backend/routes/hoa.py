@@ -344,8 +344,7 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, admin_email FROM hoas WHERE id = $1", hoa_id) or {})
-    admin_email = (hoa_reqs.pop("admin_email", None) or "").strip().lower()
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
@@ -378,10 +377,6 @@ async def list_units(
             account_status=("verified" if r["has_account"]
                             else "invited" if r["has_invite"] else "not_invited"),
             email_bounced=r["email_bounced"],
-            is_admin=bool(admin_email) and admin_email in {
-                (r["email_primary"] or "").strip().lower(),
-                (r["email_secondary"] or "").strip().lower(),
-            },
         )
         for r in rows
     ]
@@ -409,11 +404,15 @@ async def compliance_summary(
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = 0
-    compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = 0
+    compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = admins = 0
     invite_sent = not_invited = 0
     for r in rows:
-        if (r["assoc_title"] or "").strip().lower() == "property manager":
+        title = (r["assoc_title"] or "").strip().lower()
+        if title == "property manager":
             property_managers += 1
+            continue
+        if title == "admin":
+            admins += 1
             continue
         total_units += 1
         if r["assoc_title"] and (r["assoc_title"] or "").strip().lower() != "property manager":
@@ -444,18 +443,6 @@ async def compliance_summary(
 
     documents_count = await conn.fetchval(
         "SELECT COUNT(*) FROM documents WHERE hoa_id = $1", hoa_id,
-    ) or 0
-
-    # Unit-owners whose email matches the association admin (same rule as the
-    # is_admin badge), so the Admin stat card agrees with the Board column.
-    admins = await conn.fetchval(
-        """SELECT COUNT(*) FROM units u JOIN hoas h ON h.id = u.hoa_id
-           WHERE u.hoa_id = $1 AND coalesce(btrim(h.admin_email), '') <> ''
-             AND lower(btrim(h.admin_email)) IN (
-                 lower(btrim(coalesce(u.email_primary, ''))),
-                 lower(btrim(coalesce(u.email_secondary, '')))
-             )""",
-        hoa_id,
     ) or 0
 
     return ComplianceSummary(
@@ -576,6 +563,38 @@ async def add_property_manager(
         """INSERT INTO units (hoa_id, unit_number, assoc_title, subdivision, corp_name,
                               sunbiz_doc_number, owner_primary, email_primary)
            VALUES ($1, 'PM', 'Property Manager', $2, $3, $4, $5, $6)
+           RETURNING id""",
+        hoa_id, subdivision, corp_name, sunbiz,
+        (body.name or "").strip() or None,
+        (body.email or "").strip() or None,
+    )
+    return {"unit_id": str(row["id"])}
+
+
+@router.post("/hoa/{hoa_id}/admin", status_code=201)
+async def add_admin_contact(
+    hoa_id: str,
+    body: PropertyManagerCreate,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Create an Admin entry (a unit-less row tagged 'Admin'), mirroring how a
+    Property Manager position is added."""
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    subdivision = corp_name = sunbiz = None
+    if body.source_unit_id:
+        src = await conn.fetchrow(
+            "SELECT subdivision, corp_name, sunbiz_doc_number FROM units WHERE id = $1 AND hoa_id = $2",
+            body.source_unit_id, hoa_id,
+        )
+        if src:
+            subdivision, corp_name, sunbiz = src["subdivision"], src["corp_name"], src["sunbiz_doc_number"]
+
+    row = await conn.fetchrow(
+        """INSERT INTO units (hoa_id, unit_number, assoc_title, subdivision, corp_name,
+                              sunbiz_doc_number, owner_primary, email_primary)
+           VALUES ($1, 'ADMIN', 'Admin', $2, $3, $4, $5, $6)
            RETURNING id""",
         hoa_id, subdivision, corp_name, sunbiz,
         (body.name or "").strip() or None,
