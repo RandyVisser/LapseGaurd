@@ -460,6 +460,9 @@ export default function AdminDashboard() {
   const [invitingAdmin, setInvitingAdmin] = useState(false)
   const [inviteAdminOpen, setInviteAdminOpen] = useState(false)
   const [inviteAdminEmail, setInviteAdminEmail] = useState('')
+  const [pmInviteUnit, setPmInviteUnit] = useState(null)
+  const [pmInviteEmail, setPmInviteEmail] = useState('')
+  const [invitingPmLogin, setInvitingPmLogin] = useState(false)
   const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
@@ -747,6 +750,19 @@ export default function AdminDashboard() {
     setInviteAdminEmail(h?.admin_email || '')
     setInviteAllMsg('')
     setInviteAdminOpen(true)
+  }
+
+  async function handlePmInvite(e) {
+    e?.preventDefault?.()
+    if (!hoaId || hoaId === ALL_HOAS || !pmInviteUnit) return
+    setInvitingPmLogin(true); setInviteAllMsg('')
+    try {
+      const r = await apiPost(`/hoa/${hoaId}/invite-pm`, { unit_id: pmInviteUnit, email: pmInviteEmail.trim() || undefined })
+      setPmInviteUnit(null)
+      setInviteAllMsg(`Property manager invited — set-up email sent to ${r.email}.`)
+      setTimeout(() => setInviteAllMsg(''), 8000)
+    } catch (e) { setError(e.message) }
+    finally { setInvitingPmLogin(false) }
   }
 
   async function handleInviteAdmin(e) {
@@ -1071,6 +1087,39 @@ export default function AdminDashboard() {
                 .catch(() => {})
             }}
           />
+        )}
+
+        {/* Invite property manager to log in — confirm/correct the email first */}
+        {pmInviteUnit && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-slate-800 mb-1">Invite property manager</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                We'll email a set-up link to this address. They set a password and get
+                dashboard access to this association. Confirm or correct it before sending.
+              </p>
+              <form onSubmit={handlePmInvite} className="space-y-3">
+                <input
+                  type="email"
+                  required
+                  value={pmInviteEmail}
+                  onChange={e => setPmInviteEmail(e.target.value)}
+                  placeholder="manager@email.com"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" disabled={invitingPmLogin}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {invitingPmLogin ? 'Sending…' : 'Send invite'}
+                  </button>
+                  <button type="button" onClick={() => setPmInviteUnit(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {/* Invite admin modal — confirm/correct the email before sending */}
@@ -1524,12 +1573,8 @@ export default function AdminDashboard() {
                       <RowActionsMenu
                         items={isPm ? [
                           {
-                            label: 'Send Invite',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
-                          },
-                          {
-                            label: 'Preview Invite email',
-                            onClick: () => openInvitePreview(u.unit_id),
+                            label: 'Invite to log in',
+                            onClick: () => { setPmInviteUnit(u.unit_id); setPmInviteEmail(u.email_primary || '') },
                           },
                           {
                             label: 'Edit PM…',

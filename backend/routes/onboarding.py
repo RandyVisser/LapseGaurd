@@ -137,6 +137,23 @@ async def _update_user_password(user_id: str, password: str, app_metadata: dict)
         raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update account")
 
 
+async def _create_staff_invite(conn, hoa_id: str, email: str, role: str) -> str:
+    """Create a single-use setup token for a staff login (hoa_admin or
+    property_manager), replacing any prior unaccepted token for the same
+    association + role + email. Returns the token."""
+    await conn.execute(
+        "DELETE FROM admin_invites WHERE hoa_id = $1 AND role = $2 "
+        "AND lower(email) = lower($3) AND accepted_at IS NULL",
+        hoa_id, role, email,
+    )
+    token = secrets.token_urlsafe(32)
+    await conn.execute(
+        "INSERT INTO admin_invites (hoa_id, email, token, role) VALUES ($1, $2, $3, $4)",
+        hoa_id, email, token, role,
+    )
+    return token
+
+
 async def _queue_new_association_alert(conn, background_tasks, hoa_id, name, address, admin_name, email):
     """Best-effort internal heads-up: notify every super-user plus the configured
     alert address (deduped). Never raises — a notification problem must not fail
@@ -241,14 +258,7 @@ async def invite_admin(
     if body.email and admin_email.lower() != (hoa["admin_email"] or "").strip().lower():
         await conn.execute("UPDATE hoas SET admin_email = $2 WHERE id = $1", hoa_id, admin_email)
 
-    # Fresh single-use token; drop any prior unaccepted ones for this association.
-    await conn.execute("DELETE FROM admin_invites WHERE hoa_id = $1 AND accepted_at IS NULL", hoa_id)
-    token = secrets.token_urlsafe(32)
-    await conn.execute(
-        "INSERT INTO admin_invites (hoa_id, email, token) VALUES ($1, $2, $3)",
-        hoa_id, admin_email, token,
-    )
-
+    token = await _create_staff_invite(conn, hoa_id, admin_email, "hoa_admin")
     setup_url = f"{APP_URL}/admin-setup/{token}"
     subject, html = welcome_admin_html(hoa["admin_name"] or "", hoa["name"], setup_url=setup_url)
     background_tasks.add_task(send_email, admin_email, subject, html)
@@ -258,6 +268,45 @@ async def invite_admin(
     )
 
     return {"invited": True, "email": admin_email}
+
+
+class InvitePmBody(BaseModel):
+    unit_id: str
+    email: EmailStr | None = None  # confirmed/edited address from the dialog
+
+
+@router.post("/hoa/{hoa_id}/invite-pm")
+async def invite_pm(
+    hoa_id: str,
+    body: InvitePmBody,
+    background_tasks: BackgroundTasks,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Invite a Property Manager (an existing PM row) to log in. Issues a setup
+    token; on accept they get a property_manager login mapped to this
+    association — the same scoped admin access as an hoa_admin."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    unit = await conn.fetchrow(
+        "SELECT u.id, u.owner_primary, u.email_primary, h.name AS hoa_name "
+        "FROM units u JOIN hoas h ON h.id = u.hoa_id WHERE u.id = $1 AND u.hoa_id = $2",
+        body.unit_id, hoa_id,
+    )
+    if unit is None:
+        raise HTTPException(status_code=404, detail="Property manager not found")
+
+    pm_email = (body.email or unit["email_primary"] or "").strip()
+    if not pm_email:
+        raise HTTPException(status_code=400, detail="No email on file for this property manager. Add one first.")
+    if body.email and pm_email.lower() != (unit["email_primary"] or "").strip().lower():
+        await conn.execute("UPDATE units SET email_primary = $2 WHERE id = $1", body.unit_id, pm_email)
+
+    token = await _create_staff_invite(conn, hoa_id, pm_email, "property_manager")
+    setup_url = f"{APP_URL}/admin-setup/{token}"
+    subject, html = welcome_admin_html(unit["owner_primary"] or "", unit["hoa_name"], setup_url=setup_url)
+    background_tasks.add_task(send_email, pm_email, subject, html)
+
+    return {"invited": True, "email": pm_email}
 
 
 @router.get("/admin-invite/{token}")
@@ -291,16 +340,23 @@ async def accept_admin_invite(
     and the token consumed."""
     async with conn.transaction():
         row = await conn.fetchrow(
-            "SELECT id, email, hoa_id, accepted_at FROM admin_invites WHERE token = $1 FOR UPDATE",
+            "SELECT id, email, hoa_id, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
             token,
         )
         if not row:
             raise HTTPException(status_code=404, detail="Invite not found")
         if row["accepted_at"]:
             raise HTTPException(status_code=410, detail="This setup link has already been used.")
-        app_meta = {"role": "hoa_admin", "hoa_id": str(row["hoa_id"])}
+
+        role = row["role"] or "hoa_admin"
+        # hoa_admin carries its association in the token; property_manager access
+        # comes from the property_manager_hoas mapping created below.
+        app_meta = {"role": role}
+        if role == "hoa_admin":
+            app_meta["hoa_id"] = str(row["hoa_id"])
+
         try:
-            await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
+            uid = await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
         except HTTPException as e:
             # Account already exists (e.g. a prior invite) — the token was emailed
             # to this address, so set the password on the existing account.
@@ -312,20 +368,32 @@ async def accept_admin_invite(
             else:
                 raise
 
-        # Create the Admin line (unit-less row) for this association so the Admins
-        # card/list reflects the now-active admin — deduped by email.
-        exists = await conn.fetchval(
-            "SELECT 1 FROM units WHERE hoa_id = $1 AND lower(coalesce(assoc_title,'')) = 'admin' "
-            "AND lower(coalesce(email_primary,'')) = lower($2)",
-            row["hoa_id"], row["email"],
-        )
-        if not exists:
-            admin_name = await conn.fetchval("SELECT admin_name FROM hoas WHERE id = $1", row["hoa_id"])
-            await conn.execute(
-                "INSERT INTO units (hoa_id, unit_number, assoc_title, owner_primary, email_primary) "
-                "VALUES ($1, 'ADMIN', 'Admin', $2, $3)",
-                row["hoa_id"], (admin_name or "").strip() or None, row["email"],
+        if role == "property_manager":
+            # Map the PM login to this association (scoped admin access), if not already.
+            mapped = await conn.fetchval(
+                "SELECT 1 FROM property_manager_hoas WHERE supabase_user_id = $1::uuid AND hoa_id = $2",
+                uid, row["hoa_id"],
             )
+            if not mapped:
+                await conn.execute(
+                    "INSERT INTO property_manager_hoas (supabase_user_id, hoa_id) VALUES ($1::uuid, $2)",
+                    uid, row["hoa_id"],
+                )
+        else:
+            # Create the Admin line (unit-less row) so the Admins card/list reflects
+            # the now-active admin — deduped by email.
+            exists = await conn.fetchval(
+                "SELECT 1 FROM units WHERE hoa_id = $1 AND lower(coalesce(assoc_title,'')) = 'admin' "
+                "AND lower(coalesce(email_primary,'')) = lower($2)",
+                row["hoa_id"], row["email"],
+            )
+            if not exists:
+                admin_name = await conn.fetchval("SELECT admin_name FROM hoas WHERE id = $1", row["hoa_id"])
+                await conn.execute(
+                    "INSERT INTO units (hoa_id, unit_number, assoc_title, owner_primary, email_primary) "
+                    "VALUES ($1, 'ADMIN', 'Admin', $2, $3)",
+                    row["hoa_id"], (admin_name or "").strip() or None, row["email"],
+                )
 
         await conn.execute("UPDATE admin_invites SET accepted_at = NOW() WHERE id = $1", row["id"])
     return {"ok": True}
