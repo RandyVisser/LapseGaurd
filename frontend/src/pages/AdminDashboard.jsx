@@ -567,6 +567,12 @@ export default function AdminDashboard() {
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed') }
       setUnits(prev => prev.filter(u => u.unit_id !== unitId))
+      // Refresh the stat-card totals (and units) so they reflect the deletion
+      if (hoaId && hoaId !== ALL_HOAS) {
+        Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+          .then(([s, u]) => { setSummary(s); setUnits(u) })
+          .catch(() => {})
+      }
     } catch (err) {
       setError(err.message)
     } finally {
