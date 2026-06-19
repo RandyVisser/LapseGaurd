@@ -311,6 +311,22 @@ async def accept_admin_invite(
                 await _update_user_password(uid, body.password, app_meta)
             else:
                 raise
+
+        # Create the Admin line (unit-less row) for this association so the Admins
+        # card/list reflects the now-active admin — deduped by email.
+        exists = await conn.fetchval(
+            "SELECT 1 FROM units WHERE hoa_id = $1 AND lower(coalesce(assoc_title,'')) = 'admin' "
+            "AND lower(coalesce(email_primary,'')) = lower($2)",
+            row["hoa_id"], row["email"],
+        )
+        if not exists:
+            admin_name = await conn.fetchval("SELECT admin_name FROM hoas WHERE id = $1", row["hoa_id"])
+            await conn.execute(
+                "INSERT INTO units (hoa_id, unit_number, assoc_title, owner_primary, email_primary) "
+                "VALUES ($1, 'ADMIN', 'Admin', $2, $3)",
+                row["hoa_id"], (admin_name or "").strip() or None, row["email"],
+            )
+
         await conn.execute("UPDATE admin_invites SET accepted_at = NOW() WHERE id = $1", row["id"])
     return {"ok": True}
 
