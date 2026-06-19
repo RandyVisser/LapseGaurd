@@ -772,7 +772,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
+            for (const key of ['total_units', 'board_members', 'admins', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -801,6 +801,7 @@ export default function AdminDashboard() {
         if ((u.assoc_title || '').trim().toLowerCase() === 'property manager') return false
       } else {
         if (activeFilter === 'board') { if (!u.assoc_title || u.assoc_title.trim().toLowerCase() === 'property manager') return false }
+        else if (activeFilter === 'admin') { if (!u.is_admin) return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
         else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
@@ -964,6 +965,7 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                  <StatCard compact label="Admins" value={summary.admins ?? 0} color="text-blue-700" active={activeFilter === 'admin'} onClick={() => setActiveFilter('admin')} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                   <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => {
                     if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', email: '' }) }

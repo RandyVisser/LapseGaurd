@@ -443,9 +443,22 @@ async def compliance_summary(
         "SELECT COUNT(*) FROM documents WHERE hoa_id = $1", hoa_id,
     ) or 0
 
+    # Unit-owners whose email matches the association admin (same rule as the
+    # is_admin badge), so the Admin stat card agrees with the Board column.
+    admins = await conn.fetchval(
+        """SELECT COUNT(*) FROM units u JOIN hoas h ON h.id = u.hoa_id
+           WHERE u.hoa_id = $1 AND coalesce(btrim(h.admin_email), '') <> ''
+             AND lower(btrim(h.admin_email)) IN (
+                 lower(btrim(coalesce(u.email_primary, ''))),
+                 lower(btrim(coalesce(u.email_secondary, '')))
+             )""",
+        hoa_id,
+    ) or 0
+
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
+        admins=admins,
         property_managers=property_managers,
         compliant=compliant,
         expiring=expiring,
