@@ -998,7 +998,7 @@ export default function AdminDashboard() {
                   }} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Active · Meets Requirements" value={summary.compliant + (summary.expiring ?? 0)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="Active · Meets Requirements" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
                   <StatCard compact label="Active · Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
                   <StatCard compact label="Expired" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
                   <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
