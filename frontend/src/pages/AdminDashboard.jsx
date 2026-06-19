@@ -761,6 +761,7 @@ export default function AdminDashboard() {
       const r = await apiPost(`/hoa/${hoaId}/invite-pm`, { unit_id: pmInviteUnit, email: pmInviteEmail.trim() || undefined })
       setPmInviteUnit(null)
       setInviteAllMsg(`Property manager invited — set-up email sent to ${r.email}.`)
+      refreshDashboard()  // so the PM's status badge reflects the invite
       setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingPmLogin(false) }

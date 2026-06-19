@@ -332,7 +332,12 @@ async def list_units(
             EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite,
             EXISTS(SELECT 1 FROM tenants ta WHERE ta.unit_id = u.id AND ta.supabase_user_id IS NOT NULL) AS has_account,
             EXISTS(SELECT 1 FROM email_bounces b WHERE u.email_primary IS NOT NULL
-                   AND lower(b.email) = lower(u.email_primary)) AS email_bounced
+                   AND lower(b.email) = lower(u.email_primary)) AS email_bounced,
+            -- Login-invite status for PM/Admin rows (admin_invites, matched by email)
+            EXISTS(SELECT 1 FROM admin_invites ai WHERE ai.hoa_id = u.hoa_id AND u.email_primary IS NOT NULL
+                   AND lower(ai.email) = lower(u.email_primary) AND ai.accepted_at IS NOT NULL) AS staff_active,
+            EXISTS(SELECT 1 FROM admin_invites ai WHERE ai.hoa_id = u.hoa_id AND u.email_primary IS NOT NULL
+                   AND lower(ai.email) = lower(u.email_primary) AND ai.accepted_at IS NULL) AS staff_invited
         FROM units u
         LEFT JOIN LATERAL (
             SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
@@ -374,8 +379,13 @@ async def list_units(
             status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
             expiration_date=exp_dates.get(r["tenant_id"]),
             invite_sent=r["has_invite"],
-            account_status=("verified" if r["has_account"]
-                            else "invited" if r["has_invite"] else "not_invited"),
+            # PM/Admin rows reflect their login-invite status; everyone else the
+            # unit-owner tenant invite/account status.
+            account_status=(
+                ("verified" if r["staff_active"] else "invited" if r["staff_invited"] else "not_invited")
+                if (r["assoc_title"] or "").strip().lower() in ("property manager", "admin")
+                else ("verified" if r["has_account"] else "invited" if r["has_invite"] else "not_invited")
+            ),
             email_bounced=r["email_bounced"],
         )
         for r in rows
