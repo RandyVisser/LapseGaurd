@@ -101,6 +101,42 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict, *
     return resp.json()["id"]
 
 
+async def _find_user_id_by_email(email: str) -> str | None:
+    """Look up a Supabase auth user id by email (paged admin list)."""
+    target = (email or "").strip().lower()
+    async with httpx.AsyncClient() as client:
+        page = 1
+        while page <= 25:
+            resp = await client.get(
+                f"{SUPABASE_URL}/auth/v1/admin/users",
+                headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+                params={"page": page, "per_page": 200},
+            )
+            if resp.status_code != 200:
+                return None
+            users = resp.json().get("users", [])
+            for u in users:
+                if (u.get("email") or "").lower() == target:
+                    return u.get("id")
+            if len(users) < 200:
+                return None
+            page += 1
+    return None
+
+
+async def _update_user_password(user_id: str, password: str, app_metadata: dict) -> None:
+    """Set the password + app_metadata on an existing Supabase user."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(
+            f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+            json={"password": password, "email_confirm": True, "app_metadata": app_metadata},
+        )
+    if resp.status_code not in (200, 201):
+        data = resp.json()
+        raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update account")
+
+
 async def _queue_new_association_alert(conn, background_tasks, hoa_id, name, address, admin_name, email):
     """Best-effort internal heads-up: notify every super-user plus the configured
     alert address (deduped). Never raises — a notification problem must not fail
@@ -262,19 +298,19 @@ async def accept_admin_invite(
             raise HTTPException(status_code=404, detail="Invite not found")
         if row["accepted_at"]:
             raise HTTPException(status_code=410, detail="This setup link has already been used.")
+        app_meta = {"role": "hoa_admin", "hoa_id": str(row["hoa_id"])}
         try:
-            await _create_supabase_user(
-                row["email"], body.password,
-                {"role": "hoa_admin", "hoa_id": str(row["hoa_id"])},
-                email_confirm=True,
-            )
+            await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
         except HTTPException as e:
+            # Account already exists (e.g. a prior invite) — the token was emailed
+            # to this address, so set the password on the existing account.
             if "already" in str(e.detail).lower() or "registered" in str(e.detail).lower():
-                raise HTTPException(
-                    status_code=409,
-                    detail="An account already exists for this email. Use “Forgot password” on the sign-in page to set your password.",
-                )
-            raise
+                uid = await _find_user_id_by_email(row["email"])
+                if not uid:
+                    raise HTTPException(status_code=409, detail="An account already exists for this email. Use “Forgot password” on the sign-in page to set your password.")
+                await _update_user_password(uid, body.password, app_meta)
+            else:
+                raise
         await conn.execute("UPDATE admin_invites SET accepted_at = NOW() WHERE id = $1", row["id"])
     return {"ok": True}
 
