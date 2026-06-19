@@ -567,12 +567,7 @@ export default function AdminDashboard() {
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Delete failed') }
       setUnits(prev => prev.filter(u => u.unit_id !== unitId))
-      // Refresh the stat-card totals (and units) so they reflect the deletion
-      if (hoaId && hoaId !== ALL_HOAS) {
-        Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-          .then(([s, u]) => { setSummary(s); setUnits(u) })
-          .catch(() => {})
-      }
+      refreshDashboard()  // re-pull summary + units so the stat-card totals update
     } catch (err) {
       setError(err.message)
     } finally {
@@ -802,10 +797,10 @@ export default function AdminDashboard() {
     }
   }
 
-  useEffect(() => {
+  // Reload summary + units for the current view (single HOA or the All
+  // Associations aggregate). Call after any action that changes the totals.
+  function refreshDashboard() {
     if (!hoaId) return
-    setSelectedTenantIds(new Set())
-
     if (hoaId === ALL_HOAS) {
       Promise.all(
         availableHoas.map(h =>
@@ -836,6 +831,12 @@ export default function AdminDashboard() {
     ])
       .then(([s, u, trend]) => { setSummary(s); setUnits(u); setTrendData(trend || []) })
       .catch(e => setError(e.message))
+  }
+
+  useEffect(() => {
+    if (!hoaId) return
+    setSelectedTenantIds(new Set())
+    refreshDashboard()
   }, [hoaId, availableHoas])
 
   // Filter + sort shared by the desktop table and the mobile card list
