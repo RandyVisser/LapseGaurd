@@ -189,10 +189,17 @@ async def signup_association(
     return {"hoa_id": hoa_id, "user_id": user_id}
 
 
+class InviteAdminBody(BaseModel):
+    # Optional confirmed/corrected address from the dashboard dialog. When given,
+    # it's saved as the association's admin_email before inviting.
+    email: EmailStr | None = None
+
+
 @router.post("/hoa/{hoa_id}/invite-admin")
 async def invite_admin(
     hoa_id: str,
     background_tasks: BackgroundTasks,
+    body: InviteAdminBody = InviteAdminBody(),
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
@@ -203,9 +210,14 @@ async def invite_admin(
     hoa = await conn.fetchrow("SELECT name, address, admin_email, admin_name FROM hoas WHERE id = $1", hoa_id)
     if hoa is None:
         raise HTTPException(status_code=404, detail="Association not found")
-    admin_email = (hoa["admin_email"] or "").strip()
+
+    # Use the confirmed/edited address from the dialog if provided, persisting it
+    # so the association's admin contact stays in sync with who we invited.
+    admin_email = (body.email or hoa["admin_email"] or "").strip()
     if not admin_email:
         raise HTTPException(status_code=400, detail="No admin email on file for this association. Add one first.")
+    if body.email and admin_email.lower() != (hoa["admin_email"] or "").strip().lower():
+        await conn.execute("UPDATE hoas SET admin_email = $2 WHERE id = $1", hoa_id, admin_email)
 
     # Create the admin login if it doesn't exist yet. They'll set their own
     # password via the recovery link below, so we seed a throwaway one.

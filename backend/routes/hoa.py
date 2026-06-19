@@ -141,6 +141,7 @@ class HoaOut(BaseModel):
     id: str
     name: str
     address: Optional[str] = None
+    admin_email: Optional[str] = None
     subdivision: Optional[str] = None
     corp_name: Optional[str] = None
     sunbiz_doc_number: Optional[str] = None
@@ -192,6 +193,7 @@ _HOA_SEARCH_FIELDS = """
     h.id,
     h.name,
     h.address,
+    h.admin_email,
     h.alert_lead_days,
     h.ho6_coverage_a_min,
     h.ho6_coverage_e_min,
@@ -239,6 +241,7 @@ async def list_hoas(
             id=str(r["id"]),
             name=r["name"],
             address=r["address"],
+            admin_email=r["admin_email"],
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             sunbiz_doc_number=r["sunbiz_doc_number"],

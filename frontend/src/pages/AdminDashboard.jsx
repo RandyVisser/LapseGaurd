@@ -472,6 +472,8 @@ export default function AdminDashboard() {
   const [addEmailsOpen, setAddEmailsOpen] = useState(false)
   const [invitingAll, setInvitingAll] = useState(false)
   const [invitingAdmin, setInvitingAdmin] = useState(false)
+  const [inviteAdminOpen, setInviteAdminOpen] = useState(false)
+  const [inviteAdminEmail, setInviteAdminEmail] = useState('')
   const [inviteAllMsg, setInviteAllMsg] = useState('')
   const [exporting, setExporting] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
@@ -731,13 +733,25 @@ export default function AdminDashboard() {
     finally { setInvitingAll(false) }
   }
 
-  async function handleInviteAdmin() {
+  function openInviteAdmin() {
     if (!hoaId || hoaId === ALL_HOAS) return
-    if (!window.confirm("Invite this association's admin? They'll get an email to set their password and access the dashboard.")) return
+    const h = availableHoas.find(x => x.id === hoaId)
+    setInviteAdminEmail(h?.admin_email || '')
+    setInviteAllMsg('')
+    setInviteAdminOpen(true)
+  }
+
+  async function handleInviteAdmin(e) {
+    e?.preventDefault?.()
+    if (!hoaId || hoaId === ALL_HOAS) return
     setInvitingAdmin(true); setInviteAllMsg('')
     try {
-      const r = await apiPost(`/hoa/${hoaId}/invite-admin`, {})
+      const r = await apiPost(`/hoa/${hoaId}/invite-admin`, { email: inviteAdminEmail.trim() || undefined })
+      setInviteAdminOpen(false)
       setInviteAllMsg(`Admin invited — set-up email sent to ${r.email}.`)
+      // Email may have changed → refresh so the Admin badge/card stay in sync
+      Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
+        .then(([s, u]) => { setSummary(s); setUnits(u) }).catch(() => {})
       setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingAdmin(false) }
@@ -918,7 +932,7 @@ export default function AdminDashboard() {
                 </button>
                 {(role === 'super_user' || role === 'property_manager') && (
                   <button
-                    onClick={handleInviteAdmin}
+                    onClick={openInviteAdmin}
                     disabled={invitingAdmin || !hoaId || hoaId === '__all__'}
                     className={TOOLBAR_BTN}
                   >
@@ -1046,6 +1060,39 @@ export default function AdminDashboard() {
                 .catch(() => {})
             }}
           />
+        )}
+
+        {/* Invite admin modal — confirm/correct the email before sending */}
+        {inviteAdminOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-slate-800 mb-1">Invite admin</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                We'll email a set-up link (to set a password and access the dashboard) to this address.
+                Confirm or correct it before sending.
+              </p>
+              <form onSubmit={handleInviteAdmin} className="space-y-3">
+                <input
+                  type="email"
+                  required
+                  value={inviteAdminEmail}
+                  onChange={e => setInviteAdminEmail(e.target.value)}
+                  placeholder="admin@email.com"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" disabled={invitingAdmin}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {invitingAdmin ? 'Sending…' : 'Send invite'}
+                  </button>
+                  <button type="button" onClick={() => setInviteAdminOpen(false)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {/* Invite modal */}
