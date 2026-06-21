@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+const TOUR_EMBED_URL = 'https://share.descript.com/embed/yR7DW1QXNOZ'
 
 function NavBar() {
   const navigate = useNavigate()
@@ -46,6 +49,7 @@ function Feature({ title, desc }) {
 
 export default function Landing() {
   const navigate = useNavigate()
+  const [tourOpen, setTourOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -65,6 +69,10 @@ export default function Landing() {
           <button onClick={() => navigate('/signup')}
             className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-8 py-3 rounded-lg text-base">
             Get Started Free
+          </button>
+          <button onClick={() => setTourOpen(true)}
+            className="bg-white border border-slate-300 hover:border-slate-400 text-slate-700 font-semibold px-8 py-3 rounded-lg text-base flex items-center justify-center gap-2">
+            <span className="text-blue-700">▶</span> Watch 2-min tour
           </button>
           <button onClick={() => navigate('/login')}
             className="bg-white border border-slate-300 hover:border-slate-400 text-slate-700 font-semibold px-8 py-3 rounded-lg text-base">
@@ -132,6 +140,25 @@ export default function Landing() {
           <a href="/terms" className="hover:text-slate-600 underline underline-offset-2">Terms</a>
         </p>
       </footer>
+
+      {/* 2-minute tour modal */}
+      {tourOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setTourOpen(false)}>
+          <div className="relative w-full max-w-4xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setTourOpen(false)}
+              className="absolute -top-9 right-0 text-white/80 hover:text-white text-2xl leading-none" aria-label="Close">✕</button>
+            <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src={TOUR_EMBED_URL}
+                title="condo.insure — 2-minute tour"
+                className="absolute inset-0 w-full h-full"
+                allow="autoplay; fullscreen"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
