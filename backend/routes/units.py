@@ -94,7 +94,9 @@ async def update_unit_owner(
 ):
     """Correct unit-owner names/emails and the board title (typo fixes, new owner,
     or amending who sits on the board)."""
-    unit = await conn.fetchrow("SELECT hoa_id, assoc_title FROM units WHERE id = $1", unit_id)
+    unit = await conn.fetchrow(
+        "SELECT hoa_id, assoc_title, email_primary AS old_email_primary, email_secondary AS old_email_secondary "
+        "FROM units WHERE id = $1", unit_id)
     if unit is None:
         raise HTTPException(status_code=404, detail="Unit not found")
     await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
@@ -122,6 +124,25 @@ async def update_unit_owner(
         email_secondary,
         new_title,
     )
+
+    # Keep the linked tenant record(s) in sync so the unit-owner detail page (which
+    # shows tenants.name) matches the Primary/Secondary name on the dashboard.
+    # Match the tenant by the owner's prior email; COALESCE so cleared fields don't
+    # wipe an existing tenant value.
+    owner_primary = (body.owner_primary or "").strip() or None
+    owner_secondary = (body.owner_secondary or "").strip() or None
+    if unit["old_email_primary"]:
+        await conn.execute(
+            "UPDATE tenants SET name = COALESCE($2, name), email = COALESCE($3, email) "
+            "WHERE unit_id = $1 AND lower(email) = lower($4)",
+            unit_id, owner_primary, email_primary, unit["old_email_primary"],
+        )
+    if unit["old_email_secondary"]:
+        await conn.execute(
+            "UPDATE tenants SET name = COALESCE($2, name), email = COALESCE($3, email) "
+            "WHERE unit_id = $1 AND lower(email) = lower($4)",
+            unit_id, owner_secondary, email_secondary, unit["old_email_secondary"],
+        )
 
     # If the owner was replaced (email no longer matches), a still-pending invite
     # to the prior owner is stale — drop it so the unit stops showing "Invite
