@@ -633,8 +633,7 @@ export default function AdminDashboard() {
         email: pmForm.email,
         source_unit_id: sourceUnitId,
       })
-      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-      setSummary(s); setUnits(u)
+      refreshDashboard()  // update the Property Managers count + list
       setActiveFilter('pm')
       setAddPmFor(null)
       setPmForm({ name: '', email: '' })
@@ -652,8 +651,7 @@ export default function AdminDashboard() {
         email: adminForm.email,
         source_unit_id: sourceUnitId,
       })
-      const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-      setSummary(s); setUnits(u)
+      refreshDashboard()  // update the Admins count + list
       setActiveFilter('admin')
       setAddAdminFor(null)
       setAdminForm({ name: '', email: '' })
