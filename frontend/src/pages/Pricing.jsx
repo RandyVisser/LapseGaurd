@@ -103,7 +103,7 @@ export default function Pricing() {
               </ul>
               <button onClick={() => navigate('/signup')}
                 className="mt-7 w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg text-base">
-                Get Started
+                Start your 90-day free trial
               </button>
             </div>
           </div>
