@@ -547,6 +547,8 @@ async def compliance_trend(
 class PropertyManagerCreate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
+    management_firm: Optional[str] = None
+    phone: Optional[str] = None
     source_unit_id: Optional[str] = None  # copy subdivision/corp details from this unit
 
 
@@ -571,12 +573,14 @@ async def add_property_manager(
 
     row = await conn.fetchrow(
         """INSERT INTO units (hoa_id, unit_number, assoc_title, subdivision, corp_name,
-                              sunbiz_doc_number, owner_primary, email_primary)
-           VALUES ($1, 'PM', 'Property Manager', $2, $3, $4, $5, $6)
+                              sunbiz_doc_number, owner_primary, email_primary, management_firm, phone)
+           VALUES ($1, 'PM', 'Property Manager', $2, $3, $4, $5, $6, $7, $8)
            RETURNING id""",
         hoa_id, subdivision, corp_name, sunbiz,
         (body.name or "").strip() or None,
         (body.email or "").strip() or None,
+        (body.management_firm or "").strip() or None,
+        (body.phone or "").strip() or None,
     )
     return {"unit_id": str(row["id"])}
 

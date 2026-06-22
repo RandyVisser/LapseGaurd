@@ -475,7 +475,7 @@ export default function AdminDashboard() {
   }
 
   const [addPmFor, setAddPmFor] = useState(null)
-  const [pmForm, setPmForm] = useState({ name: '', email: '' })
+  const [pmForm, setPmForm] = useState({ name: '', firm: '', phone: '', email: '' })
   const [addAdminFor, setAddAdminFor] = useState(null)
   const [adminForm, setAdminForm] = useState({ name: '', email: '' })
   const [addingAdmin, setAddingAdmin] = useState(false)
@@ -631,12 +631,14 @@ export default function AdminDashboard() {
       await apiPost(`/hoa/${hoaId}/property-manager`, {
         name: pmForm.name,
         email: pmForm.email,
+        management_firm: pmForm.firm,
+        phone: pmForm.phone,
         source_unit_id: sourceUnitId,
       })
       refreshDashboard()  // update the Property Managers count + list
       setActiveFilter('pm')
       setAddPmFor(null)
-      setPmForm({ name: '', email: '' })
+      setPmForm({ name: '', firm: '', phone: '', email: '' })
     } catch (err) { setError(err.message) }
     finally { setAddingPm(false) }
   }
@@ -1011,7 +1013,7 @@ export default function AdminDashboard() {
                   }} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                   <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => {
-                    if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', email: '' }) }
+                    if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', firm: '', phone: '', email: '' }) }
                     else setActiveFilter('pm')
                   }} />
                 </div>
@@ -1321,13 +1323,25 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
                   <input value={pmForm.name} onChange={e => setPmForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Manager name or company"
+                    placeholder="Manager name"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Management Firm</label>
+                  <input value={pmForm.firm} onChange={e => setPmForm(f => ({ ...f, firm: e.target.value }))}
+                    placeholder="Company name"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
                   <input type="email" value={pmForm.email} onChange={e => setPmForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="manager@email.com"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+                  <input type="tel" value={pmForm.phone} onChange={e => setPmForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="(555) 555-5555"
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div className="flex gap-2 pt-1">
@@ -1584,7 +1598,7 @@ export default function AdminDashboard() {
                           },
                           {
                             label: 'Add New PM…',
-                            onClick: () => { setAddPmFor(u.unit_id); setPmForm({ name: '', email: '' }) },
+                            onClick: () => { setAddPmFor(u.unit_id); setPmForm({ name: '', firm: '', phone: '', email: '' }) },
                           },
                           {
                             label: 'Delete…',
