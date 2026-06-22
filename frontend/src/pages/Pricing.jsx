@@ -62,7 +62,7 @@ export default function Pricing() {
                 <span className="text-5xl font-bold">$1.00</span>
                 <span className="text-blue-200 text-lg mb-1">/ unit / mo</span>
               </div>
-              <p className="text-blue-200 text-sm mt-2">$50/mo minimum · capped at $500/mo</p>
+              <p className="text-blue-200 text-sm mt-2">$50/mo minimum · capped at $750/mo</p>
             </div>
             <div className="px-8 py-7">
               <p className="text-sm text-slate-500 mb-4">For a single condo association.</p>
