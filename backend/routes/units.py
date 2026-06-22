@@ -82,6 +82,8 @@ class UnitOwnerUpdate(BaseModel):
     owner_secondary: Optional[str] = None
     email_primary: Optional[str] = None
     email_secondary: Optional[str] = None
+    phone_primary: Optional[str] = None
+    phone_secondary: Optional[str] = None
     assoc_title: Optional[str] = None  # board role (President, VP, etc.); "" clears it
 
 
@@ -115,7 +117,9 @@ async def update_unit_owner(
                owner_secondary = $3,
                email_primary = $4,
                email_secondary = $5,
-               assoc_title = $6
+               assoc_title = $6,
+               phone_primary = $7,
+               phone_secondary = $8
            WHERE id = $1""",
         unit_id,
         (body.owner_primary or "").strip() or None,
@@ -123,6 +127,8 @@ async def update_unit_owner(
         email_primary,
         email_secondary,
         new_title,
+        (body.phone_primary or "").strip() or None,
+        (body.phone_secondary or "").strip() or None,
     )
 
     # Keep the linked tenant record(s) in sync so the unit-owner detail page (which

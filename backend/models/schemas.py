@@ -103,6 +103,8 @@ class UnitComplianceOut(BaseModel):
     tenant_email: Optional[str]
     owner_secondary: Optional[str]
     email_secondary: Optional[str]
+    phone_primary: Optional[str] = None
+    phone_secondary: Optional[str] = None
     purchase_date: Optional[date]
     tenant_id: Optional[uuid.UUID]
     status: PolicyStatus

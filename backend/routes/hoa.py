@@ -325,6 +325,8 @@ async def list_units(
             u.email_primary,
             u.owner_secondary,
             u.email_secondary,
+            u.phone_primary,
+            u.phone_secondary,
             u.purchase_date,
             t.name AS tenant_name,
             t.email AS tenant_email,
@@ -374,6 +376,8 @@ async def list_units(
             email_primary=r["email_primary"],
             owner_secondary=r["owner_secondary"],
             email_secondary=r["email_secondary"],
+            phone_primary=r["phone_primary"],
+            phone_secondary=r["phone_secondary"],
             purchase_date=r["purchase_date"],
             tenant_id=r["tenant_id"],
             status=statuses.get(r["tenant_id"], PolicyStatus.missing.value),
@@ -573,7 +577,7 @@ async def add_property_manager(
 
     row = await conn.fetchrow(
         """INSERT INTO units (hoa_id, unit_number, assoc_title, subdivision, corp_name,
-                              sunbiz_doc_number, owner_primary, email_primary, management_firm, phone)
+                              sunbiz_doc_number, owner_primary, email_primary, management_firm, phone_primary)
            VALUES ($1, 'PM', 'Property Manager', $2, $3, $4, $5, $6, $7, $8)
            RETURNING id""",
         hoa_id, subdivision, corp_name, sunbiz,

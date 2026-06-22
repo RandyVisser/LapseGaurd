@@ -584,6 +584,8 @@ export default function AdminDashboard() {
       owner_secondary: u.owner_secondary || '',
       email_primary: (u.email_primary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_primary || ''),
       email_secondary: (u.email_secondary || '').toLowerCase().endsWith('@condo.insure') ? '' : (u.email_secondary || ''),
+      phone_primary: u.phone_primary || '',
+      phone_secondary: u.phone_secondary || '',
       assoc_title: u.assoc_title || '',
     })
   }
@@ -1218,6 +1220,22 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
                     <input type="email" value={editForm.email_secondary} onChange={e => setEditForm(f => ({ ...f, email_secondary: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  )}
+                  {!editIsPm && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary phone #</label>
+                    <input type="tel" value={editForm.phone_primary} onChange={e => setEditForm(f => ({ ...f, phone_primary: e.target.value }))}
+                      placeholder="(555) 555-5555"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  )}
+                  {!editIsPm && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary phone #</label>
+                    <input type="tel" value={editForm.phone_secondary} onChange={e => setEditForm(f => ({ ...f, phone_secondary: e.target.value }))}
+                      placeholder="(555) 555-5555"
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   )}
