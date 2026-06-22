@@ -50,43 +50,66 @@ export default function Pricing() {
         </p>
       </section>
 
-      {/* Plan card */}
-      <section className="max-w-lg mx-auto px-6 pb-16">
-        <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm overflow-hidden">
-          <div className="bg-blue-700 px-8 py-6 text-center">
-            <p className="text-blue-100 text-sm font-semibold uppercase tracking-wide">condo.insure</p>
-            <div className="mt-3 flex items-end justify-center gap-1 text-white">
-              <span className="text-5xl font-bold">$1.00</span>
-              <span className="text-blue-200 text-lg mb-1">/ unit / month</span>
+      {/* Plans */}
+      <section className="max-w-4xl mx-auto px-6 pb-16">
+        <div className="grid md:grid-cols-2 gap-6 items-start">
+
+          {/* Association */}
+          <div className="bg-white rounded-2xl border-2 border-blue-200 shadow-sm overflow-hidden">
+            <div className="bg-blue-700 px-8 py-6 text-center">
+              <p className="text-blue-100 text-sm font-semibold uppercase tracking-wide">Association</p>
+              <div className="mt-3 flex items-end justify-center gap-1 text-white">
+                <span className="text-5xl font-bold">$1.00</span>
+                <span className="text-blue-200 text-lg mb-1">/ unit / mo</span>
+              </div>
+              <p className="text-blue-200 text-sm mt-2">$50/mo minimum · capped at $500/mo</p>
             </div>
-            <p className="text-blue-200 text-sm mt-2">$50/mo minimum · capped at $500/mo · billed monthly</p>
+            <div className="px-8 py-7">
+              <p className="text-sm text-slate-500 mb-4">For a single condo association.</p>
+              <ul className="space-y-3 text-sm">
+                <Check><strong>90-day free trial</strong> — no credit card to start</Check>
+                <Check><strong>No setup fees</strong></Check>
+                <Check>Unlimited user invites</Check>
+                <Check>Unlimited document storage</Check>
+                <Check>AI declaration-page review included</Check>
+                <Check>Automated renewal &amp; lapse reminders</Check>
+                <Check>Real-time compliance dashboard</Check>
+              </ul>
+              <button onClick={() => navigate('/signup')}
+                className="mt-7 w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-lg text-base">
+                Start your 90-day free trial
+              </button>
+            </div>
           </div>
 
-          <div className="px-8 py-7">
-            <ul className="space-y-3 text-sm">
-              <Check><strong>90-day free trial</strong> — full access, no credit card to start</Check>
-              <Check><strong>No setup fees</strong></Check>
-              <Check>Unlimited user invites</Check>
-              <Check>Unlimited document storage</Check>
-              <Check>AI declaration-page review included</Check>
-              <Check>Automated renewal &amp; lapse reminders</Check>
-              <Check>Real-time compliance dashboard</Check>
-            </ul>
-
-            <button onClick={() => navigate('/signup')}
-              className="mt-7 w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-lg text-base">
-              Start your 90-day free trial
-            </button>
-            <p className="text-center text-xs text-slate-400 mt-3">Cancel anytime. No long-term contract.</p>
+          {/* Property Management */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-slate-800 px-8 py-6 text-center">
+              <p className="text-slate-300 text-sm font-semibold uppercase tracking-wide">Property Management</p>
+              <div className="mt-3 flex items-end justify-center gap-1 text-white">
+                <span className="text-5xl font-bold">$0.50</span>
+                <span className="text-slate-300 text-lg mb-1">/ unit / mo</span>
+              </div>
+              <p className="text-slate-300 text-sm mt-2">first 10,000 units, then $0.25/unit · $500/mo minimum</p>
+            </div>
+            <div className="px-8 py-7">
+              <p className="text-sm text-slate-500 mb-4">For managers running multiple associations.</p>
+              <ul className="space-y-3 text-sm">
+                <Check><strong>Everything in Association</strong></Check>
+                <Check>All your associations in <strong>one dashboard</strong></Check>
+                <Check><strong>Volume pricing</strong> — $0.50/unit up to 10,000, $0.25/unit beyond</Check>
+                <Check>Unlimited user invites &amp; document storage</Check>
+                <Check>AI declaration-page review included</Check>
+              </ul>
+              <button onClick={() => navigate('/signup')}
+                className="mt-7 w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-lg text-base">
+                Get Started
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Example */}
-        <p className="text-center text-sm text-slate-500 mt-6">
-          Example: a 75-unit association is <strong className="text-slate-700">$75/mo</strong>.
-          Under 50 units it's the <strong className="text-slate-700">$50/mo</strong> minimum, and it's
-          <strong className="text-slate-700"> capped at $500/mo</strong> no matter how large.
-        </p>
+        <p className="text-center text-xs text-slate-400 mt-6">Billed monthly. Cancel anytime. No long-term contract.</p>
       </section>
 
       <footer className="text-center py-8 text-sm text-slate-400">
