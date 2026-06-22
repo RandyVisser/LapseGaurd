@@ -56,10 +56,10 @@ export default function Pricing() {
           <div className="bg-blue-700 px-8 py-6 text-center">
             <p className="text-blue-100 text-sm font-semibold uppercase tracking-wide">condo.insure</p>
             <div className="mt-3 flex items-end justify-center gap-1 text-white">
-              <span className="text-5xl font-bold">$0.99</span>
+              <span className="text-5xl font-bold">$1.00</span>
               <span className="text-blue-200 text-lg mb-1">/ unit / month</span>
             </div>
-            <p className="text-blue-200 text-sm mt-2">$49 / month minimum · billed monthly</p>
+            <p className="text-blue-200 text-sm mt-2">$50/mo minimum · capped at $500/mo · billed monthly</p>
           </div>
 
           <div className="px-8 py-7">
@@ -83,8 +83,9 @@ export default function Pricing() {
 
         {/* Example */}
         <p className="text-center text-sm text-slate-500 mt-6">
-          Example: a 75-unit association is <strong className="text-slate-700">$74.25/mo</strong>.
-          Smaller associations pay the <strong className="text-slate-700">$49/mo</strong> minimum.
+          Example: a 75-unit association is <strong className="text-slate-700">$75/mo</strong>.
+          Under 50 units it's the <strong className="text-slate-700">$50/mo</strong> minimum, and it's
+          <strong className="text-slate-700"> capped at $500/mo</strong> no matter how large.
         </p>
       </section>
 
