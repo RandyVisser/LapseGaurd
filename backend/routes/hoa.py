@@ -962,10 +962,16 @@ async def delete_unit(
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    row = await conn.fetchrow("SELECT hoa_id FROM units WHERE id = $1", unit_id)
+    row = await conn.fetchrow("SELECT hoa_id, assoc_title, email_primary FROM units WHERE id = $1", unit_id)
     if not row:
         raise HTTPException(status_code=404, detail="Unit not found")
     await _assert_hoa_access(user, str(row["hoa_id"]), conn)
+
+    # Deleting an Admin/PM revokes their login (their ToS/email record on
+    # admin_invites is preserved for audit). Lazy import avoids a circular import.
+    if (row["assoc_title"] or "").strip().lower() in ("admin", "property manager"):
+        from routes.onboarding import revoke_staff_login
+        await revoke_staff_login(conn, str(row["hoa_id"]), row["email_primary"])
 
     tenant_ids = [r["id"] for r in await conn.fetch("SELECT id FROM tenants WHERE unit_id = $1", unit_id)]
     if tenant_ids:

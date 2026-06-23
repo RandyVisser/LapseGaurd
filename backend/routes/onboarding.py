@@ -162,6 +162,46 @@ async def _update_user_email(user_id: str, new_email: str) -> None:
         raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update login email")
 
 
+async def _delete_supabase_user(user_id: str) -> None:
+    """Delete a Supabase auth user (revokes their login entirely)."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(
+            f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+        )
+    if resp.status_code not in (200, 204, 404):  # 404 = already gone, fine
+        data = resp.json()
+        raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not revoke login")
+
+
+async def revoke_staff_login(conn, hoa_id, email: str | None) -> None:
+    """Revoke an Admin/PM's access to this association when their row is deleted:
+    drop their property-manager mapping and, if they no longer manage ANY
+    association, delete their Supabase login. The admin_invites record (email +
+    ToS acceptance) is preserved and stamped revoked_at, so the audit trail
+    survives for later reference."""
+    email = (email or "").strip()
+    if not email:
+        return
+    uid = await _find_user_id_by_email(email)
+    if uid:
+        await conn.execute(
+            "DELETE FROM property_manager_hoas WHERE supabase_user_id = $1::uuid AND hoa_id = $2",
+            uid, hoa_id,
+        )
+        remaining = await conn.fetchval(
+            "SELECT count(*) FROM property_manager_hoas WHERE supabase_user_id = $1::uuid", uid,
+        )
+        if not remaining:
+            await _delete_supabase_user(uid)
+    # Keep the audit record (email + ToS timestamp); just mark it revoked.
+    await conn.execute(
+        "UPDATE admin_invites SET revoked_at = now() "
+        "WHERE hoa_id = $1 AND lower(email) = lower($2) AND revoked_at IS NULL",
+        hoa_id, email,
+    )
+
+
 async def sync_admin_email_change(conn, hoa_id, old_email: str | None, new_email: str | None,
                                   background_tasks=None) -> None:
     """When an Admin/PM contact's email is changed, keep their login + invite in
