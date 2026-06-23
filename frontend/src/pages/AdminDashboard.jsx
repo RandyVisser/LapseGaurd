@@ -1625,10 +1625,8 @@ export default function AdminDashboard() {
                             onClick: () => handleDeleteUnit(u.unit_id),
                           },
                         ] : isAdmin ? [
-                          {
-                            label: 'Edit Admin…',
-                            onClick: () => openEditOwner(u, true),
-                          },
+                          // Admin name/email are fixed once created. To change the
+                          // admin, Invite a new one and delete this row.
                           {
                             label: 'Delete…',
                             danger: true,
