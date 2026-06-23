@@ -162,6 +162,22 @@ async def _update_user_email(user_id: str, new_email: str) -> None:
         raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update login email")
 
 
+async def _existing_admin_hoa(conn, email: str | None) -> str | None:
+    """The hoa_id this email is already an hoa_admin of, if any. Used to guard
+    against making one admin login serve two associations (hoa_admin carries a
+    single hoa_id, so a second invite would overwrite the first)."""
+    e = (email or "").strip()
+    if not e:
+        return None
+    row = await conn.fetchrow(
+        "SELECT raw_app_meta_data->>'hoa_id' AS hoa_id FROM auth.users "
+        "WHERE lower(email) = lower($1) AND raw_app_meta_data->>'role' = 'hoa_admin' "
+        "AND raw_app_meta_data->>'hoa_id' IS NOT NULL LIMIT 1",
+        e,
+    )
+    return row["hoa_id"] if row else None
+
+
 async def _delete_supabase_user(user_id: str) -> None:
     """Delete a Supabase auth user (revokes their login entirely)."""
     async with httpx.AsyncClient() as client:
@@ -359,6 +375,15 @@ async def invite_admin(
     if body.email and admin_email.lower() != (hoa["admin_email"] or "").strip().lower():
         await conn.execute("UPDATE hoas SET admin_email = $2 WHERE id = $1", hoa_id, admin_email)
 
+    # An admin login is bound to one association. If this email already admins a
+    # different one, inviting here would overwrite (steal) that — block it.
+    other = await _existing_admin_hoa(conn, admin_email)
+    if other and other.lower() != hoa_id.lower():
+        raise HTTPException(
+            status_code=409,
+            detail="This email is already the admin of another association. An admin can only manage one association — add them as a Property Manager and use “Invite to log in” to give them access here.",
+        )
+
     token = await _create_staff_invite(conn, hoa_id, admin_email, "hoa_admin")
     setup_url = f"{APP_URL}/admin-setup/{token}"
     subject, html = welcome_admin_html(hoa["admin_name"] or "", hoa["name"], setup_url=setup_url)
@@ -459,6 +484,14 @@ async def accept_admin_invite(
         app_meta = {"role": role}
         if role == "hoa_admin":
             app_meta["hoa_id"] = str(row["hoa_id"])
+            # Guard: don't let accepting this overwrite an admin login that's
+            # already bound to a different association.
+            other = await _existing_admin_hoa(conn, row["email"])
+            if other and other.lower() != str(row["hoa_id"]).lower():
+                raise HTTPException(
+                    status_code=409,
+                    detail="This email is already the admin of another association. Ask to be added as a Property Manager for this one instead.",
+                )
 
         try:
             uid = await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
