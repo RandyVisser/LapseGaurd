@@ -861,6 +861,7 @@ export default function AdminDashboard() {
         if (['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false
       } else {
         if (activeFilter === 'board') { if (!u.assoc_title || ['property manager', 'admin'].includes(u.assoc_title.trim().toLowerCase())) return false }
+        else if (activeFilter === 'staff') { if (!['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false }
         else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
         else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
@@ -1025,15 +1026,11 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="Admins" value={summary.admins ?? 0} color="text-blue-700" active={activeFilter === 'admin'} onClick={() => {
-                    if ((summary.admins ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddAdminFor('new'); setAdminForm({ name: '', email: '' }) }
-                    else setActiveFilter('admin')
+                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
+                    if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
+                    else setActiveFilter('staff')
                   }} />
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Property Managers" value={summary.property_managers ?? 0} color="text-purple-700" active={activeFilter === 'pm'} onClick={() => {
-                    if ((summary.property_managers ?? 0) === 0 && hoaId !== ALL_HOAS) { setAddPmFor('new'); setPmForm({ name: '', firm: '', phone: '', email: '' }) }
-                    else setActiveFilter('pm')
-                  }} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Active · Meets Requirements" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
