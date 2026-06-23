@@ -149,6 +149,42 @@ async def _update_user_password(user_id: str, password: str, app_metadata: dict)
         raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update account")
 
 
+async def _update_user_email(user_id: str, new_email: str) -> None:
+    """Change an existing Supabase user's login email."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(
+            f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+            json={"email": new_email, "email_confirm": True},
+        )
+    if resp.status_code not in (200, 201):
+        data = resp.json()
+        raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update login email")
+
+
+async def sync_admin_email_change(conn, hoa_id, old_email: str | None, new_email: str | None) -> None:
+    """When an Admin/PM contact's email is changed, keep their login + invite in
+    sync: an accepted staff invite under the old email means there's a Supabase
+    login — update its email and the invite record so sign-in, status, and
+    contact all match. No-op if there's no accepted staff login for the old
+    email."""
+    old = (old_email or "").strip()
+    new = (new_email or "").strip()
+    if not old or not new or old.lower() == new.lower():
+        return
+    inv = await conn.fetchrow(
+        "SELECT id FROM admin_invites WHERE hoa_id = $1 AND lower(email) = lower($2) "
+        "AND accepted_at IS NOT NULL ORDER BY accepted_at DESC LIMIT 1",
+        hoa_id, old,
+    )
+    if not inv:
+        return
+    uid = await _find_user_id_by_email(old)
+    if uid:
+        await _update_user_email(uid, new)
+    await conn.execute("UPDATE admin_invites SET email = $2 WHERE id = $1", inv["id"], new)
+
+
 async def _create_staff_invite(conn, hoa_id: str, email: str, role: str) -> str:
     """Create a single-use setup token for a staff login (hoa_admin or
     property_manager), replacing any prior unaccepted token for the same

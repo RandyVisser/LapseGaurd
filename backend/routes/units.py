@@ -16,6 +16,7 @@ from services.policy_parser import parse_dec_page
 from services.email import send_email, policy_upload_notification_html
 from services.storage import signed_url, fetch_bytes, object_path
 from routes.hoa import _assert_hoa_access
+from routes.onboarding import sync_admin_email_change
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 APP_URL = os.environ.get("APP_URL", "https://condo.insure")
@@ -149,6 +150,11 @@ async def update_unit_owner(
             "WHERE unit_id = $1 AND lower(email) = lower($4)",
             unit_id, owner_secondary, email_secondary, unit["old_email_secondary"],
         )
+
+    # Admin/PM rows: if the email changed, sync their Supabase login + invite record
+    # so they sign in with the new address and the status badge stays accurate.
+    if (unit["assoc_title"] or "").strip().lower() in ("admin", "property manager"):
+        await sync_admin_email_change(conn, str(unit["hoa_id"]), unit["old_email_primary"], email_primary)
 
     # If the owner was replaced (email no longer matches), a still-pending invite
     # to the prior owner is stale — drop it so the unit stops showing "Invite
