@@ -10,6 +10,7 @@ export default function Signup() {
     ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
     certify_authorized: false,
+    agree_tos: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -228,6 +229,17 @@ export default function Signup() {
               className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
             />
             <span>I certify that I am authorized by the Association to enroll this Association in condo.insure and to provide access to Association insurance compliance records.</span>
+          </label>
+
+          <label className="flex items-start gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              required
+              checked={form.agree_tos}
+              onChange={e => setForm(f => ({ ...f, agree_tos: e.target.checked }))}
+              className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+            />
+            <span>I have read and agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Terms of Service</Link>.</span>
           </label>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
