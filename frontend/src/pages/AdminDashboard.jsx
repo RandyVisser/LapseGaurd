@@ -460,6 +460,8 @@ export default function AdminDashboard() {
   const [invitingAdmin, setInvitingAdmin] = useState(false)
   const [inviteAdminOpen, setInviteAdminOpen] = useState(false)
   const [inviteAdminEmail, setInviteAdminEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('property_manager')
+  const [inviteName, setInviteName] = useState('')
   const [pmInviteUnit, setPmInviteUnit] = useState(null)
   const [pmInviteEmail, setPmInviteEmail] = useState('')
   const [invitingPmLogin, setInvitingPmLogin] = useState(false)
@@ -743,10 +745,12 @@ export default function AdminDashboard() {
     finally { setInvitingAll(false) }
   }
 
-  function openInviteAdmin() {
+  function openInviteContact() {
     if (!hoaId || hoaId === ALL_HOAS) return
     const h = availableHoas.find(x => x.id === hoaId)
+    setInviteName(h?.admin_name || '')
     setInviteAdminEmail(h?.admin_email || '')
+    setInviteRole('property_manager')  // default to PM (multi-association ready)
     setInviteAllMsg('')
     setInviteAdminOpen(true)
   }
@@ -765,17 +769,29 @@ export default function AdminDashboard() {
     finally { setInvitingPmLogin(false) }
   }
 
-  async function handleInviteAdmin(e) {
+  async function handleInviteContact(e) {
     e?.preventDefault?.()
     if (!hoaId || hoaId === ALL_HOAS) return
+    const email = inviteAdminEmail.trim()
     setInvitingAdmin(true); setInviteAllMsg('')
     try {
-      const r = await apiPost(`/hoa/${hoaId}/invite-admin`, { email: inviteAdminEmail.trim() || undefined })
+      if (inviteRole === 'hoa_admin') {
+        const r = await apiPost(`/hoa/${hoaId}/invite-admin`, { email: email || undefined })
+        setInviteAllMsg(`Admin invited — set-up email sent to ${r.email}.`)
+      } else {
+        // Property manager: reuse an existing PM row for this email, else create one,
+        // then send the login invite.
+        const existing = units.find(u =>
+          (u.assoc_title || '').trim().toLowerCase() === 'property manager' &&
+          (u.email_primary || '').trim().toLowerCase() === email.toLowerCase())
+        const unitId = existing
+          ? existing.unit_id
+          : (await apiPost(`/hoa/${hoaId}/property-manager`, { name: inviteName.trim() || undefined, email })).unit_id
+        const r = await apiPost(`/hoa/${hoaId}/invite-pm`, { unit_id: unitId, email })
+        setInviteAllMsg(`Property manager invited — set-up email sent to ${r.email}.`)
+      }
       setInviteAdminOpen(false)
-      setInviteAllMsg(`Admin invited — set-up email sent to ${r.email}.`)
-      // Email may have changed → refresh so the Admin badge/card stay in sync
-      Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-        .then(([s, u]) => { setSummary(s); setUnits(u) }).catch(() => {})
+      refreshDashboard()
       setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingAdmin(false) }
@@ -962,11 +978,11 @@ export default function AdminDashboard() {
                 </button>
                 {(role === 'super_user' || role === 'property_manager') && (
                   <button
-                    onClick={openInviteAdmin}
+                    onClick={openInviteContact}
                     disabled={invitingAdmin || !hoaId || hoaId === '__all__'}
                     className={TOOLBAR_BTN}
                   >
-                    {invitingAdmin ? 'Inviting…' : 'Invite admin'}
+                    {invitingAdmin ? 'Inviting…' : 'Invite to dashboard'}
                   </button>
                 )}
                 <button
@@ -1128,24 +1144,46 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Invite admin modal — confirm/correct the email before sending */}
+        {/* Invite to dashboard — choose role (PM default) + confirm contact */}
         {inviteAdminOpen && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Invite admin</h2>
+              <h2 className="font-semibold text-slate-800 mb-1">Invite to dashboard</h2>
               <p className="text-xs text-slate-500 mb-4">
-                We'll email a set-up link (to set a password and access the dashboard) to this address.
-                Confirm or correct it before sending.
+                We'll email a set-up link (to set a password and access the dashboard) to this person.
               </p>
-              <form onSubmit={handleInviteAdmin} className="space-y-3">
-                <input
-                  type="email"
-                  required
-                  value={inviteAdminEmail}
-                  onChange={e => setInviteAdminEmail(e.target.value)}
-                  placeholder="admin@email.com"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <form onSubmit={handleInviteContact} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Role</label>
+                  <div className="flex gap-2">
+                    {[
+                      ['property_manager', 'Property Manager'],
+                      ['hoa_admin', 'Admin'],
+                    ].map(([val, label]) => (
+                      <button key={val} type="button" onClick={() => setInviteRole(val)}
+                        className={`flex-1 border rounded-lg px-3 py-2 text-sm ${inviteRole === val ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {inviteRole === 'hoa_admin'
+                      ? 'Admin manages only this association.'
+                      : 'Property Manager — can manage this and other associations.'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <input value={inviteName} onChange={e => setInviteName(e.target.value)}
+                    placeholder="Full name"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <input type="email" required value={inviteAdminEmail} onChange={e => setInviteAdminEmail(e.target.value)}
+                    placeholder="name@email.com"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={invitingAdmin}
                     className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
