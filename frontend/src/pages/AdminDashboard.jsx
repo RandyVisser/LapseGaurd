@@ -1554,7 +1554,7 @@ export default function AdminDashboard() {
                         <span className="text-xs text-green-600 font-medium py-1">Invite sent ✓</span>
                       ) : (
                         <button
-                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') }}
+                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') }}
                           className="text-xs bg-slate-700 active:bg-slate-800 text-white px-3 py-1.5 rounded-full"
                         >
                           Invite Primary
@@ -1675,7 +1675,7 @@ export default function AdminDashboard() {
                         ] : [
                           {
                             label: 'Invite Primary Owner',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || u.tenant_email || ''); setInviteType('primary') },
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
                           },
                           {
                             label: 'Invite Secondary Owner',
