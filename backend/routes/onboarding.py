@@ -31,6 +31,16 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # recipient ever changes.
 SIGNUP_ALERT_EMAIL = os.environ.get("SIGNUP_ALERT_EMAIL", "troy.visser@gmail.com")
 
+# Bump when the Terms of Service change so the stored acceptance records which
+# version each user agreed to.
+TOS_VERSION = "2025-06-23"
+
+
+def _client_ip(request: Request) -> str:
+    return (request.headers.get("X-Forwarded-For")
+            or (request.client.host if request.client else None)
+            or "unknown").split(",")[0].strip()
+
 router = APIRouter()
 
 # ── Rate limiting (in-memory, per IP, 5 signups / hour) ───────────────────────
@@ -63,6 +73,8 @@ class AssociationSignup(BaseModel):
     password: str | None = None
     unit_count: int | None = None
     has_owner_emails: bool | None = None
+    agree_tos: bool = False           # agreed to the Terms of Service
+    certify_authorized: bool = False  # certified authorized to enroll the association
     ho6_coverage_a_min: float | None = None
     ho6_coverage_e_min: float | None = None
     ho6_wind_required: bool = False
@@ -183,19 +195,24 @@ async def signup_association(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _check_signup_rate_limit(request)
-    # Create HOA record
+    if not body.agree_tos:
+        raise HTTPException(status_code=400, detail="You must agree to the Terms of Service to continue.")
+    # Create HOA record, stamping the legal acceptances server-side (now()).
     hoa_id = str(uuid.uuid4())
     await conn.execute(
         """INSERT INTO hoas (id, name, address, admin_email, admin_name, unit_count, has_owner_emails,
                ho6_coverage_a_min, ho6_coverage_e_min,
                ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required,
-               ho6_named_insured_match_required, ho6_property_address_match_required)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)""",
+               ho6_named_insured_match_required, ho6_property_address_match_required,
+               tos_accepted_at, tos_version, tos_accepted_ip, authorized_certified_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                   now(), $15, $16, CASE WHEN $17 THEN now() ELSE NULL END)""",
         hoa_id, body.association_name, body.address, body.email, body.admin_name,
         body.unit_count, body.has_owner_emails,
         body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
         body.ho6_additional_interest_required, body.ho6_policy_in_force_required,
         body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
+        TOS_VERSION, _client_ip(request), body.certify_authorized,
     )
 
     # Only create a login when a password was supplied (future self-signup). The
