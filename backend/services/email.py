@@ -473,6 +473,13 @@ def invite_email_html(
         <li>Submit the information at your earliest convenience.</li>
       </ol>
 
+      <p style="color:#374151">
+        <strong>Prefer not to create an account?</strong> You can simply email your
+        Declaration Page or Certificate of Insurance to
+        <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
+        and we'll add it to your unit's record for you.
+      </p>
+
       <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
       <ul style="color:#374151;padding-left:20px">
         <li>Insurance carrier name</li>
