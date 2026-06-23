@@ -20,7 +20,7 @@ from models.db import get_conn
 from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
-    new_association_notification_html,
+    new_association_notification_html, email_changed_html,
 )
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -162,12 +162,13 @@ async def _update_user_email(user_id: str, new_email: str) -> None:
         raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update login email")
 
 
-async def sync_admin_email_change(conn, hoa_id, old_email: str | None, new_email: str | None) -> None:
+async def sync_admin_email_change(conn, hoa_id, old_email: str | None, new_email: str | None,
+                                  background_tasks=None) -> None:
     """When an Admin/PM contact's email is changed, keep their login + invite in
     sync: an accepted staff invite under the old email means there's a Supabase
     login — update its email and the invite record so sign-in, status, and
-    contact all match. No-op if there's no accepted staff login for the old
-    email."""
+    contact all match, and notify both addresses. No-op if there's no accepted
+    staff login for the old email."""
     old = (old_email or "").strip()
     new = (new_email or "").strip()
     if not old or not new or old.lower() == new.lower():
@@ -183,6 +184,13 @@ async def sync_admin_email_change(conn, hoa_id, old_email: str | None, new_email
     if uid:
         await _update_user_email(uid, new)
     await conn.execute("UPDATE admin_invites SET email = $2 WHERE id = $1", inv["id"], new)
+
+    # Notify both the old and new addresses that the sign-in email changed.
+    if background_tasks is not None:
+        hoa_name = await conn.fetchval("SELECT name FROM hoas WHERE id = $1", hoa_id)
+        subject, html = email_changed_html(hoa_name or "your association", new)
+        for to in {old, new}:
+            background_tasks.add_task(send_email, to, subject, html)
 
 
 async def _create_staff_invite(conn, hoa_id: str, email: str, role: str) -> str:

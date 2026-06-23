@@ -713,6 +713,26 @@ def new_association_notification_html(
     return subject, html
 
 
+def email_changed_html(hoa_name: str, new_email: str) -> tuple[str, str]:
+    """Sent to both the old and new addresses when an admin/PM's sign-in email
+    is changed, so the prior address is alerted in case it wasn't authorized."""
+    subject = "Your condo.insure sign-in email was changed"
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">
+        The sign-in email for your condo.insure account (managing <strong>{hoa_name}</strong>)
+        was changed to <strong>{new_email}</strong>. You'll use this address to sign in from now on.
+      </p>
+      <p style="color:#9ca3af;font-size:13px;margin-top:16px">
+        If you didn't expect this change, contact us right away at
+        <a href="mailto:support@condo.insure" style="color:#1d4ed8">support@condo.insure</a>.
+      </p>
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def policy_upload_notification_html(
     tenant_name: str,
     unit_number: str,

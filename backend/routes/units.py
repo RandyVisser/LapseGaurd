@@ -92,6 +92,7 @@ class UnitOwnerUpdate(BaseModel):
 async def update_unit_owner(
     unit_id: str,
     body: UnitOwnerUpdate,
+    background_tasks: BackgroundTasks,
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
@@ -154,7 +155,7 @@ async def update_unit_owner(
     # Admin/PM rows: if the email changed, sync their Supabase login + invite record
     # so they sign in with the new address and the status badge stays accurate.
     if (unit["assoc_title"] or "").strip().lower() in ("admin", "property manager"):
-        await sync_admin_email_change(conn, str(unit["hoa_id"]), unit["old_email_primary"], email_primary)
+        await sync_admin_email_change(conn, str(unit["hoa_id"]), unit["old_email_primary"], email_primary, background_tasks)
 
     # If the owner was replaced (email no longer matches), a still-pending invite
     # to the prior owner is stale — drop it so the unit stops showing "Invite
