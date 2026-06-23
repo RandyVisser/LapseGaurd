@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { track } from '../analytics'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -34,6 +35,7 @@ export default function Join() {
         const data = await res.json()
         throw new Error(data.detail || 'Failed to create account')
       }
+      track('invite_accepted')
       navigate('/login?welcome=tenant')
     } catch (err) {
       setError(err.message)

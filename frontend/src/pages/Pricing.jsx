@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { track } from '../analytics'
 
 function NavBar() {
   const navigate = useNavigate()
@@ -32,6 +34,7 @@ function Check({ children }) {
 
 export default function Pricing() {
   const navigate = useNavigate()
+  useEffect(() => track('pricing_view'), [])
 
   return (
     <div className="min-h-screen bg-slate-50">

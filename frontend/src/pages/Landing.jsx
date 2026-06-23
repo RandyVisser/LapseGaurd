@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { track } from '../analytics'
 
 const TOUR_EMBED_URL = 'https://share.descript.com/embed/yR7DW1QXNOZ'
 
@@ -50,6 +51,7 @@ function Feature({ title, desc }) {
 export default function Landing() {
   const navigate = useNavigate()
   const [tourOpen, setTourOpen] = useState(false)
+  useEffect(() => track('landing_view'), [])
 
   return (
     <div className="min-h-screen bg-slate-50">

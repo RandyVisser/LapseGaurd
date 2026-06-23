@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { track } from '../analytics'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -15,6 +16,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  useEffect(() => track('signup_started'), [])
 
   function set(key) {
     return e => setForm(f => ({ ...f, [key]: e.target.value }))
@@ -58,6 +60,7 @@ export default function Signup() {
         throw new Error(data.detail || 'Signup failed')
       }
       setSuccess(true)
+      track('signup_completed')
     } catch (err) {
       setError(err.message)
     } finally {

@@ -4,6 +4,7 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
+import { track } from '../analytics'
 
 // Owner-facing quote link (revenue lead). Falls back to the same URL the admin
 // page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
@@ -151,7 +152,7 @@ export default function TenantDashboard() {
       setForm({ insurer: '', policy_number: '', expiration_date: '' })
       setFile(null)
       setFileInputKey(k => k + 1)
-      if (file) startParsingPoll()
+      if (file) { track('owner_upload'); startParsingPoll() }
     } catch (e) {
       setError(e.message)
     } finally {

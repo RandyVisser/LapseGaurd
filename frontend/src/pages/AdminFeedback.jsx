@@ -8,6 +8,49 @@ const TYPE_META = {
   help: ['🆘', 'Help needed', 'bg-amber-50 text-amber-800 border-amber-200'],
 }
 
+// Signup funnel — super-user only. Hides itself if analytics isn't reachable so
+// it can never break the feedback page.
+function FunnelCard() {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => { apiGet('/analytics/funnel?days=7').then(setData).catch(() => setFailed(true)) }, [])
+  if (failed) return null
+  const top = data?.funnel?.[0]?.count || 0
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-semibold text-slate-800">Signup funnel</p>
+        <span className="text-xs text-slate-400">last 7 days</span>
+      </div>
+      {!data ? (
+        <div className="h-24 bg-slate-50 rounded animate-pulse" />
+      ) : (
+        <div className="space-y-2">
+          {data.funnel.map(s => {
+            const pct = top ? Math.round((s.count / top) * 100) : 0
+            return (
+              <div key={s.name} className="flex items-center gap-3">
+                <span className="text-sm text-slate-600 w-32 flex-shrink-0">{s.label}</span>
+                <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                  <div className="bg-blue-500 h-5 rounded-full transition-all"
+                    style={{ width: `${s.count > 0 ? Math.max(pct, 5) : 0}%` }} />
+                </div>
+                <span className="text-sm font-semibold text-slate-800 w-8 text-right">{s.count}</span>
+              </div>
+            )
+          })}
+          {data.extra?.some(e => e.count > 0) && (
+            <div className="pt-3 mt-1 border-t border-slate-100 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+              {data.extra.map(e => <span key={e.name}>{e.label}: <b className="text-slate-700">{e.count}</b></span>)}
+            </div>
+          )}
+          {top === 0 && <p className="text-xs text-slate-400 pt-1">No visits recorded yet.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminFeedback() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
@@ -30,6 +73,7 @@ export default function AdminFeedback() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" title="Feedback" />
       <main className="max-w-3xl mx-auto px-4 py-8">
+        <FunnelCard />
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-slate-800">Pilot feedback</h1>
