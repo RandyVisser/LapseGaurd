@@ -17,8 +17,38 @@ function sessionId() {
   }
 }
 
+// One-time self-exclude: visiting any page with ?notrack=1 permanently marks this
+// browser as internal (for logged-out demos / incognito / a fresh device).
+function selfExcluded() {
+  try {
+    if (location.search.includes('notrack=1')) localStorage.setItem('ci.notrack', '1')
+    return localStorage.getItem('ci.notrack') === '1'
+  } catch {
+    return false
+  }
+}
+
+// A real signup prospect is logged OUT through landing → pricing → signup, so a
+// persisted Supabase session means it's us (founders) or an existing user —
+// exclude them from the funnel. (Supabase stores the session under
+// sb-<ref>-auth-token / .0 chunks.)
+function hasSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith('sb-') && k.includes('auth-token')) return true
+    }
+  } catch { /* ignore */ }
+  return false
+}
+
 export function track(name) {
   try {
+    if (selfExcluded()) return
+    // owner_upload is a logged-in action by nature, so it bypasses the session
+    // check; every other funnel event should only count logged-out prospects.
+    if (name !== 'owner_upload' && hasSession()) return
+
     const body = JSON.stringify({ name, path: location.pathname, session_id: sessionId() })
     const url = `${API_BASE}/analytics/event`
     if (navigator.sendBeacon) {
