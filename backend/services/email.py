@@ -477,7 +477,9 @@ def invite_email_html(
         <strong>Prefer not to create an account?</strong> You can simply email your
         Declaration Page or Certificate of Insurance to
         <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
-        and we'll add it to your unit's record for you.
+        and we'll add it to your unit's record for you. <strong>Please send it from
+        this same email address ({email})</strong> — that's how we match your document
+        to your unit, so a message from a different address won't be routed correctly.
       </p>
 
       <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
