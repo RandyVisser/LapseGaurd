@@ -8,6 +8,7 @@ export default function AdminSetup() {
   const navigate = useNavigate()
   const [invite, setInvite] = useState(null)
   const [password, setPassword] = useState('')
+  const [agreeTos, setAgreeTos] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -28,7 +29,7 @@ export default function AdminSetup() {
       const res = await fetch(`${API}/admin-invite/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, agree_tos: agreeTos }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -80,6 +81,17 @@ export default function AdminSetup() {
               className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          <label className="flex items-start gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              required
+              checked={agreeTos}
+              onChange={e => setAgreeTos(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+            />
+            <span>I have read and agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Terms of Service</Link>.</span>
+          </label>
 
           {error && (
             <p className="text-sm text-red-600">

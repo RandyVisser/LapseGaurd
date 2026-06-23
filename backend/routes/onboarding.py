@@ -345,16 +345,20 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
 
 class AdminInviteAccept(BaseModel):
     password: str
+    agree_tos: bool = False
 
 
 @router.post("/admin-invite/{token}", status_code=201)
 async def accept_admin_invite(
     token: str,
     body: AdminInviteAccept,
+    request: Request,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Public — the admin sets their password here; only now is the login created
-    and the token consumed."""
+    """Public — the admin/PM sets their password here; only now is the login
+    created and the token consumed. Records ToS acceptance on the invite."""
+    if not body.agree_tos:
+        raise HTTPException(status_code=400, detail="You must agree to the Terms of Service to continue.")
     async with conn.transaction():
         row = await conn.fetchrow(
             "SELECT id, email, hoa_id, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
@@ -412,7 +416,11 @@ async def accept_admin_invite(
                     row["hoa_id"], (admin_name or "").strip() or None, row["email"],
                 )
 
-        await conn.execute("UPDATE admin_invites SET accepted_at = NOW() WHERE id = $1", row["id"])
+        await conn.execute(
+            "UPDATE admin_invites SET accepted_at = NOW(), tos_accepted_at = NOW(), "
+            "tos_version = $2, tos_accepted_ip = $3 WHERE id = $1",
+            row["id"], TOS_VERSION, _client_ip(request),
+        )
     return {"ok": True}
 
 
