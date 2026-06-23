@@ -1641,13 +1641,11 @@ export default function AdminDashboard() {
                       )}
                       <RowActionsMenu
                         items={isPm ? [
+                          // PM name/email are fixed once created (audit/ToS). To
+                          // change a PM, add a new one and delete this row.
                           {
                             label: 'Invite to log in',
                             onClick: () => { setPmInviteUnit(u.unit_id); setPmInviteEmail(u.email_primary || '') },
-                          },
-                          {
-                            label: 'Edit PM…',
-                            onClick: () => openEditOwner(u, true),
                           },
                           {
                             label: 'Add New PM…',
