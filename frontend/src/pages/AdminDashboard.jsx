@@ -183,9 +183,9 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onAddEma
     },
     {
       title: 'Invite unit owners',
-      detail: 'Email every owner a secure signup link at once, or use the ⋯ menu on a single row.',
+      detail: 'Emails every owner a secure link to their own unit page to upload their insurance (not dashboard access). Or use the ⋯ menu on a single row.',
       done: summary.invites_sent > 0,
-      action: { label: 'Invite all owners', onClick: onInviteAll },
+      action: { label: 'Invite owners to their unit page', onClick: onInviteAll },
     },
     {
       title: 'Watch policies roll in',
@@ -990,8 +990,9 @@ export default function AdminDashboard() {
                   onClick={handleInviteAll}
                   disabled={invitingAll || !hoaId || hoaId === '__all__'}
                   className={TOOLBAR_BTN}
+                  title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
                 >
-                  {invitingAll ? 'Inviting…' : 'Invite all owners'}
+                  {invitingAll ? 'Inviting…' : 'Invite owners to their unit page'}
                 </button>
                 <button
                   onClick={handleSendBoardReport}
@@ -1465,8 +1466,9 @@ export default function AdminDashboard() {
                 onClick={handleInviteAll}
                 disabled={invitingAll || !hoaId || hoaId === '__all__'}
                 className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+                title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
               >
-                {invitingAll ? '…' : 'Invite all'}
+                {invitingAll ? '…' : 'Invite owners'}
               </button>
               <button
                 onClick={() => setImportOpen(true)}
