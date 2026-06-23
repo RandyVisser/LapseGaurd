@@ -4,23 +4,53 @@ import { supabase } from '../supabase'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
-  const [ready, setReady] = useState(false)
+  const [status, setStatus] = useState('verifying') // verifying | ready | invalid
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    // Supabase fires PASSWORD_RECOVERY when the user arrives via the reset link.
-    // The session is automatically set from the URL hash token.
+    let active = true
+
+    // Supabase fires PASSWORD_RECOVERY once the recovery session is established.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setReady(true)
+      if (event === 'PASSWORD_RECOVERY' && active) setStatus('ready')
     })
-    // Also check if we already have a session (page reload case)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true)
-    })
-    return () => subscription.unsubscribe()
+
+    async function verify() {
+      const url = new URL(window.location.href)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+
+      // An expired/already-consumed link comes back as an error param.
+      const errCode = url.searchParams.get('error_code') || hash.get('error_code')
+      const errDesc = url.searchParams.get('error_description') || hash.get('error_description')
+      if (errCode) {
+        if (!active) return
+        setError(decodeURIComponent(errDesc || '').replace(/\+/g, ' ') ||
+          'This reset link is no longer valid.')
+        setStatus('invalid')
+        return
+      }
+
+      // PKCE: exchange the ?code= for a recovery session.
+      const code = url.searchParams.get('code')
+      if (code) {
+        const { error: exErr } = await supabase.auth.exchangeCodeForSession(code)
+        if (!active) return
+        if (exErr) { setError(exErr.message); setStatus('invalid'); return }
+        setStatus('ready')
+        return
+      }
+
+      // Implicit fallback / page reload: a session may already be present.
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!active) return
+      if (session) setStatus('ready')
+    }
+    verify()
+
+    return () => { active = false; subscription.unsubscribe() }
   }, [])
 
   async function handleSubmit(e) {
@@ -36,9 +66,25 @@ export default function ResetPassword() {
     navigate('/login?welcome=reset')
   }
 
-  if (!ready) return (
+  if (status === 'verifying') return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
       Verifying reset link…
+    </div>
+  )
+
+  if (status === 'invalid') return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
+        <h1 className="text-xl font-bold text-slate-800 mb-1">Reset link expired</h1>
+        <p className="text-sm text-slate-500 mb-6">
+          {error || 'This password reset link is no longer valid.'} Reset links can
+          only be used once and expire after a short time — please request a new one.
+        </p>
+        <button onClick={() => navigate('/forgot-password')}
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm">
+          Request a new link
+        </button>
+      </div>
     </div>
   )
 
