@@ -1211,6 +1211,10 @@ export default function AdminDashboard() {
                   placeholder="unit-owner@email.com"
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <button type="button" onClick={() => openInvitePreview(inviteUnit)}
+                  className="text-sm text-blue-700 hover:text-blue-800 hover:underline font-medium">
+                  Preview the email that will be sent
+                </button>
                 <div className="flex gap-2">
                   <button type="submit" disabled={inviting}
                     className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
