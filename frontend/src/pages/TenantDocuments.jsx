@@ -129,21 +129,27 @@ export default function TenantDocuments() {
                 <tbody className="divide-y divide-slate-100">
                   {docs.map(d => (
                     <tr key={d.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3 font-medium text-slate-700">{d.name}</td>
+                      <td className="px-5 py-3 font-medium">
+                        {d.fillable ? (
+                          <button onClick={() => downloadPrefilled(d)} disabled={downloadingDoc === d.id}
+                            className="text-blue-600 hover:underline text-left disabled:opacity-60">
+                            {d.name}
+                          </button>
+                        ) : (
+                          <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline">{d.name}</a>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.building || 'ALL'}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         {d.fillable ? (
-                          <span className="inline-flex items-center gap-3">
-                            <button
-                              onClick={() => downloadPrefilled(d)}
-                              disabled={downloadingDoc === d.id}
-                              className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
-                              {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
-                            </button>
-                            <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                              className="text-[11px] text-slate-400 hover:underline">blank copy</a>
-                          </span>
+                          <button
+                            onClick={() => downloadPrefilled(d)}
+                            disabled={downloadingDoc === d.id}
+                            className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
+                            {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
+                          </button>
                         ) : (
                           <a href={d.file_url} target="_blank" rel="noopener noreferrer"
                             className="text-xs font-medium text-blue-600 hover:underline">
