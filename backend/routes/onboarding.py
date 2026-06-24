@@ -21,6 +21,7 @@ from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
     new_association_notification_html, email_changed_html,
+    staff_activated_notification_html,
 )
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -30,6 +31,9 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # Internal heads-up when a new association signs up. Override in Railway if the
 # recipient ever changes.
 SIGNUP_ALERT_EMAIL = os.environ.get("SIGNUP_ALERT_EMAIL", "support@condo.insure")
+
+# Internal heads-up when an invited Admin/PM completes setup and goes live.
+STAFF_ALERT_EMAIL = os.environ.get("STAFF_ALERT_EMAIL", "support@condo.insure")
 
 # Bump when the Terms of Service change so the stored acceptance records which
 # version each user agreed to.
@@ -285,6 +289,29 @@ async def _queue_new_association_alert(conn, background_tasks, hoa_id, name, add
         logging.getLogger(__name__).exception("Failed to queue new-association alert for %s", hoa_id)
 
 
+async def _queue_staff_activated_alert(conn, background_tasks, role, email, hoa_id):
+    """Best-effort internal heads-up to support@ when an invited Admin/PM
+    completes setup and goes live. Never raises."""
+    try:
+        role_label = "Property Manager" if role == "property_manager" else "Admin"
+        hoa_name = await conn.fetchval("SELECT name FROM hoas WHERE id = $1", hoa_id) or ""
+        # Best-effort display name: the matching staff row, else the hoa admin_name.
+        name = await conn.fetchval(
+            "SELECT owner_primary FROM units WHERE hoa_id = $1 "
+            "AND lower(coalesce(email_primary,'')) = lower($2) "
+            "AND lower(coalesce(assoc_title,'')) IN ('admin','property manager') LIMIT 1",
+            hoa_id, email,
+        )
+        if not name:
+            name = await conn.fetchval("SELECT admin_name FROM hoas WHERE id = $1", hoa_id)
+        subject, html = staff_activated_notification_html(role_label, name or "", email, hoa_name)
+        if STAFF_ALERT_EMAIL:
+            background_tasks.add_task(send_email, STAFF_ALERT_EMAIL, subject, html)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to queue staff-activated alert for %s", email)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.post("/onboard/association", status_code=201)
@@ -462,6 +489,7 @@ async def accept_admin_invite(
     token: str,
     body: AdminInviteAccept,
     request: Request,
+    background_tasks: BackgroundTasks,
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Public — the admin/PM sets their password here; only now is the login
@@ -538,6 +566,9 @@ async def accept_admin_invite(
             "tos_version = $2, tos_accepted_ip = $3 WHERE id = $1",
             row["id"], TOS_VERSION, _client_ip(request),
         )
+
+    # Heads-up to support@ that this person just went live (outside the txn).
+    await _queue_staff_activated_alert(conn, background_tasks, role, row["email"], row["hoa_id"])
     return {"ok": True}
 
 

@@ -725,6 +725,36 @@ def new_association_notification_html(
     return subject, html
 
 
+def staff_activated_notification_html(
+    role_label: str,
+    name: str,
+    email: str,
+    hoa_name: str,
+) -> tuple[str, str]:
+    """Internal heads-up when an invited Admin or Property Manager completes
+    setup (sets their password) and goes live on the dashboard."""
+    subject = f"✅ {role_label} is now live: {name or email}"
+    rows = [
+        ("Role", role_label),
+        ("Name", name or "—"),
+        ("Email", email),
+        ("Association", hoa_name or "—"),
+    ]
+    cells = "".join(
+        f"<tr>"
+        f"<td style='padding:4px 12px 4px 0;color:#6b7280;font-size:14px;white-space:nowrap;vertical-align:top'>{label}</td>"
+        f"<td style='padding:4px 0;color:#111827;font-size:14px'>{value}</td>"
+        f"</tr>"
+        for label, value in rows
+    )
+    html = f"""
+    <html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
+      <p style="color:#111827;font-size:16px;font-weight:600;margin:0 0 12px">A {role_label} just accepted their invite and signed in</p>
+      <table cellpadding="0" cellspacing="0" style="border-collapse:collapse">{cells}</table>
+    </body></html>"""
+    return subject, html
+
+
 def email_changed_html(hoa_name: str, new_email: str) -> tuple[str, str]:
     """Sent to both the old and new addresses when an admin/PM's sign-in email
     is changed, so the prior address is alerted in case it wasn't authorized."""
