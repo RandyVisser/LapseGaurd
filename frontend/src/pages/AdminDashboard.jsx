@@ -1290,6 +1290,7 @@ export default function AdminDashboard() {
                       <option value="Vice President" />
                       <option value="Secretary" />
                       <option value="Treasurer" />
+                      <option value="Director" />
                       <option value="Board Member" />
                     </datalist>
                   </div>
