@@ -31,7 +31,10 @@ _SPRINKLER_FIELDS = [
 
 # Forms we know how to pre-fill. Add new entries here as more fillable forms
 # are introduced; the doc_type must match what AdminDocuments stores.
+# "Sprinkler Alarm Form" is the legacy name kept so previously-uploaded docs
+# stay fillable after the type was renamed.
 _FORM_FIELDS = {
+    "Sprinkler and Fire Alarm Form": _SPRINKLER_FIELDS,
     "Sprinkler Alarm Form": _SPRINKLER_FIELDS,
 }
 

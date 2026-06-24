@@ -7,8 +7,7 @@ const DOC_TYPES = [
   'Wind Mitigation',
   'Association Evidence of Insurance',
   'Association Flood Dec Page',
-  'Fire Alarm Form',
-  'Sprinkler Alarm Form',
+  'Sprinkler and Fire Alarm Form',
   'Elevation Certificate',
   'Other',
 ]
@@ -127,7 +126,7 @@ export default function AdminDocuments() {
         ? Object.fromEntries(Object.entries(eoiFields).filter(([, v]) => v))
         : docType === 'Association Flood Dec Page'
         ? Object.fromEntries(Object.entries(floodFields).filter(([, v]) => v))
-        : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
+        : docType === 'Sprinkler and Fire Alarm Form'
         ? Object.fromEntries(Object.entries({ ...fireFields, expiration_date: fireExpiration }).filter(([, v]) => v))
         : docType === 'Elevation Certificate'
         ? Object.fromEntries(Object.entries(elevFields).filter(([, v]) => v))
@@ -139,7 +138,7 @@ export default function AdminDocuments() {
         ? [docType, eoiFields.eoi_date].filter(Boolean).join(' — ')
         : docType === 'Association Flood Dec Page'
         ? [docType, floodFields.building, floodFields.building_address].filter(Boolean).join(' — ')
-        : (docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form')
+        : docType === 'Sprinkler and Fire Alarm Form'
         ? [docType, fireFields.building, fireFields.date_signed].filter(Boolean).join(' — ')
         : docType === 'Elevation Certificate'
         ? [docType, elevFields.building, elevFields.date_signed].filter(Boolean).join(' — ')
@@ -198,7 +197,7 @@ export default function AdminDocuments() {
     nextSteps.push({ icon: '📝', text: 'Fill in the EOI Date and Expiration Date.' })
   } else if (docType === 'Association Flood Dec Page' && (!floodFields.building_address || !floodFields.expiration_date)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Building Address and Expiration Date.' })
-  } else if ((docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form') && (!fireFields.date_signed || !fireFields.address)) {
+  } else if (docType === 'Sprinkler and Fire Alarm Form' && (!fireFields.date_signed || !fireFields.address)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
   } else if (docType === 'Elevation Certificate' && (!elevFields.date_signed || !elevFields.address)) {
     nextSteps.push({ icon: '📝', text: 'Fill in the Date Signed and Address (Building # is optional).' })
@@ -366,7 +365,7 @@ export default function AdminDocuments() {
                 </div>
               </div>
             )}
-            {(docType === 'Fire Alarm Form' || docType === 'Sprinkler Alarm Form') && (
+            {docType === 'Sprinkler and Fire Alarm Form' && (
               <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
