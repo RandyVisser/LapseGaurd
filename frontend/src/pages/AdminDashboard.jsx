@@ -919,7 +919,7 @@ export default function AdminDashboard() {
                 <select
                   value={hoaId || ''}
                   onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[16rem]"
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[50ch]"
                 >
                   <option value={ALL_HOAS}>All Associations</option>
                   {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
@@ -941,7 +941,7 @@ export default function AdminDashboard() {
                 <select
                   value={hoaFieldValue}
                   onChange={e => handleHoaFieldValueChange(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[14rem]"
+                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[50ch]"
                 >
                   <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
                   <option value={ALL_HOAS}>All</option>
