@@ -7,10 +7,9 @@ FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
 # Quote links in emails point at the agency quote page.
 QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
-# Dec-page email-in intake. On a Resend-controlled SUBDOMAIN because the apex
-# condo.insure MX now points to Google Workspace (human inboxes). Set the
-# matching value in Railway once the subdomain's Resend receiving is live.
-INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@inbound.condo.insure")
+# Dec-page email-in intake address shown to owners who'd rather email their
+# document than upload it. Override in Railway via INBOUND_ADDRESS if needed.
+INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
 async def send_email(to_email: str, subject: str, html: str, reply_to: str | None = None) -> bool:
