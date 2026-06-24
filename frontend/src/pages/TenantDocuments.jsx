@@ -30,6 +30,23 @@ export default function TenantDocuments() {
     }
   }
 
+  async function viewDoc(doc) {
+    // Open the tab synchronously (avoids popup blockers), then load the
+    // generated PDF inline — pre-filled for forms, original otherwise.
+    const win = window.open('', '_blank')
+    setError('')
+    try {
+      const blob = await apiDownload(`/unit/${unitId}/documents/${doc.id}/prefilled`)
+      const url = URL.createObjectURL(blob)
+      if (win) win.location = url
+      else window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch (e) {
+      if (win) win.close()
+      setError(e.message)
+    }
+  }
+
   useEffect(() => {
     if (!unitId) return
     setDocs(null)
@@ -138,12 +155,19 @@ export default function TenantDocuments() {
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.building || 'ALL'}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => downloadPrefilled(d)}
-                          disabled={downloadingDoc === d.id}
-                          className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
-                          {downloadingDoc === d.id ? 'Preparing…' : 'Download'}
-                        </button>
+                        <span className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => viewDoc(d)}
+                            className="text-xs font-semibold text-blue-700 border border-blue-200 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg">
+                            View
+                          </button>
+                          <button
+                            onClick={() => downloadPrefilled(d)}
+                            disabled={downloadingDoc === d.id}
+                            className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
+                            {downloadingDoc === d.id ? 'Preparing…' : 'Download'}
+                          </button>
+                        </span>
                       </td>
                     </tr>
                   ))}
