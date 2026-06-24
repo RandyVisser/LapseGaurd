@@ -94,7 +94,8 @@ async def get_my_tenant(
         """
         SELECT t.id, t.unit_id, t.name, t.email,
                u.hoa_id, u.unit_number, u.street_address, u.city, u.state, u.zip,
-               u.owner_primary, u.owner_secondary,
+               u.owner_primary, u.owner_secondary, u.is_rental, u.parent_unit_id,
+               (u.lease_document_url IS NOT NULL) AS has_lease,
                h.name AS hoa_name
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
@@ -127,6 +128,9 @@ async def get_my_tenant(
                 "zip": r["zip"],
                 "owner_primary": r["owner_primary"],
                 "owner_secondary": r["owner_secondary"],
+                "is_rental": r["is_rental"],
+                "is_renter": r["parent_unit_id"] is not None,
+                "has_lease": r["has_lease"],
             }
             for r in rows
         ],

@@ -10,6 +10,8 @@ import { track } from '../analytics'
 // page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
 // Quote link points at the agency quote page.
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
+// Subrental owner steps — hidden until the rentals feature is switched on.
+const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 
 // One unambiguous answer per status — the page leads with this.
 const STATUS_HERO = {
@@ -49,6 +51,88 @@ function fmtDate(d) {
   if (!d) return null
   return new Date(String(d).slice(0, 10) + 'T00:00:00')
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+// Shown to the OWNER of a unit the association has flagged as a rental: upload
+// the lease (AI pulls the renter name) then invite the renter to add their HO-4.
+function RentalOwnerSection({ unitId, hasLease }) {
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [leaseDone, setLeaseDone] = useState(!!hasLease)
+  const [renterName, setRenterName] = useState('')
+  const [renterEmail, setRenterEmail] = useState('')
+  const [invited, setInvited] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function uploadLease(e) {
+    e.preventDefault()
+    if (!file) { setErr('Attach the signed lease to upload.'); return }
+    setBusy(true); setErr('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${unitId}/lease-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('policy-documents').upload(path, file, { upsert: false })
+      if (upErr) throw new Error(upErr.message)
+      const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+      const res = await apiPost(`/unit/${unitId}/lease`, { document_url: data.publicUrl })
+      setResult(res); setLeaseDone(true)
+      if (res.renter_names?.[0]) setRenterName(res.renter_names[0])
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+
+  async function sendInvite(e) {
+    e.preventDefault()
+    if (!renterEmail) { setErr('Enter the renter’s email.'); return }
+    setBusy(true); setErr('')
+    try {
+      await apiPost(`/unit/${unitId}/rental/invite`, { email: renterEmail, name: renterName || null })
+      setInvited(true)
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 mb-5">
+      <h2 className="font-bold text-slate-800 mb-1">Rental — action needed</h2>
+      <p className="text-sm text-slate-500 mb-4">
+        Your association flagged this unit as a rental. Upload the lease, then invite your renter so they can add their HO-4 policy.
+      </p>
+
+      <div className="mb-5">
+        <p className="text-sm font-semibold text-slate-700 mb-2">1. Upload the signed lease</p>
+        {leaseDone ? (
+          <p className="text-sm text-green-700">
+            ✓ Lease on file{result?.renter_names?.length ? ` — renter: ${result.renter_names.join(', ')}` : ''}
+          </p>
+        ) : (
+          <form onSubmit={uploadLease} className="flex flex-wrap items-center gap-2">
+            <input type="file" accept=".pdf,image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-sm" />
+            <button disabled={busy} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
+              {busy ? 'Reading…' : 'Upload lease'}
+            </button>
+          </form>
+        )}
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-2">2. Invite your renter</p>
+        {invited ? (
+          <p className="text-sm text-green-700">✓ Invite sent to {renterEmail}.</p>
+        ) : (
+          <form onSubmit={sendInvite} className="space-y-2 max-w-sm">
+            <input value={renterName} onChange={e => setRenterName(e.target.value)} placeholder="Renter name"
+                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input type="email" value={renterEmail} onChange={e => setRenterEmail(e.target.value)} placeholder="Renter email"
+                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button disabled={busy} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
+              {busy ? 'Sending…' : 'Send invite'}
+            </button>
+          </form>
+        )}
+      </div>
+      {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
+    </section>
+  )
 }
 
 export default function TenantDashboard() {
@@ -295,6 +379,10 @@ export default function TenantDashboard() {
             </div>
           )}
         </header>
+
+        {RENTALS_ENABLED && activeUnit?.is_rental && !activeUnit?.is_renter && (
+          <RentalOwnerSection unitId={unitId} hasLease={activeUnit?.has_lease} />
+        )}
 
         {error && !uploading && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
