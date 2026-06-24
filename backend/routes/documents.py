@@ -116,32 +116,38 @@ async def prefilled_document(
     )
     if doc is None or str(doc["hoa_id"]) != str(unit["hoa_id"]):
         raise HTTPException(status_code=404, detail="Document not found")
-    if not is_fillable(doc["doc_type"]):
-        raise HTTPException(status_code=400, detail="This document isn't a fillable form.")
 
     fetched = await fetch_bytes(doc["file_url"], HOA_BUCKET)
     if not fetched:
-        raise HTTPException(status_code=502, detail="Could not load the form template.")
-    template_bytes, _ = fetched
-
-    data = {
-        "date": date.today().strftime("%m/%d/%Y"),
-        "name": unit["owner_primary"] or "",
-        "address": unit["street_address"] or "",
-        "unit_number": unit["unit_number"] or "",
-        "city_state_zip": _city_state_zip(unit["city"], unit["state"], unit["zip"]),
-    }
-    filled = fill_form(template_bytes, doc["doc_type"], data)
-    if filled is None:
-        raise HTTPException(status_code=400, detail="This document isn't a fillable form.")
+        raise HTTPException(status_code=502, detail="Could not load the document.")
+    template_bytes, content_type = fetched
 
     unit_no = (unit["unit_number"] or "").strip()
     suffix = f" - Unit {unit_no}" if unit_no else ""
-    filename = f"{doc['doc_type']}{suffix}.pdf"
+
+    # Fillable forms get the owner's details overlaid; anything else (bylaws,
+    # master policy, etc.) just downloads as-is so a single button works for all.
+    if is_fillable(doc["doc_type"]):
+        data = {
+            "date": date.today().strftime("%m/%d/%Y"),
+            "name": unit["owner_primary"] or "",
+            "address": unit["street_address"] or "",
+            "unit_number": unit["unit_number"] or "",
+            "city_state_zip": _city_state_zip(unit["city"], unit["state"], unit["zip"]),
+        }
+        filled = fill_form(template_bytes, doc["doc_type"], data)
+        if filled is not None:
+            return Response(
+                content=filled,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="{doc["doc_type"]}{suffix}.pdf"'},
+            )
+
+    # Non-fillable: hand back the original file as a download.
     return Response(
-        content=filled,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        content=template_bytes,
+        media_type=content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{doc["name"]}"'},
     )
 
 
