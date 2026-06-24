@@ -22,6 +22,20 @@ export default function ResetPassword() {
       const url = new URL(window.location.href)
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 
+      // token_hash flow — the email link comes straight here (not through
+      // Supabase's verify GET), and the one-time token is only consumed by this
+      // client-side verifyOtp call. Email-scanner prefetches load the HTML but
+      // don't run JS, so the token stays valid for the real user.
+      const tokenHash = url.searchParams.get('token_hash') || hash.get('token_hash')
+      if (tokenHash) {
+        const type = url.searchParams.get('type') || hash.get('type') || 'recovery'
+        const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+        if (!active) return
+        if (vErr) { setError(vErr.message); setStatus('invalid'); return }
+        setStatus('ready')
+        return
+      }
+
       // An expired/already-consumed link comes back as an error param.
       const errCode = url.searchParams.get('error_code') || hash.get('error_code')
       const errDesc = url.searchParams.get('error_description') || hash.get('error_description')
