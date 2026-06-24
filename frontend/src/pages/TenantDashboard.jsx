@@ -527,20 +527,27 @@ export default function TenantDashboard() {
                     {d.doc_type && <span className="text-slate-400 ml-2 text-xs">{d.doc_type}</span>}
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    {d.fillable && (
-                      <button
-                        onClick={() => downloadPrefilled(d)}
-                        disabled={downloadingDoc === d.id}
-                        className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60"
-                      >
-                        {downloadingDoc === d.id ? 'Preparing…' : 'Download pre-filled'}
-                      </button>
-                    )}
-                    {d.file_url && (
-                      <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline">
-                        {d.fillable ? 'View blank' : 'View'}
-                      </a>
+                    {d.fillable ? (
+                      <>
+                        <button
+                          onClick={() => downloadPrefilled(d)}
+                          disabled={downloadingDoc === d.id}
+                          className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60"
+                        >
+                          {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
+                        </button>
+                        {d.file_url && (
+                          <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                            className="text-[11px] text-slate-400 hover:underline">
+                            blank copy
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      d.file_url && (
+                        <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline">View</a>
+                      )
                     )}
                   </div>
                 </li>
