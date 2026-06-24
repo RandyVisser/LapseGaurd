@@ -92,6 +92,7 @@ class UnitComplianceOut(BaseModel):
     radar_id: Optional[str]
     assessor_parcel_number: Optional[str]
     type: Optional[str]
+    is_rental: bool = False
     subdivision: Optional[str]
     corp_name: Optional[str]
     assoc_title: Optional[str]

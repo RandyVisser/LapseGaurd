@@ -164,6 +164,8 @@ class HoaOut(BaseModel):
     noncompliant_reminder_days: int = 7
     email_sender_role: str = "property_manager"
     email_sender_unit_id: Optional[str] = None
+    ho4_liability_min: Optional[float] = None
+    rental_endorsement_required: bool = True
 
 
 class HoaUpdate(BaseModel):
@@ -188,6 +190,8 @@ class HoaUpdate(BaseModel):
     ho6_property_address_match_required: bool = True
     invite_reminders_enabled: bool = True
     invite_reminder_days: int = 7
+    ho4_liability_min: Optional[float] = None
+    rental_endorsement_required: bool = True
 
 
 _HOA_SEARCH_FIELDS = """
@@ -204,6 +208,8 @@ _HOA_SEARCH_FIELDS = """
     h.ho6_policy_in_force_required,
     h.ho6_named_insured_match_required,
     h.ho6_property_address_match_required,
+    h.ho4_liability_min,
+    h.rental_endorsement_required,
     h.invite_reminders_enabled,
     h.invite_reminder_days,
     h.alerts_enabled,
@@ -256,6 +262,8 @@ async def list_hoas(
             ho6_policy_in_force_required=r["ho6_policy_in_force_required"],
             ho6_named_insured_match_required=r["ho6_named_insured_match_required"],
             ho6_property_address_match_required=r["ho6_property_address_match_required"],
+            ho4_liability_min=r["ho4_liability_min"],
+            rental_endorsement_required=r["rental_endorsement_required"] if r["rental_endorsement_required"] is not None else True,
             invite_reminders_enabled=r["invite_reminders_enabled"] if r["invite_reminders_enabled"] is not None else True,
             invite_reminder_days=r["invite_reminder_days"] if r["invite_reminder_days"] is not None else 7,
             alerts_enabled=r["alerts_enabled"] if r["alerts_enabled"] is not None else True,
@@ -319,6 +327,7 @@ async def list_units(
             u.radar_id,
             u.assessor_parcel_number,
             u.type,
+            u.is_rental,
             u.subdivision,
             u.corp_name,
             u.assoc_title,
@@ -348,6 +357,7 @@ async def list_units(
             SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
         ) t ON true
         WHERE u.hoa_id = $1
+          AND u.parent_unit_id IS NULL  -- rental sub-units are shown nested under their parent, not as top-level rows
         ORDER BY u.unit_number
         """,
         hoa_id,
@@ -368,6 +378,7 @@ async def list_units(
             radar_id=r["radar_id"],
             assessor_parcel_number=r["assessor_parcel_number"],
             type=r["type"],
+            is_rental=r["is_rental"],
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             assoc_title=r["assoc_title"],
@@ -412,6 +423,7 @@ async def compliance_summary(
                   EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
            WHERE u.hoa_id = $1
+             AND u.parent_unit_id IS NULL  -- exclude rental sub-units from association counts/billing
            ORDER BY u.id, t.id""",
         hoa_id,
     )
@@ -690,11 +702,14 @@ async def update_hoa(
             noncompliant_reminders_enabled = $19,
             noncompliant_reminder_days = $20,
             email_sender_role = $21,
-            email_sender_unit_id = $22
+            email_sender_unit_id = $22,
+            ho4_liability_min = $23,
+            rental_endorsement_required = $24
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required,
+                     ho4_liability_min, rental_endorsement_required,
                      invite_reminders_enabled, invite_reminder_days, alerts_enabled, alert_days,
                      lapsed_reminders_enabled, lapsed_reminder_days,
                      noncompliant_reminders_enabled, noncompliant_reminder_days,
@@ -723,6 +738,8 @@ async def update_hoa(
         max(1, int(body.noncompliant_reminder_days or 7)),
         body.email_sender_role if body.email_sender_role in ("property_manager", "board_member") else "property_manager",
         body.email_sender_unit_id,
+        body.ho4_liability_min,
+        body.rental_endorsement_required,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -754,6 +771,8 @@ async def update_hoa(
         noncompliant_reminder_days=updated["noncompliant_reminder_days"],
         email_sender_role=updated["email_sender_role"] or "property_manager",
         email_sender_unit_id=str(updated["email_sender_unit_id"]) if updated["email_sender_unit_id"] else None,
+        ho4_liability_min=updated["ho4_liability_min"],
+        rental_endorsement_required=updated["rental_endorsement_required"] if updated["rental_endorsement_required"] is not None else True,
     )
 
 
@@ -891,6 +910,7 @@ async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | No
                   u.unit_number, COALESCE(t.name, u.owner_primary, 'No owner') AS display_name
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
            WHERE u.hoa_id = $1
+             AND u.parent_unit_id IS NULL  -- exclude rental sub-units from association counts/billing
            ORDER BY u.id, t.id""",
         hoa_id,
     )

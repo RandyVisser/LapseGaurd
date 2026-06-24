@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, apiPatch, supabase } from '../supabase'
+import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 
 const API = import.meta.env.VITE_API_URL || '/api'
+// Subrental flagging — dark until the full rental flow is built + tested.
+const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 
 function SortTh({ label, col, sortCol, sortDir, onSort }) {
   const active = sortCol === col
@@ -575,6 +577,18 @@ export default function AdminDashboard() {
     } finally {
       setDeletingUnit(false)
       setDeleteUnitId(null)
+    }
+  }
+
+  async function handleFlagRental(u) {
+    if (u.is_rental && !window.confirm(
+      'Remove the rental flag? This deletes the renter sub-unit and any renter/HO-4 data on it.')) return
+    try {
+      if (u.is_rental) await apiDelete(`/unit/${u.unit_id}/rental`)
+      else await apiPost(`/unit/${u.unit_id}/rental`, {})
+      refreshDashboard()  // re-pull so the sub-unit appears/disappears + counts update
+    } catch (err) {
+      setError(err.message || 'Could not update rental status')
     }
   }
 
@@ -1690,6 +1704,10 @@ export default function AdminDashboard() {
                             label: 'Unit Sold / New Owner…',
                             onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
+                          ...(RENTALS_ENABLED ? [{
+                            label: u.is_rental ? 'Unflag rental' : 'Flag as rental',
+                            onClick: () => handleFlagRental(u),
+                          }] : []),
                           {
                             label: 'Delete unit…',
                             danger: true,

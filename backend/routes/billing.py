@@ -85,7 +85,8 @@ async def _authz_hoa(conn: asyncpg.Connection, user: AuthUser, hoa_id: str):
 async def _billable_units(conn: asyncpg.Connection, hoa_id: str) -> int:
     return await conn.fetchval(
         """SELECT count(*) FROM units
-           WHERE hoa_id = $1 AND lower(coalesce(assoc_title, '')) <> 'property manager'""",
+           WHERE hoa_id = $1 AND lower(coalesce(assoc_title, '')) <> 'property manager'
+             AND parent_unit_id IS NULL""",
         hoa_id,
     ) or 0
 
