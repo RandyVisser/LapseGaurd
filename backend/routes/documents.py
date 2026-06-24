@@ -2,6 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import date
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -24,6 +25,14 @@ def _city_state_zip(city, state, zipc) -> str:
     if city and right:
         return f"{city}, {right}"
     return city or right
+
+
+def _content_disposition(filename: str) -> str:
+    """Build a Content-Disposition header that's safe for non-ASCII filenames
+    (HTTP headers are Latin-1 only). Provides an ASCII fallback plus an RFC 5987
+    UTF-8 form so names with em-dashes etc. don't crash the response."""
+    ascii_name = (filename or "document").encode("ascii", "ignore").decode().strip() or "document"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename or 'document')}"
 
 router = APIRouter()
 
@@ -140,14 +149,14 @@ async def prefilled_document(
             return Response(
                 content=filled,
                 media_type="application/pdf",
-                headers={"Content-Disposition": f'attachment; filename="{doc["doc_type"]}{suffix}.pdf"'},
+                headers={"Content-Disposition": _content_disposition(f"{doc['doc_type']}{suffix}.pdf")},
             )
 
     # Non-fillable: hand back the original file as a download.
     return Response(
         content=template_bytes,
         media_type=content_type or "application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{doc["name"]}"'},
+        headers={"Content-Disposition": _content_disposition(doc["name"])},
     )
 
 
