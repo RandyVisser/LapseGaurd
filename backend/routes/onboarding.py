@@ -29,7 +29,7 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
 # Internal heads-up when a new association signs up. Override in Railway if the
 # recipient ever changes.
-SIGNUP_ALERT_EMAIL = os.environ.get("SIGNUP_ALERT_EMAIL", "troy.visser@gmail.com")
+SIGNUP_ALERT_EMAIL = os.environ.get("SIGNUP_ALERT_EMAIL", "support@condo.insure")
 
 # Bump when the Terms of Service change so the stored acceptance records which
 # version each user agreed to.

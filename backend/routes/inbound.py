@@ -11,13 +11,16 @@ Resend inbound webhooks deliver attachment *metadata* only; the bytes are
 fetched separately from the Received emails API (needs RESEND_API_KEY, the
 same key used for sending).
 
-Setup (Resend dashboard):
-1. Add the MX record Resend gives you for the receiving domain
-2. Create an inbound endpoint pointing at POST {API_URL}/inbound/email
-3. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
-4. RESEND_API_KEY must already be set (it is, for outbound email)
-5. Set INBOUND_ADDRESS=docs@condo.insure so only mail to that address is
-   treated as a submission (Resend receiving is domain catch-all)
+Setup (Resend dashboard). NB: receiving must be on a SUBDOMAIN
+(e.g. inbound.condo.insure) — the apex condo.insure MX points to Google
+Workspace for human inboxes, so docs@condo.insure no longer reaches Resend.
+1. Add inbound.condo.insure as a receiving domain in Resend
+2. Add the MX record Resend gives you for that subdomain
+3. Create an inbound endpoint pointing at POST {API_URL}/inbound/email
+4. Copy the webhook signing secret into RESEND_WEBHOOK_SECRET (whsec_...)
+5. RESEND_API_KEY must already be set (it is, for outbound email)
+6. Set INBOUND_ADDRESS=docs@inbound.condo.insure so only mail to that address
+   is treated as a submission (Resend receiving is subdomain catch-all)
 """
 import base64
 import hashlib
