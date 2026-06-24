@@ -1,8 +1,10 @@
 import asyncio
 import json
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from typing import List
 import asyncpg
 
@@ -10,9 +12,18 @@ from models.schemas import DocumentCreate, DocumentOut
 from models.db import get_conn
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from routes.hoa import _assert_hoa_access
-from services.storage import signed_url, object_path
+from services.storage import signed_url, object_path, fetch_bytes
+from services.pdf_fill import is_fillable, fill_form
 
 HOA_BUCKET = "hoa-documents"
+
+
+def _city_state_zip(city, state, zipc) -> str:
+    city = (city or "").strip()
+    right = " ".join(p for p in [(state or "").strip(), (zipc or "").strip()] if p)
+    if city and right:
+        return f"{city}, {right}"
+    return city or right
 
 router = APIRouter()
 
@@ -21,6 +32,7 @@ async def _doc_out(row) -> DocumentOut:
     d = dict(row)
     if isinstance(d.get("metadata"), str):
         d["metadata"] = json.loads(d["metadata"])
+    d["fillable"] = is_fillable(d.get("doc_type"))
     d["file_url"] = await signed_url(d.get("file_url"), HOA_BUCKET)
     return DocumentOut(**d)
 
@@ -62,6 +74,75 @@ async def list_unit_documents(
     )
 
     return await _docs_out(rows)
+
+
+@router.get("/unit/{unit_id}/documents/{doc_id}/prefilled")
+async def prefilled_document(
+    unit_id: str,
+    doc_id: str,
+    user: AuthUser = Depends(get_current_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Return a copy of an association form pre-filled with this unit owner's
+    details (name, address, unit #, city/state/zip, date)."""
+    try:
+        uuid.UUID(str(unit_id))
+        uuid.UUID(str(doc_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    unit = await conn.fetchrow(
+        "SELECT id, hoa_id, unit_number, owner_primary, street_address, city, state, zip "
+        "FROM units WHERE id = $1",
+        unit_id,
+    )
+    if unit is None:
+        raise HTTPException(status_code=404, detail="Unit not found")
+
+    # Access: a tenant must own the unit; admins/PMs/super-users need HOA access.
+    if user.role == "tenant":
+        tenant = await conn.fetchrow(
+            "SELECT id FROM tenants WHERE unit_id = $1 AND (supabase_user_id = $2 OR email = $3)",
+            unit_id, user.sub, user.email,
+        )
+        if tenant is None:
+            raise HTTPException(status_code=403, detail="Not your unit")
+    else:
+        await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
+
+    doc = await conn.fetchrow(
+        "SELECT id, hoa_id, name, file_url, doc_type FROM documents WHERE id = $1",
+        doc_id,
+    )
+    if doc is None or str(doc["hoa_id"]) != str(unit["hoa_id"]):
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not is_fillable(doc["doc_type"]):
+        raise HTTPException(status_code=400, detail="This document isn't a fillable form.")
+
+    fetched = await fetch_bytes(doc["file_url"], HOA_BUCKET)
+    if not fetched:
+        raise HTTPException(status_code=502, detail="Could not load the form template.")
+    template_bytes, _ = fetched
+
+    data = {
+        "date": date.today().strftime("%m/%d/%Y"),
+        "name": unit["owner_primary"] or "",
+        "address": unit["street_address"] or "",
+        "unit_number": unit["unit_number"] or "",
+        "city_state_zip": _city_state_zip(unit["city"], unit["state"], unit["zip"]),
+    }
+    filled = fill_form(template_bytes, doc["doc_type"], data)
+    if filled is None:
+        raise HTTPException(status_code=400, detail="This document isn't a fillable form.")
+
+    unit_no = (unit["unit_number"] or "").strip()
+    suffix = f" - Unit {unit_no}" if unit_no else ""
+    filename = f"{doc['doc_type']}{suffix}.pdf"
+    return Response(
+        content=filled,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/hoa/{hoa_id}/documents", response_model=List[DocumentOut])

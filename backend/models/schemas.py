@@ -147,3 +147,4 @@ class DocumentOut(BaseModel):
     metadata: Optional[dict] = None
     uploaded_by: Optional[uuid.UUID]
     created_at: datetime
+    fillable: bool = False  # has a pre-fill coordinate map (e.g. Sprinkler Alarm Form)

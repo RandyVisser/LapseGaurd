@@ -98,6 +98,22 @@ export async function apiPost(path, body) {
   return _handleResponse(res)
 }
 
+// Authenticated file download — returns a Blob (e.g. a generated PDF).
+export async function apiDownload(path) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const prefix = `[${res.status} ${res.url.replace(/^https?:\/\/[^/]+/, '')}]`
+    let detail = await res.text()
+    try { detail = JSON.parse(detail).detail || detail } catch { /* keep text */ }
+    throw new Error(`${prefix} ${detail}`)
+  }
+  return res.blob()
+}
+
 // Multipart file upload (no Content-Type — the browser sets the boundary)
 export async function apiUpload(path, file, field = 'file') {
   const { data: { session } } = await supabase.auth.getSession()
