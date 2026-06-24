@@ -524,7 +524,7 @@ export default function AdminDocuments() {
                   </td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-xs">
+                      className="inline-block text-xs font-semibold text-blue-700 border border-blue-200 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg">
                       View
                     </a>
                   </td>
