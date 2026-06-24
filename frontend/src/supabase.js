@@ -3,13 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'dev-anon-key'
 
-// PKCE flow delivers recovery/confirmation tokens as a `?code=` param that is
-// exchanged via POST, so email security scanners that GET-prefetch the link
-// can't consume the one-time token before the user clicks it (the bug that
-// broke the password-reset and invite links under the default implicit flow).
+// Implicit flow so password-reset links work CROSS-DEVICE (people read email on
+// their phone but use the site on a computer). PKCE ties the link to the browser
+// that started it (its code_verifier), which breaks that very common case.
+// Prefetch-safety is handled instead by the token_hash + verifyOtp flow: the
+// email link lands on our own page and the one-time token is redeemed by JS,
+// which email scanners don't run — see ResetPassword.jsx.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    flowType: 'pkce',
+    flowType: 'implicit',
     detectSessionInUrl: true,
     autoRefreshToken: true,
     persistSession: true,
