@@ -142,7 +142,7 @@ export default function TenantDocuments() {
                           onClick={() => downloadPrefilled(d)}
                           disabled={downloadingDoc === d.id}
                           className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
-                          {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
+                          {downloadingDoc === d.id ? 'Preparing…' : 'Download'}
                         </button>
                       </td>
                     </tr>
