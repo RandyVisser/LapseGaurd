@@ -18,13 +18,15 @@ logger = logging.getLogger(__name__)
 
 _PAGE_H = 792  # US Letter height in points
 
-# doc_type -> list of (x, y_baseline, data_key)
+# doc_type -> list of (x, y_baseline, data_key). x is the left edge of the
+# value column, set ~15 characters right of the printed labels.
+_SPRINKLER_X = 210
 _SPRINKLER_FIELDS = [
-    (135, _PAGE_H - 124.2 + 2, "date"),            # DATE
-    (135, _PAGE_H - 179.0 + 2, "name"),            # NAME
-    (135, _PAGE_H - 195.8 + 2, "address"),         # ADDRESS
-    (135, _PAGE_H - 212.7 + 2, "unit_number"),     # UNIT #
-    (135, _PAGE_H - 229.5 + 2, "city_state_zip"),  # CITY, ST, ZIP
+    (_SPRINKLER_X, _PAGE_H - 124.2 + 2, "date"),            # DATE
+    (_SPRINKLER_X, _PAGE_H - 179.0 + 2, "name"),            # NAME
+    (_SPRINKLER_X, _PAGE_H - 195.8 + 2, "address"),         # ADDRESS
+    (_SPRINKLER_X, _PAGE_H - 212.7 + 2, "unit_number"),     # UNIT #
+    (_SPRINKLER_X, _PAGE_H - 229.5 + 2, "city_state_zip"),  # CITY, ST, ZIP
 ]
 
 # Forms we know how to pre-fill. Add new entries here as more fillable forms
