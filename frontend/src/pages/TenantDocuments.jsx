@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
-import { apiGet } from '../supabase'
+import { apiGet, apiDownload } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
 // Shared documents posted by the association (bylaws, master policy, notices).
@@ -9,8 +9,26 @@ export default function TenantDocuments() {
   const { unitId, tenantUnits, selectUnit, profileError } = useAuth()
   const [docs, setDocs] = useState(null)
   const [error, setError] = useState('')
+  const [downloadingDoc, setDownloadingDoc] = useState(null)
 
   const activeUnit = tenantUnits.find(u => u.unit_id === unitId)
+
+  async function downloadPrefilled(doc) {
+    setDownloadingDoc(doc.id); setError('')
+    try {
+      const blob = await apiDownload(`/unit/${unitId}/documents/${doc.id}/prefilled`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${doc.doc_type || doc.name}.pdf`
+      document.body.appendChild(a); a.click(); a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDownloadingDoc(null)
+    }
+  }
 
   useEffect(() => {
     if (!unitId) return
@@ -114,11 +132,24 @@ export default function TenantDocuments() {
                       <td className="px-5 py-3 font-medium text-slate-700">{d.name}</td>
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
                       <td className="px-4 py-3 text-slate-500">{d.metadata?.building || 'ALL'}</td>
-                      <td className="px-4 py-3 text-right">
-                        <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs font-medium text-blue-600 hover:underline whitespace-nowrap">
-                          Open ↗
-                        </a>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {d.fillable ? (
+                          <span className="inline-flex items-center gap-3">
+                            <button
+                              onClick={() => downloadPrefilled(d)}
+                              disabled={downloadingDoc === d.id}
+                              className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60">
+                              {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
+                            </button>
+                            <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                              className="text-[11px] text-slate-400 hover:underline">blank copy</a>
+                          </span>
+                        ) : (
+                          <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs font-medium text-blue-600 hover:underline">
+                            Open ↗
+                          </a>
+                        )}
                       </td>
                     </tr>
                   ))}

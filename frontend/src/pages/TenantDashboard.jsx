@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, apiDownload, supabase } from '../supabase'
+import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import { track } from '../analytics'
@@ -66,8 +66,6 @@ export default function TenantDashboard() {
   const [success, setSuccess] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const pollRef = useRef(null)
-  const [docs, setDocs] = useState([])
-  const [downloadingDoc, setDownloadingDoc] = useState(null)
   const isMobile = useIsMobile()
   // Collapses to a corner pill on mobile so it doesn't cover the page
   const [helperExpanded, setHelperExpanded] = useState(false)
@@ -87,28 +85,9 @@ export default function TenantDashboard() {
       })
       .catch(e => setError(e.message))
       .finally(() => setPolicyLoading(false))
-    // Shared association documents/forms (best-effort — don't block the page)
-    apiGet(`/unit/${unitId}/documents`).then(setDocs).catch(() => setDocs([]))
   }, [unitId])
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
-
-  async function downloadPrefilled(doc) {
-    setDownloadingDoc(doc.id); setError('')
-    try {
-      const blob = await apiDownload(`/unit/${unitId}/documents/${doc.id}/prefilled`)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${doc.doc_type || doc.name}.pdf`
-      document.body.appendChild(a); a.click(); a.remove()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setDownloadingDoc(null)
-    }
-  }
 
   function startParsingPoll() {
     setParsing(true)
@@ -507,52 +486,6 @@ export default function TenantDashboard() {
                 ))}
               </ul>
             )}
-          </section>
-        )}
-
-        {/* ── Association documents & forms ────────────────────────────── */}
-        {docs.length > 0 && (
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-700">Association forms &amp; documents</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Forms marked “pre-filled” already include your name, unit and address.
-              </p>
-            </div>
-            <ul className="divide-y divide-slate-100">
-              {docs.map(d => (
-                <li key={d.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
-                  <div className="min-w-0">
-                    <span className="text-slate-700 truncate">{d.name}</span>
-                    {d.doc_type && <span className="text-slate-400 ml-2 text-xs">{d.doc_type}</span>}
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {d.fillable ? (
-                      <>
-                        <button
-                          onClick={() => downloadPrefilled(d)}
-                          disabled={downloadingDoc === d.id}
-                          className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg disabled:opacity-60"
-                        >
-                          {downloadingDoc === d.id ? 'Preparing…' : 'Download with my info'}
-                        </button>
-                        {d.file_url && (
-                          <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                            className="text-[11px] text-slate-400 hover:underline">
-                            blank copy
-                          </a>
-                        )}
-                      </>
-                    ) : (
-                      d.file_url && (
-                        <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline">View</a>
-                      )
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
           </section>
         )}
 
