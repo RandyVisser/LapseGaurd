@@ -160,12 +160,14 @@ function buildComplianceChecks(tenant, currentPolicies) {
   // endorsement on the HO-6 — same rules the dashboard status reflects.
   if (tenant.is_rental && !tenant.is_renter && ho6) {
     items.push({
+      group: 'rented',
       type: tenant.has_lease ? 'pass' : 'fail',
       text: tenant.has_lease ? 'Lease on file' : 'Lease required — no copy of the lease on file',
     })
     if (tenant.rental_endorsement_required) {
       const endorsed = !!ho6?.extracted_data?.has_rental_endorsement
       items.push({
+        group: 'rented',
         type: endorsed ? 'pass' : 'fail',
         text: endorsed
           ? 'HO-6 carries a Unit-Rented-to-Others endorsement'
@@ -179,6 +181,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
       const today = new Date().toISOString().slice(0, 10)
       const active = start <= today && today <= end
       items.push({
+        group: 'rented',
         type: active ? 'pass' : 'fail',
         text: active
           ? `Lease effective dates are active (${start} – ${end})`
@@ -188,6 +191,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
         const termDays = Math.round((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24))
         const meets = termDays >= tenant.lease_min_term_days
         items.push({
+          group: 'rented',
           type: meets ? 'pass' : 'fail',
           text: `Lease term ${termDays} days ${meets ? 'meets' : 'below'} ${tenant.lease_min_term_days}-day minimum`,
         })
@@ -1060,18 +1064,33 @@ export default function AdminTenantDetail() {
                 <span>{ss.icon}</span> {ss.label}
                 {isExpiringSoon && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">Expiring Soon</span>}
               </p>
-              {complianceChecks.length > 0 && (
-                <ul className="space-y-1.5">
-                  {complianceChecks.map((c, i) => (
-                    <li key={i} className={`flex items-start gap-2 text-sm font-medium ${ss.bullet[c.type]}`}>
-                      <span className="mt-0.5 flex-shrink-0">
-                        {c.type === 'pass' ? '✓' : c.type === 'fail' ? '✗' : '⚠'}
-                      </span>
-                      {c.text}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {complianceChecks.length > 0 && (() => {
+                const baseChecks = complianceChecks.filter(c => c.group !== 'rented')
+                const rentedChecks = complianceChecks.filter(c => c.group === 'rented')
+                const renderItem = (c, i) => (
+                  <li key={i} className={`flex items-start gap-2 text-sm font-medium ${ss.bullet[c.type]}`}>
+                    <span className="mt-0.5 flex-shrink-0">
+                      {c.type === 'pass' ? '✓' : c.type === 'fail' ? '✗' : '⚠'}
+                    </span>
+                    {c.text}
+                  </li>
+                )
+                return (
+                  <>
+                    {baseChecks.length > 0 && (
+                      <ul className="space-y-1.5">{baseChecks.map(renderItem)}</ul>
+                    )}
+                    {rentedChecks.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-300/60">
+                        <p className="text-sm font-semibold text-slate-700 mb-1.5">
+                          This unit is flagged as RENTED — these are additional requirements:
+                        </p>
+                        <ul className="space-y-1.5">{rentedChecks.map(renderItem)}</ul>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
 
             {/* ── Unit & Owner ──────────────────────────────────────────────── */}
