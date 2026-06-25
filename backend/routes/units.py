@@ -284,6 +284,20 @@ def _auto_review_overrides(extracted: dict, submitted: dict, coverage_type: str,
     if submitted.get("address") and extracted.get("property_address"):
         result["property_address_match"] = "fail" if "Property address mismatch" in flags_text else "pass"
 
+    # Renter HO-4: only the personal-liability minimum applies — no dwelling/wind checks.
+    if coverage_type == "ho4":
+        l_min = submitted.get("ho4_liability_min")
+        liability = extracted.get("liability_coverage")
+        if l_min is not None:
+            if liability is not None:
+                try:
+                    result["ho4_liability_min"] = "pass" if float(liability) >= float(l_min) else "fail"
+                except (TypeError, ValueError):
+                    pass
+            else:
+                result["ho4_liability_min"] = "fail"
+        return result
+
     # Coverage A (Dwelling) min
     a_min = submitted.get("ho6_coverage_a_min")
     dwelling = extracted.get("dwelling_coverage")
@@ -492,7 +506,7 @@ async def upload_policy(
     hoa_row = None
     if unit_row:
         hoa_row = await conn.fetchrow(
-            "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1",
+            "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1",
             unit_row["hoa_id"],
         )
 
@@ -554,6 +568,7 @@ async def upload_policy(
             "ho6_coverage_a_min": hoa_row["ho6_coverage_a_min"] if hoa_row else None,
             "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
             "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
+            "ho4_liability_min": hoa_row["ho4_liability_min"] if hoa_row else None,
         }
         background_tasks.add_task(_run_parsing, str(row["id"]), doc_ref, submitted)
 

@@ -93,6 +93,19 @@ async def _compliance_status_by_tenant(
                 ext = _json.loads(raw) if isinstance(raw, str) else (raw or {})
                 if not ext:
                     continue
+                # Renter HO-4 (subrented unit): only the association's HO-4 liability
+                # minimum applies — skip all the HO-6 dwelling/wind checks.
+                if ext.get("coverage_type") == "ho4":
+                    if hoa_reqs:
+                        try:
+                            l_min = hoa_reqs.get("ho4_liability_min")
+                            liability = ext.get("liability_coverage")
+                            if l_min and liability and float(liability) < float(l_min):
+                                found_non_compliant = True
+                                break
+                        except (TypeError, ValueError):
+                            pass
+                    continue
                 # Check stored validation flags — but skip wind-only flags if wind is now covered
                 validation = ext.get("validation") or {}
                 if validation.get("passed") is False:
@@ -364,7 +377,7 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
@@ -429,7 +442,7 @@ async def compliance_summary(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = 0
@@ -916,7 +929,7 @@ async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | No
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = compliant = expiring = lapsed = missing = 0

@@ -33,9 +33,10 @@ Fields:
 - dwelling_coverage (number in dollars or null)
 - liability_coverage (number in dollars or null)
 - deductible (number in dollars or null)
-- coverage_type (string — one of "ho6_with_wind", "ho6_wind_excluded", "wind_only", or "unknown")
+- coverage_type (string — one of "ho6_with_wind", "ho6_wind_excluded", "wind_only", "ho4", or "unknown")
 
 To determine coverage_type:
+- If this is an HO4 / HO-4 / tenant / renters policy (covers a RENTER's personal property and personal liability, with NO dwelling/building coverage), use "ho4".
 - If the dec page is a standalone wind / hurricane / named-storm-only policy (not a full HO6 walls-in policy), use "wind_only".
 - Otherwise, for an HO6 condo/homeowners policy: look for a wind, hurricane, or named-storm EXCLUSION endorsement (e.g. "Windstorm or Hail Exclusion", "Named Storm Exclusion") — if present, use "ho6_wind_excluded".
 - If instead the policy lists a wind or hurricane DEDUCTIBLE (showing wind coverage is included, not excluded), use "ho6_with_wind".
@@ -186,6 +187,22 @@ def _validate(extracted: dict, submitted: dict) -> dict:
             return str(v)
 
     coverage_type = extracted.get("coverage_type")
+
+    if coverage_type == "ho4":
+        # Renter HO-4: only personal liability is checked, against the association's
+        # HO-4 minimum. (Name/address/expiration flags above still apply.)
+        l_min = submitted.get("ho4_liability_min")
+        liability = extracted.get("liability_coverage")
+        if l_min is not None and liability is not None:
+            try:
+                if float(liability) < float(l_min):
+                    flags.append(
+                        f"Personal liability below the association's renter minimum — "
+                        f"requires at least {_fmt_money(l_min)}, document shows {_fmt_money(liability)}"
+                    )
+            except (TypeError, ValueError):
+                pass
+        return {"passed": len(flags) == 0, "flags": flags}
 
     a_min = submitted.get("ho6_coverage_a_min")
     dwelling = extracted.get("dwelling_coverage")

@@ -384,6 +384,14 @@ export default function TenantDashboard() {
           <RentalOwnerSection unitId={unitId} hasLease={activeUnit?.has_lease} />
         )}
 
+        {RENTALS_ENABLED && activeUnit?.is_renter && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-5 text-sm text-indigo-900">
+            You're listed as the <strong>renter</strong> of this unit. Upload your{' '}
+            <strong>HO-4 (renters) policy</strong> below — your association requires renters to
+            carry personal liability coverage.
+          </div>
+        )}
+
         {error && !uploading && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
         {/* ── Status hero ─────────────────────────────────────────────── */}
