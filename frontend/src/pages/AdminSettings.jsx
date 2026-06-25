@@ -58,6 +58,7 @@ export default function AdminSettings() {
   const [emailPreviews, setEmailPreviews] = useState(null)
   const [previewKind, setPreviewKind] = useState(null)
   const [contacts, setContacts] = useState(null)
+  const [infoPopup, setInfoPopup] = useState(null)  // { term, info } for the requirement help popups
 
   async function openEmailPreviews() {
     setPreviewKind('invite')
@@ -567,8 +568,13 @@ export default function AdminSettings() {
                 { key: 'ho6_named_insured_match_required', label: 'Require named insured to match unit-owner' },
                 { key: 'ho6_property_address_match_required', label: 'Require property address to match unit' },
                 { key: 'ho6_wind_required', label: 'Require wind coverage (HO6 with wind, or HO6 + separate wind-only policy)' },
-                { key: 'ho6_additional_interest_required', label: 'Require association to be listed as Additional Interest' },
-              ].map(({ key, label }) => (
+                {
+                  key: 'ho6_additional_interest_required',
+                  label: 'Require association to be listed as Additional Interest',
+                  term: 'Additional Interest',
+                  info: 'Being listed as an Additional Interest on an HO-6 condo unit policy does not grant ownership rights or coverage rights under the policy. It is primarily a notification status.',
+                },
+              ].map(({ key, label, term, info }) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
@@ -576,7 +582,19 @@ export default function AdminSettings() {
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  {label}
+                  {term && info ? (
+                    <span>
+                      {label.split(term)[0]}
+                      <button
+                        type="button"
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setInfoPopup({ term, info }) }}
+                        className="text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800"
+                      >
+                        {term}
+                      </button>
+                      {label.split(term)[1]}
+                    </span>
+                  ) : label}
                 </label>
               ))}
             </div>
@@ -620,6 +638,18 @@ export default function AdminSettings() {
               {saving ? 'Saving…' : 'Save Settings'}
             </button>
           </form>
+        )}
+
+        {infoPopup && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setInfoPopup(null)}>
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className="font-semibold text-slate-800">{infoPopup.term}</h3>
+                <button onClick={() => setInfoPopup(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">×</button>
+              </div>
+              <p className="text-sm text-slate-600">{infoPopup.info}</p>
+            </div>
+          </div>
         )}
 
         {previewKind && emailPreviews && emailPreviews[previewKind] && (
