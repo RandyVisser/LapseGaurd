@@ -228,7 +228,7 @@ export default function AdminDocuments() {
           </ul>
         </div>
       )}
-      <main className="max-w-full mx-auto px-4 py-8">
+      <main className="max-w-full mx-auto px-4 pt-8 pb-44">
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
           <header className="mb-6">
             <h1 className="text-xl font-bold text-slate-800">
