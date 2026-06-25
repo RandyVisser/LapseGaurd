@@ -737,7 +737,7 @@ async def invite_preview(
     """Render the exact invite email this unit would receive (owner or PM version)."""
     row = await conn.fetchrow(
         """SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary,
-                  u.street_address, u.city, u.state, u.zip, h.name AS hoa_name
+                  u.street_address, u.city, u.state, u.zip, u.parent_unit_id, h.name AS hoa_name
            FROM units u JOIN hoas h ON h.id = u.hoa_id WHERE u.id = $1""",
         unit_id,
     )
@@ -746,16 +746,18 @@ async def invite_preview(
     if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
         raise HTTPException(status_code=403, detail="Access denied")
     is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
+    is_renter = row["parent_unit_id"] is not None
     sender = await _resolve_sender(conn, row["hoa_id"])
     subject, html = invite_email_html(
         "owner@example.com", row["unit_number"], row["hoa_name"], f"{APP_URL}/join/preview",
         is_property_manager=is_pm,
         sender_email=sender["email"] if sender else None,
-        recipient_name=row["owner_primary"] or "Unit Owner",
+        recipient_name=row["owner_primary"] or ("Renter" if is_renter else "Unit Owner"),
         corp_name=sender["corp_name"] if sender else None,
         sender_name=sender["name"] if sender else None,
         sender_title=sender["title"] if sender else None,
         unit_address=format_address(row["street_address"], row["city"], row["state"], row["zip"]),
+        is_renter=is_renter,
     )
     return {"subject": subject, "html": html}
 
@@ -771,7 +773,7 @@ async def invite_tenant(
         """
         SELECT u.unit_number, u.assoc_title, u.hoa_id, u.owner_primary, u.owner_secondary,
                u.email_primary, u.email_secondary, u.street_address, u.city, u.state, u.zip,
-               h.name AS hoa_name
+               u.parent_unit_id, h.name AS hoa_name
         FROM units u JOIN hoas h ON h.id = u.hoa_id
         WHERE u.id = $1
         """,
@@ -780,6 +782,7 @@ async def invite_tenant(
     if not row:
         raise HTTPException(status_code=404, detail="Unit not found")
     is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
+    is_renter = row["parent_unit_id"] is not None
     if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -820,6 +823,7 @@ async def invite_tenant(
         sender_name=sender["name"] if sender else None,
         sender_title=sender["title"] if sender else None,
         unit_address=format_address(row["street_address"], row["city"], row["state"], row["zip"]),
+        is_renter=is_renter,
     )
     sent = await send_email(body.email, subject, html, reply_to=sender_email)
     if not sent:

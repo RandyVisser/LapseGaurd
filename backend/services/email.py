@@ -355,9 +355,10 @@ def invite_email_html(
     sender_name: str | None = None,
     sender_title: str | None = None,
     unit_address: str | None = None,
+    is_renter: bool = False,
 ) -> tuple[str, str]:
     subject = f"Action requested — {hoa_name} insurance compliance"
-    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    greeting = "Dear " + ((recipient_name or "").strip() or ("Renter" if is_renter else "Unit Owner"))
     re_parts = [p for p in [(unit_address or "").strip(),
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
@@ -438,6 +439,20 @@ def invite_email_html(
             (sender_email or "").strip() or None,
         ]
         signature = "<br>".join(line for line in sig_lines if line)
+        # Renter (HO-4) vs unit-owner (HO-6) wording
+        track_line = ("collect and track unit insurance information." if is_renter
+                      else "collect and track unit-owner insurance information.")
+        dec_label = ("Your current HO-4 Renters Insurance Policy Declaration Page" if is_renter
+                     else "Your current HO-6 Condominium Unit Owners Policy Declaration Page")
+        match_target = "this unit" if is_renter else "your unit"
+        maintain_line = ("If you already maintain Renters Insurance, the process should" if is_renter
+                         else "If you already maintain condominium unit-owner insurance, the process should")
+        quote_intro = (
+            "Don't have an HO-4 policy yet, or want to compare your current rate? Get a "
+            "fast, no-obligation HO-4 quote in minutes:" if is_renter else
+            "Don't have an HO-6 policy yet, or want to compare your current rate? Get a "
+            "fast, no-obligation HO-6 quote in minutes:")
+        quote_btn_label = "Get a New HO-4 Quote" if is_renter else "Get a New HO-6 Quote"
         body = f"""
       {re_line}
       <p style="color:#374151">{greeting},</p>
@@ -458,7 +473,7 @@ def invite_email_html(
       </p>
       <p style="color:#374151">
         To streamline this process, the Association will now use Condo.insure to
-        collect and track unit-owner insurance information.
+        {track_line}
       </p>
 
       <p style="color:#111827;font-weight:700;margin-top:20px">What do I need to do?</p>
@@ -468,7 +483,7 @@ def invite_email_html(
         <li>Confirm your contact information.</li>
         <li>Upload one of the following:
           <ul style="padding-left:18px;margin:6px 0">
-            <li>Your current HO-6 Condominium Unit Owners Policy Declaration Page</li>
+            <li>{dec_label}</li>
             <li>A Certificate of Insurance showing active coverage</li>
           </ul>
         </li>
@@ -481,7 +496,7 @@ def invite_email_html(
         <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
         and we'll add it to your unit's record for you. <strong>Please send it from
         this same email address ({email})</strong> — that's how we match your document
-        to your unit, so a message from a different address won't be routed correctly.
+        to {match_target}, so a message from a different address won't be routed correctly.
       </p>
 
       <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
@@ -495,17 +510,15 @@ def invite_email_html(
 
       <p style="color:#374151">There is no cost to you to use the compliance portal.</p>
       <p style="color:#374151">
-        If you already maintain condominium unit-owner insurance, the process should
-        only take a few minutes.
+        {maintain_line} only take a few minutes.
       </p>
       <p style="color:#374151">
-        Don't have an HO-6 policy yet, or want to compare your current rate? Get a
-        fast, no-obligation HO-6 quote in minutes:
+        {quote_intro}
       </p>
       <div style="text-align:center;margin:4px 0 8px">
         <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">Get a New HO-6 Quote</a>
+           text-decoration:none">{quote_btn_label}</a>
       </div>
       <p style="color:#374151">
         Thank you for your prompt attention and cooperation in helping the Association
