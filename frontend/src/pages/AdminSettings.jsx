@@ -572,7 +572,7 @@ export default function AdminSettings() {
                   key: 'ho6_additional_interest_required',
                   label: 'Require association to be listed as Additional Interest',
                   term: 'Additional Interest',
-                  info: 'Being listed as an Additional Interest on an HO-6 condo unit policy does not grant ownership rights or coverage rights under the policy. It is primarily a notification status.',
+                  info: 'Being listed as an Additional Interest on an HO-6 condo unit policy does not grant ownership rights or coverage rights under the policy. It is primarily a notification status. The insurance carriers will mail copies of the Dec Pages, Invoices, and Changes to the Association any time they mail the Insured.',
                 },
               ].map(({ key, label, term, info }) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
