@@ -72,6 +72,7 @@ class TenantDetailOut(BaseModel):
     rental_endorsement_required: bool = True
     lease_required: bool = False
     lease_min_term_days: Optional[int] = None
+    renter_unit_id: Optional[str] = None  # linked renter sub-unit (for the owner's HO-4 upload)
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None

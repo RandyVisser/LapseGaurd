@@ -556,6 +556,11 @@ export default function AdminTenantDetail() {
   const leaseInputRef = useRef()
   const [leaseUploading, setLeaseUploading] = useState(false)
   const [leaseErr, setLeaseErr] = useState('')
+  const ho4InputRef = useRef()
+  const [ho4Uploading, setHo4Uploading] = useState(false)
+  const [ho4Msg, setHo4Msg] = useState('')
+  const [ho4Err, setHo4Err] = useState('')
+  const [ho4TenantId, setHo4TenantId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [removingOwner, setRemovingOwner] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -650,6 +655,26 @@ export default function AdminTenantDetail() {
       initFromTenant(fresh)
     } catch (err) { setLeaseErr(err.message) }
     finally { setLeaseUploading(false) }
+  }
+
+  async function handleHo4File(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !tenant?.renter_unit_id) return
+    setHo4Uploading(true); setHo4Msg(''); setHo4Err('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${tenant.renter_unit_id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('policy-documents').upload(path, file, { upsert: true })
+      if (upErr) throw new Error(upErr.message)
+      const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+      // Make sure the renter sub-unit has a tenant record, then attach the policy
+      const t = await apiPost(`/unit/${tenant.renter_unit_id}/tenant`, {})
+      await apiPost(`/unit/${tenant.renter_unit_id}/policy`, { document_url: data.publicUrl })
+      setHo4Msg('HO-4 uploaded for the renter — we\'re reading it now.')
+      setHo4TenantId(t?.id || null)
+    } catch (err) { setHo4Err(err.message) }
+    finally { setHo4Uploading(false) }
   }
 
   // ── Derived ─────────────────────────────────────────────────────────────────
@@ -1189,6 +1214,27 @@ export default function AdminTenantDetail() {
                       <p className="text-xs text-slate-400 mt-1 text-center">Lease on file — we read it to fill in the renter's details.</p>
                     )}
                     {leaseErr && <p className="text-xs text-red-600 mt-1 text-center">{leaseErr}</p>}
+
+                    {/* Renter's HO-4 policy — attached to the linked sub-unit */}
+                    {tenant.renter_unit_id && (
+                      <div className="mt-2">
+                        <input ref={ho4InputRef} type="file" accept=".pdf,image/*" onChange={handleHo4File} className="hidden" />
+                        <button type="button" onClick={() => ho4InputRef.current?.click()} disabled={ho4Uploading}
+                          className="flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-60">
+                          {ho4Uploading ? 'Uploading…' : "+ Add HO-4 policy (renter)"}
+                        </button>
+                        {ho4Msg && (
+                          <p className="text-xs text-green-700 mt-1 text-center">
+                            {ho4Msg}{' '}
+                            {ho4TenantId && (
+                              <button type="button" onClick={() => navigate(`/admin/tenant/${ho4TenantId}`)}
+                                className="text-blue-600 hover:underline">View renter →</button>
+                            )}
+                          </p>
+                        )}
+                        {ho4Err && <p className="text-xs text-red-600 mt-1 text-center">{ho4Err}</p>}
+                      </div>
+                    )}
 
                     {tenant.has_lease && tenant.lease_summary && (() => {
                       const ls = tenant.lease_summary

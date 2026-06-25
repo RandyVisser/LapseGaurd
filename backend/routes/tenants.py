@@ -200,6 +200,13 @@ async def get_tenant_detail(
     _statuses, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
     compliance_status = _statuses.get(row["id"])
 
+    # The linked renter sub-unit (for the owner's page to add the renter's HO-4)
+    renter_unit_id = None
+    if row["is_rental"] and row["parent_unit_id"] is None:
+        renter_unit_id = await conn.fetchval(
+            "SELECT id FROM units WHERE parent_unit_id = $1 LIMIT 1", row["unit_id"]
+        )
+
     # Build activity log from alerts + policy events
     _COVERAGE_LABELS = {
         "ho6_with_wind": "HO-6",
@@ -360,6 +367,7 @@ async def get_tenant_detail(
         rental_endorsement_required=row["rental_endorsement_required"] if row["rental_endorsement_required"] is not None else True,
         lease_required=row["lease_required"] if row["lease_required"] is not None else False,
         lease_min_term_days=row["lease_min_term_days"],
+        renter_unit_id=str(renter_unit_id) if renter_unit_id else None,
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
         ho6_coverage_e_min=row["ho6_coverage_e_min"],
