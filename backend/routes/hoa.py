@@ -78,7 +78,10 @@ async def _compliance_status_by_tenant(
     rental_ctx: dict = {}
     for c in await conn.fetch(
         """SELECT t.id AS tenant_id, u.is_rental, u.parent_unit_id,
-                  (u.lease_document_url IS NOT NULL) AS has_lease, u.lease_extracted
+                  (u.lease_document_url IS NOT NULL) AS has_lease, u.lease_extracted,
+                  EXISTS(SELECT 1 FROM units cu JOIN tenants ct ON ct.unit_id = cu.id
+                         JOIN policies cp ON cp.tenant_id = ct.id
+                         WHERE cu.parent_unit_id = u.id) AS renter_has_ho4
            FROM tenants t JOIN units u ON u.id = t.unit_id
            WHERE t.id = ANY($1::uuid[])""",
         tenant_ids,
@@ -160,6 +163,9 @@ async def _compliance_status_by_tenant(
                         )
                         if not endorsed:
                             found_non_compliant = True
+                    # Renter must carry an HO-4 (when the association requires it)
+                    if not found_non_compliant and hoa_reqs and hoa_reqs.get("ho4_required") and not ctx.get("renter_has_ho4"):
+                        found_non_compliant = True
                     # Lease effective dates active + term meets minimum (when parsed)
                     if not found_non_compliant:
                         lease = ctx.get("lease_extracted")
@@ -434,7 +440,7 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
@@ -500,7 +506,7 @@ async def compliance_summary(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = rented_units = 0
@@ -1000,7 +1006,7 @@ async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | No
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = compliant = expiring = lapsed = missing = 0

@@ -155,7 +155,7 @@ async def get_tenant_detail(
                h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
                h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required,
-               h.ho4_liability_min, h.rental_endorsement_required, h.lease_required, h.lease_min_term_days
+               h.ho4_liability_min, h.rental_endorsement_required, h.lease_required, h.lease_min_term_days, h.ho4_required
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -196,15 +196,23 @@ async def get_tenant_detail(
         "ho4_liability_min": row["ho4_liability_min"],
         "rental_endorsement_required": row["rental_endorsement_required"],
         "lease_min_term_days": row["lease_min_term_days"],
+        "ho4_required": row["ho4_required"],
     }
     _statuses, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
     compliance_status = _statuses.get(row["id"])
 
     # The linked renter sub-unit (for the owner's page to add the renter's HO-4)
     renter_unit_id = None
+    renter_has_ho4 = False
     if row["is_rental"] and row["parent_unit_id"] is None:
         renter_unit_id = await conn.fetchval(
             "SELECT id FROM units WHERE parent_unit_id = $1 LIMIT 1", row["unit_id"]
+        )
+        renter_has_ho4 = await conn.fetchval(
+            """SELECT EXISTS(SELECT 1 FROM units cu JOIN tenants ct ON ct.unit_id = cu.id
+                             JOIN policies cp ON cp.tenant_id = ct.id
+                             WHERE cu.parent_unit_id = $1)""",
+            row["unit_id"],
         )
 
     # Build activity log from alerts + policy events
@@ -367,7 +375,9 @@ async def get_tenant_detail(
         rental_endorsement_required=row["rental_endorsement_required"] if row["rental_endorsement_required"] is not None else True,
         lease_required=row["lease_required"] if row["lease_required"] is not None else False,
         lease_min_term_days=row["lease_min_term_days"],
+        ho4_required=row["ho4_required"] if row["ho4_required"] is not None else False,
         renter_unit_id=str(renter_unit_id) if renter_unit_id else None,
+        renter_has_ho4=bool(renter_has_ho4),
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
         ho6_coverage_e_min=row["ho6_coverage_e_min"],

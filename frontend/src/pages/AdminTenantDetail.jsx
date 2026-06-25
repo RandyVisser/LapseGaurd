@@ -197,6 +197,16 @@ function buildComplianceChecks(tenant, currentPolicies) {
         })
       }
     }
+    // Renter's HO-4 policy on file (when the association requires it)
+    if (tenant.ho4_required) {
+      items.push({
+        group: 'rented',
+        type: tenant.renter_has_ho4 ? 'pass' : 'fail',
+        text: tenant.renter_has_ho4
+          ? "Renter's HO-4 policy on file"
+          : "Renter's HO-4 policy required — none on file",
+      })
+    }
   }
   return items
 }
