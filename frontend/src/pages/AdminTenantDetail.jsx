@@ -1165,8 +1165,14 @@ export default function AdminTenantDetail() {
                       ].filter(([, v]) => v)
                       return (
                         <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
-                          <div className="px-5 py-3 border-b border-slate-100">
+                          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lease Summary</p>
+                            {tenant.lease_document_url && (
+                              <a href={tenant.lease_document_url} target="_blank" rel="noopener noreferrer"
+                                className="text-xs font-medium text-blue-600 hover:underline whitespace-nowrap">
+                                View lease ↗
+                              </a>
+                            )}
                           </div>
                           <table className="w-full text-sm">
                             <tbody className="divide-y divide-slate-100">
