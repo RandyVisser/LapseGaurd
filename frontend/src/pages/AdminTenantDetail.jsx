@@ -172,6 +172,27 @@ function buildComplianceChecks(tenant, currentPolicies) {
           : 'HO-6 rental endorsement required — not found on policy',
       })
     }
+    // Lease effective dates + term (from the AI-parsed lease)
+    const ls = tenant.lease_summary || {}
+    const start = ls.lease_start, end = ls.lease_end
+    if (tenant.has_lease && start && end) {
+      const today = new Date().toISOString().slice(0, 10)
+      const active = start <= today && today <= end
+      items.push({
+        type: active ? 'pass' : 'fail',
+        text: active
+          ? `Lease effective dates are active (${start} – ${end})`
+          : `Lease is not currently active (${start} – ${end})`,
+      })
+      if (active && tenant.lease_min_term_days) {
+        const termDays = Math.round((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24))
+        const meets = termDays >= tenant.lease_min_term_days
+        items.push({
+          type: meets ? 'pass' : 'fail',
+          text: `Lease term ${termDays} days ${meets ? 'meets' : 'below'} ${tenant.lease_min_term_days}-day minimum`,
+        })
+      }
+    }
   }
   return items
 }

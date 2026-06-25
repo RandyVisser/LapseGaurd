@@ -70,6 +70,8 @@ class TenantDetailOut(BaseModel):
     lease_document_url: Optional[str] = None  # signed URL to the uploaded lease
     lease_summary: Optional[dict] = None  # AI-extracted lease fields
     rental_endorsement_required: bool = True
+    lease_required: bool = False
+    lease_min_term_days: Optional[int] = None
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None

@@ -155,7 +155,7 @@ async def get_tenant_detail(
                h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
                h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required,
-               h.ho4_liability_min, h.rental_endorsement_required
+               h.ho4_liability_min, h.rental_endorsement_required, h.lease_required, h.lease_min_term_days
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -195,6 +195,7 @@ async def get_tenant_detail(
         "ho6_wind_required": row["ho6_wind_required"],
         "ho4_liability_min": row["ho4_liability_min"],
         "rental_endorsement_required": row["rental_endorsement_required"],
+        "lease_min_term_days": row["lease_min_term_days"],
     }
     _statuses, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
     compliance_status = _statuses.get(row["id"])
@@ -357,6 +358,8 @@ async def get_tenant_detail(
         lease_document_url=(await signed_url(row["lease_document_url"], "policy-documents")) if row["has_lease"] else None,
         lease_summary=(json.loads(row["lease_extracted"]) if isinstance(row["lease_extracted"], str) else row["lease_extracted"]) if row["has_lease"] else None,
         rental_endorsement_required=row["rental_endorsement_required"] if row["rental_endorsement_required"] is not None else True,
+        lease_required=row["lease_required"] if row["lease_required"] is not None else False,
+        lease_min_term_days=row["lease_min_term_days"],
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
         ho6_coverage_e_min=row["ho6_coverage_e_min"],
