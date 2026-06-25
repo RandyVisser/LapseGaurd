@@ -567,7 +567,7 @@ export default function AdminSettings() {
                 { key: 'ho6_named_insured_match_required', label: 'Require named insured to match unit-owner' },
                 { key: 'ho6_property_address_match_required', label: 'Require property address to match unit' },
                 { key: 'ho6_wind_required', label: 'Require wind coverage (HO6 with wind, or HO6 + separate wind-only policy)' },
-                { key: 'ho6_additional_interest_required', label: 'Require association to be listed as additional interest' },
+                { key: 'ho6_additional_interest_required', label: 'Require association to be listed as Additional Interest' },
               ].map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
                   <input

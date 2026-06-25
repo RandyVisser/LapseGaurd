@@ -219,7 +219,7 @@ export default function Signup() {
                 onChange={e => setForm(f => ({ ...f, ho6_additional_interest_required: e.target.checked }))}
                 className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              Require association to be listed as additional interest on the policy
+              Require association to be listed as Additional Interest on the policy
             </label>
           </div>
 
