@@ -1195,7 +1195,7 @@ export default function AdminTenantDetail() {
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                       : 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}>
-                  {needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ Add policy'}
+                  {needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ HO-6 policy'}
                 </button>
 
                 {/* Lease upload — only for a flagged-rented owner unit */}
