@@ -528,6 +528,9 @@ export default function AdminTenantDetail() {
 
   const [runningAiId, setRunningAiId] = useState(null)
   const [everCompliant, setEverCompliant] = useState(false)
+  const leaseInputRef = useRef()
+  const [leaseUploading, setLeaseUploading] = useState(false)
+  const [leaseErr, setLeaseErr] = useState('')
   const [deletingId, setDeletingId] = useState(null)
   const [removingOwner, setRemovingOwner] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -604,6 +607,25 @@ export default function AdminTenantDetail() {
   useEffect(() => {
     apiGet(`/tenant/${tenantId}`).then(initFromTenant).catch(e => setError(e.message))
   }, [tenantId])
+
+  async function handleLeaseFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !tenant) return
+    setLeaseUploading(true); setLeaseErr('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${tenant.unit_id}/lease-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('policy-documents').upload(path, file, { upsert: true })
+      if (upErr) throw new Error(upErr.message)
+      const { data } = supabase.storage.from('policy-documents').getPublicUrl(path)
+      await apiPost(`/unit/${tenant.unit_id}/lease`, { document_url: data.publicUrl })
+      // Refresh so has_lease, compliance status and the renter sub-unit update
+      const fresh = await apiGet(`/tenant/${tenantId}`)
+      initFromTenant(fresh)
+    } catch (err) { setLeaseErr(err.message) }
+    finally { setLeaseUploading(false) }
+  }
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
@@ -1110,6 +1132,25 @@ export default function AdminTenantDetail() {
                   }`}>
                   {needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ Add policy'}
                 </button>
+
+                {/* Lease upload — only for a flagged-rented owner unit */}
+                {tenant.is_rental && !tenant.is_renter && (
+                  <div>
+                    <input ref={leaseInputRef} type="file" accept=".pdf,image/*" onChange={handleLeaseFile} className="hidden" />
+                    <button type="button" onClick={() => leaseInputRef.current?.click()} disabled={leaseUploading}
+                      className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors disabled:opacity-60 ${
+                        tenant.has_lease
+                          ? 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                          : 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                      }`}>
+                      {leaseUploading ? 'Uploading…' : tenant.has_lease ? '↻ Replace lease' : '+ Add lease'}
+                    </button>
+                    {tenant.has_lease && (
+                      <p className="text-xs text-slate-400 mt-1 text-center">Lease on file — we read it to fill in the renter's details.</p>
+                    )}
+                    {leaseErr && <p className="text-xs text-red-600 mt-1 text-center">{leaseErr}</p>}
+                  </div>
+                )}
 
                 {/* History */}
                 {historyPolicies.length > 0 && (
