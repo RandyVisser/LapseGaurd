@@ -120,6 +120,9 @@ export default function AdminSettings() {
           ho6_property_address_match_required: hoa.ho6_property_address_match_required ?? true,
           ho4_liability_min: hoa.ho4_liability_min ?? '',
           rental_endorsement_required: hoa.rental_endorsement_required ?? true,
+          lease_required: hoa.lease_required ?? false,
+          lease_min_term_days: hoa.lease_min_term_days ?? '',
+          ho4_required: hoa.ho4_required ?? false,
           invite_reminders_enabled: hoa.invite_reminders_enabled ?? true,
           invite_reminder_days: hoa.invite_reminder_days ?? 7,
           email_sender_role: hoa.email_sender_role ?? 'property_manager',
@@ -143,6 +146,7 @@ export default function AdminSettings() {
         ho6_coverage_a_min: form.ho6_coverage_a_min !== '' ? Number(form.ho6_coverage_a_min) : null,
         ho6_coverage_e_min: form.ho6_coverage_e_min !== '' ? Number(form.ho6_coverage_e_min) : null,
         ho4_liability_min: form.ho4_liability_min !== '' ? Number(form.ho4_liability_min) : null,
+        lease_min_term_days: form.lease_min_term_days !== '' ? Number(form.lease_min_term_days) : null,
         invite_reminder_days: Number(form.invite_reminder_days) || 7,
         email_sender_unit_id: form.email_sender_unit_id || null,
       })
@@ -597,35 +601,68 @@ export default function AdminSettings() {
                   ) : label}
                 </label>
               ))}
-            </div>
 
-            {RENTALS_ENABLED && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <p className="font-semibold text-slate-700">Subrented Unit Requirements</p>
-              <p className="text-xs text-slate-500">
-                Applied to units flagged as rentals — the owner's HO-6 rental endorsement and the renter's HO-4.
-              </p>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Renter HO-4 liability (Coverage E) min</label>
-                <input
-                  type="number" min="0" step="1000"
-                  value={form.ho4_liability_min}
-                  onChange={e => setForm(f => ({ ...f, ho4_liability_min: e.target.value }))}
-                  placeholder="e.g. 100000"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.rental_endorsement_required}
-                  onChange={e => setForm(f => ({ ...f, rental_endorsement_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                Require a rental/landlord endorsement on the owner's HO-6
-              </label>
+              {RENTALS_ENABLED && (
+                <div className="mt-2 pt-4 border-t border-slate-200 space-y-3">
+                  <p className="text-sm font-semibold text-slate-700">If a Unit is flagged as RENTED, require the following:</p>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={form.lease_required}
+                        onChange={e => setForm(f => ({ ...f, lease_required: e.target.checked }))}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Require a copy of the Lease with minimum lease term
+                    </label>
+                    {form.lease_required && (
+                      <div className="flex items-center gap-2 mt-2 ml-6">
+                        <input
+                          type="number" min="0" step="1"
+                          value={form.lease_min_term_days}
+                          onChange={e => setForm(f => ({ ...f, lease_min_term_days: e.target.value }))}
+                          placeholder="e.g. 365"
+                          className="w-28 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-500">days minimum</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={form.rental_endorsement_required}
+                      onChange={e => setForm(f => ({ ...f, rental_endorsement_required: e.target.checked }))}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Require HO-6 to carry an endorsement for Unit Rented to Others
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={form.ho4_required}
+                      onChange={e => setForm(f => ({ ...f, ho4_required: e.target.checked }))}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Require Tenant to carry an HO-4 policy
+                  </label>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Renter HO-4 liability (Coverage E) min</label>
+                    <input
+                      type="number" min="0" step="1000"
+                      value={form.ho4_liability_min}
+                      onChange={e => setForm(f => ({ ...f, ho4_liability_min: e.target.value }))}
+                      placeholder="e.g. 100000"
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-            )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             {success && <p className="text-sm text-green-600">Settings saved.</p>}

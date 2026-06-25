@@ -205,6 +205,9 @@ class HoaOut(BaseModel):
     email_sender_unit_id: Optional[str] = None
     ho4_liability_min: Optional[float] = None
     rental_endorsement_required: bool = True
+    lease_required: bool = False
+    lease_min_term_days: Optional[int] = None
+    ho4_required: bool = False
 
 
 class HoaUpdate(BaseModel):
@@ -231,6 +234,9 @@ class HoaUpdate(BaseModel):
     invite_reminder_days: int = 7
     ho4_liability_min: Optional[float] = None
     rental_endorsement_required: bool = True
+    lease_required: bool = False
+    lease_min_term_days: Optional[int] = None
+    ho4_required: bool = False
 
 
 _HOA_SEARCH_FIELDS = """
@@ -249,6 +255,9 @@ _HOA_SEARCH_FIELDS = """
     h.ho6_property_address_match_required,
     h.ho4_liability_min,
     h.rental_endorsement_required,
+    h.lease_required,
+    h.lease_min_term_days,
+    h.ho4_required,
     h.invite_reminders_enabled,
     h.invite_reminder_days,
     h.alerts_enabled,
@@ -303,6 +312,9 @@ async def list_hoas(
             ho6_property_address_match_required=r["ho6_property_address_match_required"],
             ho4_liability_min=r["ho4_liability_min"],
             rental_endorsement_required=r["rental_endorsement_required"] if r["rental_endorsement_required"] is not None else True,
+            lease_required=r["lease_required"] if r["lease_required"] is not None else False,
+            lease_min_term_days=r["lease_min_term_days"],
+            ho4_required=r["ho4_required"] if r["ho4_required"] is not None else False,
             invite_reminders_enabled=r["invite_reminders_enabled"] if r["invite_reminders_enabled"] is not None else True,
             invite_reminder_days=r["invite_reminder_days"] if r["invite_reminder_days"] is not None else 7,
             alerts_enabled=r["alerts_enabled"] if r["alerts_enabled"] is not None else True,
@@ -744,12 +756,16 @@ async def update_hoa(
             email_sender_role = $21,
             email_sender_unit_id = $22,
             ho4_liability_min = $23,
-            rental_endorsement_required = $24
+            rental_endorsement_required = $24,
+            lease_required = $25,
+            lease_min_term_days = $26,
+            ho4_required = $27
            WHERE id = $10
            RETURNING id, name, address, alert_lead_days, ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required,
                      ho6_additional_interest_required, ho6_policy_in_force_required,
                      ho6_named_insured_match_required, ho6_property_address_match_required,
                      ho4_liability_min, rental_endorsement_required,
+                     lease_required, lease_min_term_days, ho4_required,
                      invite_reminders_enabled, invite_reminder_days, alerts_enabled, alert_days,
                      lapsed_reminders_enabled, lapsed_reminder_days,
                      noncompliant_reminders_enabled, noncompliant_reminder_days,
@@ -780,6 +796,9 @@ async def update_hoa(
         body.email_sender_unit_id,
         body.ho4_liability_min,
         body.rental_endorsement_required,
+        body.lease_required,
+        body.lease_min_term_days,
+        body.ho4_required,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="HOA not found")
@@ -813,6 +832,9 @@ async def update_hoa(
         email_sender_unit_id=str(updated["email_sender_unit_id"]) if updated["email_sender_unit_id"] else None,
         ho4_liability_min=updated["ho4_liability_min"],
         rental_endorsement_required=updated["rental_endorsement_required"] if updated["rental_endorsement_required"] is not None else True,
+        lease_required=updated["lease_required"] if updated["lease_required"] is not None else False,
+        lease_min_term_days=updated["lease_min_term_days"],
+        ho4_required=updated["ho4_required"] if updated["ho4_required"] is not None else False,
     )
 
 
