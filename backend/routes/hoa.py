@@ -73,6 +73,17 @@ async def _compliance_status_by_tenant(
            FROM policies WHERE tenant_id = ANY($1::uuid[])""",
         tenant_ids,
     )
+    # Per-tenant rental context — a flagged owner unit also needs a lease on file
+    # and (optionally) a rental endorsement on its HO-6.
+    rental_ctx: dict = {}
+    for c in await conn.fetch(
+        """SELECT t.id AS tenant_id, u.is_rental, u.parent_unit_id,
+                  (u.lease_document_url IS NOT NULL) AS has_lease
+           FROM tenants t JOIN units u ON u.id = t.unit_id
+           WHERE t.id = ANY($1::uuid[])""",
+        tenant_ids,
+    ):
+        rental_ctx[c["tenant_id"]] = c
     by_tenant: dict = {}
     for r in rows:
         by_tenant.setdefault(r["tenant_id"], []).append(dict(r))
@@ -133,6 +144,21 @@ async def _compliance_status_by_tenant(
                             break
                     except (TypeError, ValueError):
                         pass
+            # Flagged owner unit (subrented): once they have a policy on file, also
+            # require a lease and — if the association requires it — a rental
+            # endorsement on the HO-6.
+            ctx = rental_ctx.get(tid)
+            if not found_non_compliant and ctx and ctx["is_rental"] and ctx["parent_unit_id"] is None and current_policies:
+                if not ctx["has_lease"]:
+                    found_non_compliant = True
+                elif hoa_reqs and hoa_reqs.get("rental_endorsement_required"):
+                    endorsed = any(
+                        (_json.loads(p["extracted_data"]) if isinstance(p["extracted_data"], str)
+                         else (p["extracted_data"] or {})).get("has_rental_endorsement")
+                        for p in current_policies
+                    )
+                    if not endorsed:
+                        found_non_compliant = True
             if found_non_compliant or result.get("needs_ho6_policy"):
                 status = PolicyStatus.non_compliant.value
             elif status == PolicyStatus.non_compliant.value:
@@ -377,7 +403,7 @@ async def list_units(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
@@ -442,7 +468,7 @@ async def compliance_summary(
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = 0
@@ -929,7 +955,7 @@ async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | No
     )
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1", hoa_id) or {})
+    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = compliant = expiring = lapsed = missing = 0

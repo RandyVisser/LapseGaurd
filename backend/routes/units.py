@@ -499,14 +499,14 @@ async def upload_policy(
 
     # Look up unit details for AI cross-checking (named insured + address)
     unit_row = await conn.fetchrow(
-        "SELECT owner_primary, owner_secondary, street_address, unit_number, city, state, zip, hoa_id FROM units WHERE id = $1",
+        "SELECT owner_primary, owner_secondary, street_address, unit_number, city, state, zip, hoa_id, is_rental, parent_unit_id FROM units WHERE id = $1",
         unit_id,
     )
 
     hoa_row = None
     if unit_row:
         hoa_row = await conn.fetchrow(
-            "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min FROM hoas WHERE id = $1",
+            "SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required FROM hoas WHERE id = $1",
             unit_row["hoa_id"],
         )
 
@@ -569,6 +569,8 @@ async def upload_policy(
             "ho6_coverage_e_min": hoa_row["ho6_coverage_e_min"] if hoa_row else None,
             "ho6_wind_required": hoa_row["ho6_wind_required"] if hoa_row else False,
             "ho4_liability_min": hoa_row["ho4_liability_min"] if hoa_row else None,
+            "is_rental": (unit_row["is_rental"] and unit_row["parent_unit_id"] is None) if unit_row else False,
+            "rental_endorsement_required": hoa_row["rental_endorsement_required"] if hoa_row else False,
         }
         background_tasks.add_task(_run_parsing, str(row["id"]), doc_ref, submitted)
 

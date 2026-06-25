@@ -34,6 +34,7 @@ Fields:
 - liability_coverage (number in dollars or null)
 - deductible (number in dollars or null)
 - coverage_type (string — one of "ho6_with_wind", "ho6_wind_excluded", "wind_only", "ho4", or "unknown")
+- has_rental_endorsement (true / false / null — for an HO6 condo policy: is there a RENTAL or LANDLORD endorsement, a unit-rented-to-others / tenant-occupancy provision, or similar (e.g. "Unit-Owners Rental to Others", form "HO 17 33", "Landlord/Rental Endorsement")? true if present, false if clearly an HO6 without one, null if not an HO6 or you cannot tell)
 
 To determine coverage_type:
 - If this is an HO4 / HO-4 / tenant / renters policy (covers a RENTER's personal property and personal liability, with NO dwelling/building coverage), use "ho4".
@@ -232,6 +233,14 @@ def _validate(extracted: dict, submitted: dict) -> dict:
         flags.append(
             "Association requires wind coverage — this HO6 policy excludes wind "
             "(a separate wind-only policy is required)"
+        )
+
+    if (submitted.get("is_rental") and submitted.get("rental_endorsement_required")
+            and coverage_type in ("ho6_with_wind", "ho6_wind_excluded")
+            and not extracted.get("has_rental_endorsement")):
+        flags.append(
+            "This unit is rented — the association requires a rental/landlord "
+            "endorsement on the HO-6, which was not found on this policy"
         )
 
     return {"passed": len(flags) == 0, "flags": flags}
