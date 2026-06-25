@@ -93,6 +93,7 @@ class UnitComplianceOut(BaseModel):
     assessor_parcel_number: Optional[str]
     type: Optional[str]
     is_rental: bool = False
+    is_renter: bool = False
     subdivision: Optional[str]
     corp_name: Optional[str]
     assoc_title: Optional[str]

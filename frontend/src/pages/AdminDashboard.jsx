@@ -113,7 +113,18 @@ const COLUMNS = [
   { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
   { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
-  { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => u.unit_number },
+  { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => (
+      <span className="flex items-center gap-1.5">
+        {u.is_renter && <span className="text-slate-400">↳</span>}
+        <span>{u.unit_number}</span>
+        {RENTALS_ENABLED && u.is_rental && !u.is_renter && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Rental</span>
+        )}
+        {RENTALS_ENABLED && u.is_renter && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">Renter</span>
+        )}
+      </span>
+    ) },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
@@ -1704,7 +1715,7 @@ export default function AdminDashboard() {
                             label: 'Unit Sold / New Owner…',
                             onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
-                          ...(RENTALS_ENABLED ? [{
+                          ...(RENTALS_ENABLED && !u.is_renter ? [{
                             label: u.is_rental ? 'Unflag rental' : 'Flag as rental',
                             onClick: () => handleFlagRental(u),
                           }] : []),

@@ -367,6 +367,7 @@ async def list_units(
             u.assessor_parcel_number,
             u.type,
             u.is_rental,
+            u.parent_unit_id,
             u.subdivision,
             u.corp_name,
             u.assoc_title,
@@ -396,7 +397,6 @@ async def list_units(
             SELECT id, name, email FROM tenants WHERE unit_id = u.id ORDER BY id LIMIT 1
         ) t ON true
         WHERE u.hoa_id = $1
-          AND u.parent_unit_id IS NULL  -- rental sub-units are shown nested under their parent, not as top-level rows
         ORDER BY u.unit_number
         """,
         hoa_id,
@@ -418,6 +418,7 @@ async def list_units(
             assessor_parcel_number=r["assessor_parcel_number"],
             type=r["type"],
             is_rental=r["is_rental"],
+            is_renter=r["parent_unit_id"] is not None,
             subdivision=r["subdivision"],
             corp_name=r["corp_name"],
             assoc_title=r["assoc_title"],

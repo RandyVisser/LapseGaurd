@@ -658,6 +658,7 @@ async def invite_all_owners(
                   h.name AS hoa_name
            FROM units u JOIN hoas h ON h.id = u.hoa_id
            WHERE u.hoa_id = $1
+             AND u.parent_unit_id IS NULL  -- never bulk-invite rental sub-units; renters are invited 1:1 by their owner
              AND (coalesce(trim(u.email_primary), '') <> '' OR coalesce(trim(u.email_secondary), '') <> '')""",
         hoa_id,
     )
