@@ -1736,7 +1736,7 @@ export default function AdminDashboard() {
                             onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
                           ...(RENTALS_ENABLED && !u.is_renter ? [{
-                            label: u.is_rental ? 'Unflag rental' : 'Flag as rental',
+                            label: u.is_rental ? 'Unflag RENTED' : 'Flag as RENTED',
                             onClick: () => handleFlagRental(u),
                           }] : []),
                           {
