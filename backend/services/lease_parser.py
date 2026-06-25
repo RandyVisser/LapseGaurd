@@ -16,6 +16,7 @@ LEASE_PROMPT = """You are reading a residential LEASE agreement for a condominiu
 Extract the following and return STRICT JSON only (no prose, no markdown fences):
 {
   "tenant_names": ["Full Name", ...],    // every named TENANT / LESSEE / renter (NOT the landlord/owner/lessor)
+  "tenant_emails": ["name@email.com", ...], // email addresses for the tenants/lessees, if shown
   "landlord_names": ["Full Name", ...],  // the landlord / lessor / owner, if shown
   "property_address": "unit address as written, or null",
   "lease_start": "YYYY-MM-DD or null",

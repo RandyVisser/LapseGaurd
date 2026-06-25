@@ -67,6 +67,7 @@ class TenantDetailOut(BaseModel):
     is_rental: bool = False
     is_renter: bool = False
     has_lease: bool = False
+    lease_summary: Optional[dict] = None  # AI-extracted lease fields
     rental_endorsement_required: bool = True
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None

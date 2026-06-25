@@ -1149,6 +1149,38 @@ export default function AdminTenantDetail() {
                       <p className="text-xs text-slate-400 mt-1 text-center">Lease on file — we read it to fill in the renter's details.</p>
                     )}
                     {leaseErr && <p className="text-xs text-red-600 mt-1 text-center">{leaseErr}</p>}
+
+                    {tenant.has_lease && tenant.lease_summary && (() => {
+                      const ls = tenant.lease_summary
+                      const tenants = Array.isArray(ls.tenant_names) ? ls.tenant_names.filter(Boolean) : []
+                      const emails = Array.isArray(ls.tenant_emails) ? ls.tenant_emails.filter(Boolean) : []
+                      const landlords = Array.isArray(ls.landlord_names) ? ls.landlord_names.filter(Boolean) : []
+                      const rows = [
+                        ['Lessor', landlords.join(', ')],
+                        ['Lessee', tenants[0]],
+                        ['Lessees', tenants.length > 1 ? tenants.join(', ') : ''],
+                        ['Lessee Emails', emails.join(', ')],
+                        ['Effective Date', ls.lease_start],
+                        ['Expiration Date', ls.lease_end],
+                      ].filter(([, v]) => v)
+                      return (
+                        <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                          <div className="px-5 py-3 border-b border-slate-100">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lease Summary</p>
+                          </div>
+                          <table className="w-full text-sm">
+                            <tbody className="divide-y divide-slate-100">
+                              {rows.map(([label, value]) => (
+                                <tr key={label}>
+                                  <td className="px-5 py-2.5 text-slate-500 whitespace-nowrap align-top w-1/3">{label}</td>
+                                  <td className="px-5 py-2.5 text-slate-800 font-medium">{value}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
 
