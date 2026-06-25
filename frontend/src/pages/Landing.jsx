@@ -7,9 +7,9 @@ const TOUR_EMBED_URL = 'https://share.descript.com/embed/yR7DW1QXNOZ'
 function NavBar() {
   const navigate = useNavigate()
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
-      <span className="text-xl font-bold text-blue-800">condo.insure</span>
-      <div className="flex items-center gap-4">
+    <nav className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 max-w-6xl mx-auto">
+      <span className="text-xl font-bold text-blue-800 shrink-0">condo.insure</span>
+      <div className="flex items-center gap-2 sm:gap-4">
         <button onClick={() => navigate('/pricing')} className="text-sm text-slate-600 hover:text-slate-900">
           Pricing
         </button>
