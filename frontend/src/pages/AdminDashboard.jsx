@@ -886,7 +886,7 @@ export default function AdminDashboard() {
         if (['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false
       } else {
         if (activeFilter === 'board') { if (!u.assoc_title || ['property manager', 'admin'].includes(u.assoc_title.trim().toLowerCase())) return false }
-        else if (activeFilter === 'rented') { if (!u.is_rental || u.is_renter) return false }
+        else if (activeFilter === 'rented') { if (!u.is_rental && !u.is_renter) return false }
         else if (activeFilter === 'staff') { if (!['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false }
         else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
