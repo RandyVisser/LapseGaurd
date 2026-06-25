@@ -851,7 +851,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'admins', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
+            for (const key of ['total_units', 'board_members', 'rented_units', 'admins', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -886,6 +886,7 @@ export default function AdminDashboard() {
         if (['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false
       } else {
         if (activeFilter === 'board') { if (!u.assoc_title || ['property manager', 'admin'].includes(u.assoc_title.trim().toLowerCase())) return false }
+        else if (activeFilter === 'rented') { if (!u.is_rental || u.is_renter) return false }
         else if (activeFilter === 'staff') { if (!['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false }
         else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
@@ -1052,6 +1053,9 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                  {RENTALS_ENABLED && (
+                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
+                  )}
                   <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
                     if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
                     else setActiveFilter('staff')

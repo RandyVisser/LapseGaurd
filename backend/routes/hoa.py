@@ -471,7 +471,7 @@ async def compliance_summary(
     await _assert_hoa_access(user, hoa_id, conn)
 
     rows = await conn.fetch(
-        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
+        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, u.is_rental, t.id AS tenant_id,
                   EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
            WHERE u.hoa_id = $1
@@ -484,7 +484,7 @@ async def compliance_summary(
     hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required FROM hoas WHERE id = $1", hoa_id) or {})
     statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
-    total_units = board_members = 0
+    total_units = board_members = rented_units = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = admins = 0
     invite_sent = not_invited = 0
     for r in rows:
@@ -496,6 +496,8 @@ async def compliance_summary(
             admins += 1
             continue
         total_units += 1
+        if r["is_rental"]:
+            rented_units += 1
         if r["assoc_title"] and (r["assoc_title"] or "").strip().lower() != "property manager":
             board_members += 1
         status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
@@ -529,6 +531,7 @@ async def compliance_summary(
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
+        rented_units=rented_units,
         admins=admins,
         property_managers=property_managers,
         compliant=compliant,

@@ -119,6 +119,7 @@ class UnitComplianceOut(BaseModel):
 class ComplianceSummary(BaseModel):
     total_units: int
     board_members: int
+    rented_units: int = 0  # parent units flagged as rented
     admins: int = 0  # unit-owners whose email matches the association admin
     property_managers: int = 0  # kept for backwards compat, always 0
     compliant: int
