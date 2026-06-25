@@ -1226,7 +1226,7 @@ export default function AdminDashboard() {
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-4">Invite {inviteType === 'secondary' ? 'Secondary' : 'Primary'} Owner</h2>
+              <h2 className="font-semibold text-slate-800 mb-4">Invite {inviteType === 'secondary' ? 'Secondary' : 'Primary'} {units.find(x => x.unit_id === inviteUnit)?.is_renter ? 'Renter' : 'Owner'}</h2>
               <form onSubmit={handleInvite} className="space-y-3">
                 <input
                   type="email"
@@ -1258,9 +1258,9 @@ export default function AdminDashboard() {
         {editUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-              {(() => { const isAdminEdit = (editUnit.assoc_title || '').trim().toLowerCase() === 'admin'; return (<>
-              <h2 className="font-semibold text-slate-800 mb-1">{isAdminEdit ? 'Edit Admin' : editIsPm ? 'Edit Property Manager' : 'Edit Owner Info'}</h2>
-              <p className="text-xs text-slate-400 mb-4">{isAdminEdit ? 'Update the admin name or email.' : editIsPm ? 'Update the property manager name or email.' : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
+              {(() => { const isAdminEdit = (editUnit.assoc_title || '').trim().toLowerCase() === 'admin'; const isRenterEdit = !!editUnit.is_renter; return (<>
+              <h2 className="font-semibold text-slate-800 mb-1">{isAdminEdit ? 'Edit Admin' : editIsPm ? 'Edit Property Manager' : isRenterEdit ? 'Edit Renter Info' : 'Edit Owner Info'}</h2>
+              <p className="text-xs text-slate-400 mb-4">{isAdminEdit ? 'Update the admin name or email.' : editIsPm ? 'Update the property manager name or email.' : isRenterEdit ? `Unit ${editUnit.unit_number} — update the renter's name or email.` : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
               </>) })()}
               <form onSubmit={handleSaveOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -1354,11 +1354,11 @@ export default function AdminDashboard() {
         {soldUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-              <h2 className="font-semibold text-slate-800 mb-1">Unit Sold — New Owner</h2>
+              <h2 className="font-semibold text-slate-800 mb-1">{soldUnit.is_renter ? 'New Renter' : 'Unit Sold — New Owner'}</h2>
               <p className="text-xs text-slate-500 mb-1">Unit {soldUnit.unit_number}</p>
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
-                This removes the current owner's login, their policy on file, and any pending invites.
-                The new owner will need to be invited to upload their own policy.
+                This removes the current {soldUnit.is_renter ? 'renter' : 'owner'}'s login, their policy on file, and any pending invites.
+                The new {soldUnit.is_renter ? 'renter' : 'owner'} will need to be invited to upload their own policy.
               </div>
               <form onSubmit={handleNewOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -1386,7 +1386,7 @@ export default function AdminDashboard() {
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingSold}
                     className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
-                    {savingSold ? 'Saving…' : 'Save New Owner'}
+                    {savingSold ? 'Saving…' : soldUnit.is_renter ? 'Save New Renter' : 'Save New Owner'}
                   </button>
                   <button type="button" onClick={() => setSoldUnit(null)}
                     className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
@@ -1645,6 +1645,7 @@ export default function AdminDashboard() {
                 const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
                 const isPm = (u.assoc_title || '').trim().toLowerCase() === 'property manager'
                 const isAdmin = (u.assoc_title || '').trim().toLowerCase() === 'admin'
+                const isRenter = !!u.is_renter  // renter sub-unit row of a rental
                 const isContact = isPm || isAdmin  // unit-less rows (PM / Admin)
                 return (
                 <tr
@@ -1697,6 +1698,25 @@ export default function AdminDashboard() {
                             danger: true,
                             disabled: deletingUnit && deleteUnitId === u.unit_id,
                             onClick: () => handleDeleteUnit(u.unit_id),
+                          },
+                        ] : isRenter ? [
+                          // Renter sub-unit of a rental — no Delete (the renter is
+                          // removed by unflagging the rental on the owner row).
+                          {
+                            label: 'Invite Primary Renter',
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                          },
+                          {
+                            label: 'Invite Secondary Renter',
+                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                          },
+                          {
+                            label: 'Edit Renter Info…',
+                            onClick: () => openEditOwner(u),
+                          },
+                          {
+                            label: 'New Renter…',
+                            onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
                         ] : [
                           {
