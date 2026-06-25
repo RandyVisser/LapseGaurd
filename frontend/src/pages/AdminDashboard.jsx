@@ -121,7 +121,7 @@ const COLUMNS = [
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Rental</span>
         )}
         {RENTALS_ENABLED && u.is_renter && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">Renter</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 border border-teal-200">Renter</span>
         )}
       </span>
     ) },
