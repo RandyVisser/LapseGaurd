@@ -637,7 +637,19 @@ export default function AdminSettings() {
                       onChange={e => setForm(f => ({ ...f, rental_endorsement_required: e.target.checked }))}
                       className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
-                    Require HO-6 to carry an endorsement for Unit Rented to Others
+                    <span>
+                      Require HO-6 to carry an endorsement for{' '}
+                      <button
+                        type="button"
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setInfoPopup({
+                          term: 'Unit Rented to Others',
+                          info: 'This endorsement provides liability protection to the owner while the unit is rented. Just as importantly, it serves as an acknowledgement that the insurance carrier knows the unit is being rented.',
+                        }) }}
+                        className="text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800"
+                      >
+                        Unit Rented to Others
+                      </button>
+                    </span>
                   </label>
 
                   <label className="flex items-center gap-2 text-sm text-slate-700">
