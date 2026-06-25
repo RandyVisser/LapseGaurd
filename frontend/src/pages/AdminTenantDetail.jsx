@@ -1215,27 +1215,6 @@ export default function AdminTenantDetail() {
                     )}
                     {leaseErr && <p className="text-xs text-red-600 mt-1 text-center">{leaseErr}</p>}
 
-                    {/* Renter's HO-4 policy — attached to the linked sub-unit */}
-                    {tenant.renter_unit_id && (
-                      <div className="mt-2">
-                        <input ref={ho4InputRef} type="file" accept=".pdf,image/*" onChange={handleHo4File} className="hidden" />
-                        <button type="button" onClick={() => ho4InputRef.current?.click()} disabled={ho4Uploading}
-                          className="flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-60">
-                          {ho4Uploading ? 'Uploading…' : "+ Add HO-4 policy (renter)"}
-                        </button>
-                        {ho4Msg && (
-                          <p className="text-xs text-green-700 mt-1 text-center">
-                            {ho4Msg}{' '}
-                            {ho4TenantId && (
-                              <button type="button" onClick={() => navigate(`/admin/tenant/${ho4TenantId}`)}
-                                className="text-blue-600 hover:underline">View renter →</button>
-                            )}
-                          </p>
-                        )}
-                        {ho4Err && <p className="text-xs text-red-600 mt-1 text-center">{ho4Err}</p>}
-                      </div>
-                    )}
-
                     {tenant.has_lease && tenant.lease_summary && (() => {
                       const ls = tenant.lease_summary
                       const tenants = Array.isArray(ls.tenant_names) ? ls.tenant_names.filter(Boolean) : []
@@ -1273,6 +1252,27 @@ export default function AdminTenantDetail() {
                         </div>
                       )
                     })()}
+
+                    {/* Renter's HO-4 policy — attached to the linked sub-unit */}
+                    {tenant.renter_unit_id && (
+                      <div className="mt-3">
+                        <input ref={ho4InputRef} type="file" accept=".pdf,image/*" onChange={handleHo4File} className="hidden" />
+                        <button type="button" onClick={() => ho4InputRef.current?.click()} disabled={ho4Uploading}
+                          className="flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-60">
+                          {ho4Uploading ? 'Uploading…' : "+ Add HO-4 policy (renter)"}
+                        </button>
+                        {ho4Msg && (
+                          <p className="text-xs text-green-700 mt-1 text-center">
+                            {ho4Msg}{' '}
+                            {ho4TenantId && (
+                              <button type="button" onClick={() => navigate(`/admin/tenant/${ho4TenantId}`)}
+                                className="text-blue-600 hover:underline">View renter →</button>
+                            )}
+                          </p>
+                        )}
+                        {ho4Err && <p className="text-xs text-red-600 mt-1 text-center">{ho4Err}</p>}
+                      </div>
+                    )}
                   </div>
                 )}
 
