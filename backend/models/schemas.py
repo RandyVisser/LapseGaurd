@@ -63,6 +63,11 @@ class TenantDetailOut(BaseModel):
     email_primary: Optional[str] = None
     email_secondary: Optional[str] = None
     policies: list[PolicyOut]
+    compliance_status: Optional[str] = None  # authoritative rental-aware overall status
+    is_rental: bool = False
+    is_renter: bool = False
+    has_lease: bool = False
+    rental_endorsement_required: bool = True
     needs_wind_policy: bool = False
     ho6_coverage_a_min: Optional[float] = None
     ho6_coverage_e_min: Optional[float] = None

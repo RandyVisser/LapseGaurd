@@ -155,6 +155,24 @@ function buildComplianceChecks(tenant, currentPolicies) {
     if (v === 'pass' || v === 'override') items.push({ type: 'pass', text: 'Association listed on HO-6' })
     else if (v === 'fail')               items.push({ type: 'fail', text: 'Association not listed on HO-6' })
   }
+
+  // Flagged-rented owner unit: needs a lease on file and (if required) a rental
+  // endorsement on the HO-6 — same rules the dashboard status reflects.
+  if (tenant.is_rental && !tenant.is_renter && ho6) {
+    items.push({
+      type: tenant.has_lease ? 'pass' : 'fail',
+      text: tenant.has_lease ? 'Lease on file' : 'Lease required — no copy of the lease on file',
+    })
+    if (tenant.rental_endorsement_required) {
+      const endorsed = !!ho6?.extracted_data?.has_rental_endorsement
+      items.push({
+        type: endorsed ? 'pass' : 'fail',
+        text: endorsed
+          ? 'HO-6 carries a Unit-Rented-to-Others endorsement'
+          : 'HO-6 rental endorsement required — not found on policy',
+      })
+    }
+  }
   return items
 }
 
@@ -591,7 +609,9 @@ export default function AdminTenantDetail() {
 
   const currentPolicies = tenant?.policies?.filter(p => p.is_current) || []
   const historyPolicies = tenant?.policies?.filter(p => !p.is_current) || []
-  const overallStatus   = worstStatus(currentPolicies)
+  // Prefer the backend's rental-aware status so the hero matches the dashboard;
+  // fall back to the policy-derived status if it isn't present.
+  const overallStatus   = tenant?.compliance_status || worstStatus(currentPolicies)
   const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
 
   const hasLapsedPolicy = currentPolicies.some(p => p.status === 'lapsed')

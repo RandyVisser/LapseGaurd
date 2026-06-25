@@ -150,9 +150,11 @@ async def get_tenant_detail(
                u.unit_number, u.hoa_id,
                u.street_address, u.city, u.state, u.zip,
                u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
+               u.is_rental, u.parent_unit_id, (u.lease_document_url IS NOT NULL) AS has_lease,
                h.name AS hoa_name,
                h.ho6_coverage_a_min, h.ho6_coverage_e_min, h.ho6_wind_required, h.ho6_additional_interest_required,
-               h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required
+               h.ho6_policy_in_force_required, h.ho6_named_insured_match_required, h.ho6_property_address_match_required,
+               h.ho4_liability_min, h.rental_endorsement_required
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -181,6 +183,20 @@ async def get_tenant_detail(
 
     evaluation = evaluate_compliance([dict(r) for r in policy_rows])
     current_ids = evaluation["current_ids"]
+
+    # Authoritative overall status — same rental-aware engine the dashboard uses,
+    # so a flagged-rented unit reflects its lease / endorsement requirements here
+    # too (otherwise the detail page and the dashboard could disagree).
+    from routes.hoa import _compliance_status_by_tenant
+    _reqs = {
+        "ho6_coverage_a_min": row["ho6_coverage_a_min"],
+        "ho6_coverage_e_min": row["ho6_coverage_e_min"],
+        "ho6_wind_required": row["ho6_wind_required"],
+        "ho4_liability_min": row["ho4_liability_min"],
+        "rental_endorsement_required": row["rental_endorsement_required"],
+    }
+    _statuses, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
+    compliance_status = _statuses.get(row["id"])
 
     # Build activity log from alerts + policy events
     _COVERAGE_LABELS = {
@@ -333,6 +349,11 @@ async def get_tenant_detail(
         email_primary=row["email_primary"],
         email_secondary=row["email_secondary"],
         policies=policies,
+        compliance_status=compliance_status,
+        is_rental=row["is_rental"],
+        is_renter=row["parent_unit_id"] is not None,
+        has_lease=row["has_lease"],
+        rental_endorsement_required=row["rental_endorsement_required"] if row["rental_endorsement_required"] is not None else True,
         needs_wind_policy=evaluation["needs_wind_policy"],
         ho6_coverage_a_min=row["ho6_coverage_a_min"],
         ho6_coverage_e_min=row["ho6_coverage_e_min"],
