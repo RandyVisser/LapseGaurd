@@ -663,7 +663,7 @@ export default function AdminSettings() {
                   </label>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Renter HO-4 liability (Coverage E) min</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Renter HO-4 Liability (Coverage E) min</label>
                     <input
                       type="number" min="0" step="1000"
                       value={form.ho4_liability_min}
