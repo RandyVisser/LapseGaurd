@@ -926,7 +926,7 @@ export default function AdminDashboard() {
       <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 pt-3 pb-8">
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
-        <div className="sm:flex items-start justify-between gap-4 mb-4">
+        <div className="mb-4">
           <div>
             <h2 className="text-xl font-bold text-slate-800">
               {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
@@ -978,8 +978,8 @@ export default function AdminDashboard() {
             )}
           </div>
           {!isMobile && (
-            <div className="flex flex-col items-end gap-1.5 min-w-0">
-              <div className="flex gap-2 flex-wrap justify-end">
+            <div className="flex flex-col items-start gap-1.5 mt-3">
+              <div className="flex gap-2 flex-nowrap overflow-x-auto max-w-full pb-1">
                 <RequirementsPopover hoa={hoaId !== ALL_HOAS ? selectedHoa : null} />
                 <button
                   onClick={handleExport}
