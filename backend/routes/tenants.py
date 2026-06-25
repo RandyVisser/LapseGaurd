@@ -559,7 +559,7 @@ async def create_tenant_record(
     """Create a bare unit-owner record (no Supabase login) so an admin can
     attach a dec page mailed/faxed in by an owner who has no email on file."""
     unit = await conn.fetchrow(
-        "SELECT id, hoa_id, unit_number, owner_primary, email_primary FROM units WHERE id = $1",
+        "SELECT id, hoa_id, unit_number, owner_primary, email_primary, parent_unit_id FROM units WHERE id = $1",
         unit_id,
     )
     if not unit:
@@ -571,7 +571,10 @@ async def create_tenant_record(
     if existing:
         return {"id": str(existing["id"])}
 
-    name = unit["owner_primary"] or f"Unit {unit['unit_number']} Owner"
+    # Renter sub-units already carry "-Renter" in the unit number, so the
+    # placeholder name drops the "Owner" suffix (they're a renter, not an owner).
+    is_renter = unit["parent_unit_id"] is not None
+    name = unit["owner_primary"] or (f"Unit {unit['unit_number']}" if is_renter else f"Unit {unit['unit_number']} Owner")
 
     if unit["email_primary"]:
         email = unit["email_primary"]
