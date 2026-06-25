@@ -1,6 +1,6 @@
 """
 Subrental support. An admin flags a unit as rented; that spawns a linked
-sub-unit ("{unit}-Rntl") which will hold the renter + their HO-4 policy. The
+sub-unit ("{unit}-Renter") which will hold the renter + their HO-4 policy. The
 sub-unit is excluded from unit_count / billing / board counts (same physical
 unit — the owner already pays for the parent).
 
@@ -102,7 +102,7 @@ async def flag_rental(
     sub = await conn.fetchrow(
         """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip, parent_unit_id, is_rental)
            VALUES ($1, $2, $3, $4, $5, $6, $7, true) RETURNING id, unit_number""",
-        unit["hoa_id"], f"{unit['unit_number']}-Rntl",
+        unit["hoa_id"], f"{unit['unit_number']}-Renter",
         unit["street_address"], unit["city"], unit["state"], unit["zip"], unit_id,
     )
     await conn.execute("UPDATE units SET is_rental = true WHERE id = $1", unit_id)
