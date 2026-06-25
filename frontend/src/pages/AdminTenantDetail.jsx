@@ -1076,7 +1076,7 @@ export default function AdminTenantDetail() {
               href={QUOTE_FORM_URL}
               target="_blank" rel="noopener noreferrer"
               className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap mt-0.5">
-              Get a New HO-6 Quote →
+              Get a New {tenant?.is_renter ? 'HO-4' : 'HO-6'} Quote →
             </a>
           )}
         </div>
@@ -1205,7 +1205,7 @@ export default function AdminTenantDetail() {
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                       : 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}>
-                  {needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ HO-6 policy'}
+                  {tenant.is_renter ? '+ HO-4 policy' : needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ HO-6 policy'}
                 </button>
 
                 {/* Lease upload — only for a flagged-rented owner unit */}
