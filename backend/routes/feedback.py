@@ -43,7 +43,7 @@ async def _notify_super_users(conn, sub: dict) -> None:
     if not recipients:
         return
     label = _TYPE_LABEL.get(sub["type"], "Feedback")
-    subject = f"[condo.insure] {label} from {sub['email'] or 'a user'}"
+    subject = f"{label} from {sub['email'] or 'a user'}"
     html = f"""
     <div style="font-family:sans-serif;max-width:600px">
       <p style="font-size:16px;font-weight:600">{label}</p>
