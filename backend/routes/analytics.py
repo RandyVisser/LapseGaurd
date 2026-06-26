@@ -97,8 +97,18 @@ async def funnel(
         days,
     )
     counts = {r["name"]: r["n"] for r in rows}
+
+    # Invited Admin/PM activations come from the source of truth (admin_invites),
+    # not the funnel beacons — invited staff never hit the public signup page.
+    staff_activated = await conn.fetchval(
+        "SELECT count(*) FROM admin_invites WHERE accepted_at > now() - make_interval(days => $1)",
+        days,
+    ) or 0
+
+    extra = [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
+    extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
     return {
         "days": days,
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
-        "extra": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA],
+        "extra": extra,
     }
