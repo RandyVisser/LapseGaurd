@@ -344,7 +344,7 @@ def expired_email_html(
       <div style="text-align:center;margin:4px 0 8px">
         <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">Get a Quote →</a>
+           text-decoration:none">{"Get a HO-4 Quote →" if is_renter else "Get a Quote →"}</a>
       </div>
 
       <p style="color:#374151">
