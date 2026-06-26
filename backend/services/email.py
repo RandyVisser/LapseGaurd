@@ -524,8 +524,17 @@ def invite_email_html(
         ]
         signature = "<br>".join(line for line in sig_lines if line)
         # Renter (HO-4) vs unit-owner (HO-6) wording
-        track_line = ("collect and track unit insurance information." if is_renter
+        track_line = ("collect and track renter's insurance information." if is_renter
                       else "collect and track unit-owner insurance information.")
+        why_para = (
+            "The Association's governing documents require renters to maintain liability "
+            "insurance (HO-4) for the rented unit." if is_renter else
+            "The Association's governing documents require unit owners to maintain insurance "
+            "for portions of their unit that are not covered by the Association's master "
+            "policy. In addition, maintaining appropriate insurance helps protect you from "
+            "losses involving personal property, interior improvements, liability claims, "
+            "loss assessments, and other expenses that may not be covered by the "
+            "Association's insurance policy.")
         dec_label = ("Your current HO-4 Renters Insurance Policy Declaration Page" if is_renter
                      else "Your current HO-6 Condominium Unit Owners Policy Declaration Page")
         match_target = "this unit" if is_renter else "your unit"
@@ -548,12 +557,7 @@ def invite_email_html(
 
       <p style="color:#111827;font-weight:700;margin-top:20px">Why am I receiving this notice?</p>
       <p style="color:#374151">
-        The Association's governing documents require unit owners to maintain insurance
-        for portions of their unit that are not covered by the Association's master
-        policy. In addition, maintaining appropriate insurance helps protect you from
-        losses involving personal property, interior improvements, liability claims,
-        loss assessments, and other expenses that may not be covered by the
-        Association's insurance policy.
+        {why_para}
       </p>
       <p style="color:#374151">
         To streamline this process, the Association will now use Condo.insure to
