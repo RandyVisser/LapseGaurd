@@ -4,6 +4,9 @@ import httpx
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
+# Friendly display name shown in the inbox, e.g. "condo.insure <alerts@condo.insure>"
+# instead of a bare "alerts". Override in Railway via FROM_NAME.
+FROM_NAME = os.environ.get("FROM_NAME", "condo.insure")
 # Quote links in emails point at the agency quote page.
 QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 # Renters get an HO-4-specific quote page.
@@ -18,7 +21,9 @@ async def send_email(to_email: str, subject: str, html: str, reply_to: str | Non
     if not RESEND_API_KEY:
         print(f"[email] RESEND_API_KEY not set — skipping email to {to_email}")
         return False
-    payload = {"from": FROM_EMAIL, "to": [to_email], "subject": subject, "html": html}
+    # Don't double-wrap if FROM_EMAIL already carries a display name.
+    from_header = FROM_EMAIL if "<" in FROM_EMAIL else f"{FROM_NAME} <{FROM_EMAIL}>"
+    payload = {"from": from_header, "to": [to_email], "subject": subject, "html": html}
     if reply_to:
         payload["reply_to"] = [reply_to]
     async with httpx.AsyncClient() as client:
