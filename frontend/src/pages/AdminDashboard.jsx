@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
-import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import ImportWizard from '../components/ImportWizard'
@@ -490,6 +490,31 @@ export default function AdminDashboard() {
 
   const [addPmFor, setAddPmFor] = useState(null)
   const [pmForm, setPmForm] = useState({ name: '', firm: '', phone: '', email: '' })
+
+  // Super-user-only PM licensing card (CAM manager license + CAB firm license)
+  const [pmLicenseUnit, setPmLicenseUnit] = useState(null)
+  const [pmLicenseForm, setPmLicenseForm] = useState({})
+  const [savingPmLicense, setSavingPmLicense] = useState(false)
+
+  async function openPmLicense(u) {
+    setPmLicenseUnit(u)
+    setPmLicenseForm({})
+    try {
+      const data = await apiGet(`/unit/${u.unit_id}/pm-license`)
+      setPmLicenseForm(data || {})
+    } catch (err) { setError(err.message) }
+  }
+
+  async function savePmLicense(e) {
+    e?.preventDefault?.()
+    if (!pmLicenseUnit) return
+    setSavingPmLicense(true); setError('')
+    try {
+      await apiPut(`/unit/${pmLicenseUnit.unit_id}/pm-license`, pmLicenseForm)
+      setPmLicenseUnit(null)
+    } catch (err) { setError(err.message) }
+    finally { setSavingPmLicense(false) }
+  }
   const [addAdminFor, setAddAdminFor] = useState(null)
   const [adminForm, setAdminForm] = useState({ name: '', email: '' })
   const [addingAdmin, setAddingAdmin] = useState(false)
@@ -1226,6 +1251,69 @@ export default function AdminDashboard() {
         )}
 
         {/* Invite modal */}
+        {pmLicenseUnit && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h2 className="font-semibold text-slate-800 mb-1">Property Manager Licensing</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                {pmLicenseUnit.owner_primary || pmLicenseUnit.email_primary || 'Property Manager'} — super-user only.
+              </p>
+              <form onSubmit={savePmLicense} className="space-y-4">
+                {[
+                  { prefix: 'cam', title: 'CAM (Manager License)' },
+                  { prefix: 'cab', title: 'CAB (Management Firm)' },
+                ].map(({ prefix, title }) => (
+                  <div key={prefix} className="border border-slate-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{title}</p>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">{prefix.toUpperCase()} #</label>
+                      <input value={pmLicenseForm[`${prefix}_number`] || ''}
+                        onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_number`]: e.target.value }))}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
+                      <input value={pmLicenseForm[`${prefix}_address`] || ''}
+                        onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_address`]: e.target.value }))}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+                        <input value={pmLicenseForm[`${prefix}_city`] || ''}
+                          onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_city`]: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">ST</label>
+                        <input value={pmLicenseForm[`${prefix}_state`] || ''}
+                          onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_state`]: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Zip</label>
+                        <input value={pmLicenseForm[`${prefix}_zip`] || ''}
+                          onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_zip`]: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={savingPmLicense}
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {savingPmLicense ? 'Saving…' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setPmLicenseUnit(null)}
+                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
@@ -1666,7 +1754,7 @@ export default function AdminDashboard() {
                     ) : null}
                   </td>
                   {activeColumns.map(c => (
-                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'}`} onClick={() => { if (!isContact) openUnit(u) }}>
+                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'} ${isPm && role === 'super_user' ? 'cursor-pointer' : ''}`} onClick={() => { if (!isContact) openUnit(u); else if (isPm && role === 'super_user') openPmLicense(u) }}>
                       {isContact && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
                     </td>
                   ))}

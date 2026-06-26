@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import logging
 import re
 import uuid
@@ -658,6 +659,59 @@ class PropertyManagerCreate(BaseModel):
     management_firm: Optional[str] = None
     phone: Optional[str] = None
     source_unit_id: Optional[str] = None  # copy subdivision/corp details from this unit
+
+
+class PmLicense(BaseModel):
+    cam_number: Optional[str] = None
+    cam_address: Optional[str] = None
+    cam_city: Optional[str] = None
+    cam_state: Optional[str] = None
+    cam_zip: Optional[str] = None
+    cab_number: Optional[str] = None
+    cab_address: Optional[str] = None
+    cab_city: Optional[str] = None
+    cab_state: Optional[str] = None
+    cab_zip: Optional[str] = None
+
+
+@router.get("/unit/{unit_id}/pm-license", response_model=PmLicense)
+async def get_pm_license(
+    unit_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """PM licensing details (CAM/CAB). Super-users only — regular dashboard
+    users (admins/PMs) can't see or edit this."""
+    if user.role != "super_user":
+        raise HTTPException(status_code=403, detail="Super-user only")
+    row = await conn.fetchrow("SELECT assoc_title, pm_license FROM units WHERE id = $1", unit_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    if (row["assoc_title"] or "").strip().lower() != "property manager":
+        raise HTTPException(status_code=400, detail="Not a property manager")
+    data = row["pm_license"]
+    if isinstance(data, str):
+        data = json.loads(data)
+    return PmLicense(**(data or {}))
+
+
+@router.put("/unit/{unit_id}/pm-license", response_model=PmLicense)
+async def update_pm_license(
+    unit_id: str,
+    body: PmLicense,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    if user.role != "super_user":
+        raise HTTPException(status_code=403, detail="Super-user only")
+    row = await conn.fetchrow("SELECT assoc_title FROM units WHERE id = $1", unit_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    if (row["assoc_title"] or "").strip().lower() != "property manager":
+        raise HTTPException(status_code=400, detail="Not a property manager")
+    payload = {k: (v.strip() if isinstance(v, str) else v) or None for k, v in body.dict().items()}
+    await conn.execute("UPDATE units SET pm_license = $1 WHERE id = $2", json.dumps(payload), unit_id)
+    return PmLicense(**payload)
 
 
 @router.post("/hoa/{hoa_id}/property-manager", status_code=201)
