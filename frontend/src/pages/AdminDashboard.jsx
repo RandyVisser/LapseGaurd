@@ -138,9 +138,6 @@ const COLUMNS = [
   { key: 'assessor_parcel_number', label: 'APN',                   group: 'Property data', render: u => u.assessor_parcel_number || '—' },
   { key: 'type',                   label: 'Type',                  group: 'Property data', render: u => u.type || '—' },
   { key: 'subdivision',            label: 'Subdivision (PropRadar)', group: 'Property data', render: u => u.subdivision || '—' },
-  { key: 'corp_name',              label: 'Corp Name (SunBiz)',    group: 'Corporate', render: u => u.corp_name || '—' },
-  { key: 'sunbiz_doc_number',      label: 'Sunbiz DOC #',          group: 'Corporate', render: u => u.sunbiz_doc_number || '—' },
-  { key: 'fein',                   label: 'Assoc FEIN',            group: 'Corporate', render: u => u.fein || '—' },
 ]
 
 const DEFAULT_COLUMNS = COLUMNS.filter(c => !c.group).map(c => c.key)
