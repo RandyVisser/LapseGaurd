@@ -376,7 +376,7 @@ export default function AdminSettings() {
                 {PREVIEW_ROWS.map(row => (
                   <div key={row.label}>
                     <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{row.label}</p>
-                    <div className="flex gap-2 overflow-x-auto">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
                       {row.items.map(b => (
                         <button key={b.key} type="button"
                           onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
