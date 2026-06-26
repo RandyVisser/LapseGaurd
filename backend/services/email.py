@@ -5,8 +5,10 @@ import httpx
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
 # Friendly display name shown in the inbox, e.g. "condo.insure <alerts@condo.insure>"
-# instead of a bare "alerts". Override in Railway via FROM_NAME.
-FROM_NAME = os.environ.get("FROM_NAME", "condo.insure")
+# instead of a bare "alerts". Override in Railway via FROM_NAME. Fall back to the
+# brand if the var is unset OR set-but-blank — an empty value would otherwise build
+# a malformed " <addr>" From header that Resend rejects, silently killing all sends.
+FROM_NAME = (os.environ.get("FROM_NAME") or "").strip() or "condo.insure"
 # Quote links in emails point at the agency quote page.
 QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 # Renters get an HO-4-specific quote page.
