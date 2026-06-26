@@ -12,6 +12,7 @@ const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 
 const HOA_FIELD_OPTIONS = {
   name: { label: 'Association Name', key: 'name' },
+  dpbr_license_number: { label: 'DPBR Lic #', key: 'dpbr_license_number' },
   corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
   sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
 }
