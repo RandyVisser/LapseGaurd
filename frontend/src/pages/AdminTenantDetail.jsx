@@ -359,6 +359,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
   function hi(key) { return aiUpdated?.includes(key) }
 
   const isHo6 = ['ho6_with_wind', 'ho6_wind_excluded'].includes(form.coverage_type)
+  const isHo4 = form.coverage_type === 'ho4'
   const days = daysUntil(form.expiration_date)
   const isExpiringSoon = days !== null && days >= 0 && days <= 30
   const aiCount = aiUpdated?.length || 0
@@ -558,8 +559,10 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Coverage</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} />
-            {isHo6 && (
+            {!isHo4 && (
+              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} />
+            )}
+            {(isHo6 || isHo4) && (
               <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} />
             )}
             {isHo6 && (
