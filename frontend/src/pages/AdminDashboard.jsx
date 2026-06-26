@@ -431,6 +431,7 @@ export default function AdminDashboard() {
   const HOA_FIELD_OPTIONS = {
     name: { label: 'Association Name', key: 'name' },
     dpbr_license_number: { label: 'DPBR Lic #', key: 'dpbr_license_number' },
+    fein: { label: 'FEIN #', key: 'fein' },
     corp_name: { label: 'Corp Name (SunBiz)', key: 'corp_name' },
     sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
   }
