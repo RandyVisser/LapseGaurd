@@ -594,7 +594,7 @@ export default function AdminTenantDetail() {
   // Unit owners on title (separate from the tenant login record)
   const [ownerForm, setOwnerForm] = useState({ owner_primary: '', owner_secondary: '', email_primary: '', email_secondary: '' })
   // Association requirements (from HOA)
-  const [reqForm, setReqForm] = useState({ coverage_a_min: '', coverage_e_min: '' })
+  const [reqForm, setReqForm] = useState({ coverage_a_min: '', coverage_e_min: '', ho4_liability_min: '' })
 
   // Per-policy form state: { [policyId]: { insurer, policy_number, ... } }
   const [policyForms, setPolicyForms] = useState({})
@@ -657,6 +657,7 @@ export default function AdminTenantDetail() {
     setReqForm({
       coverage_a_min: data.ho6_coverage_a_min ?? '',
       coverage_e_min: data.ho6_coverage_e_min ?? '',
+      ho4_liability_min: data.ho4_liability_min ?? '',
     })
     const pf = {}
     for (const p of (data.policies || [])) {
@@ -906,10 +907,15 @@ export default function AdminTenantDetail() {
       // 2. Save HOA requirements if changed
       if (tenant?.hoa_id) {
         const reqPayload = {}
-        if (reqForm.coverage_a_min !== '' && Number(reqForm.coverage_a_min) !== (tenant.ho6_coverage_a_min ?? ''))
-          reqPayload.ho6_coverage_a_min = Number(reqForm.coverage_a_min)
-        if (reqForm.coverage_e_min !== '' && Number(reqForm.coverage_e_min) !== (tenant.ho6_coverage_e_min ?? ''))
-          reqPayload.ho6_coverage_e_min = Number(reqForm.coverage_e_min)
+        if (tenant.is_renter) {
+          if (reqForm.ho4_liability_min !== '' && Number(reqForm.ho4_liability_min) !== (tenant.ho4_liability_min ?? ''))
+            reqPayload.ho4_liability_min = Number(reqForm.ho4_liability_min)
+        } else {
+          if (reqForm.coverage_a_min !== '' && Number(reqForm.coverage_a_min) !== (tenant.ho6_coverage_a_min ?? ''))
+            reqPayload.ho6_coverage_a_min = Number(reqForm.coverage_a_min)
+          if (reqForm.coverage_e_min !== '' && Number(reqForm.coverage_e_min) !== (tenant.ho6_coverage_e_min ?? ''))
+            reqPayload.ho6_coverage_e_min = Number(reqForm.coverage_e_min)
+        }
         if (Object.keys(reqPayload).length) {
           try {
             await apiPatch(`/hoa/${tenant.hoa_id}/requirements`, reqPayload)
@@ -1180,14 +1186,19 @@ export default function AdminTenantDetail() {
                   <FieldInput label="Association name"  value={tenant.hoa_name} readOnly />
                 </div>
 
-                {/* Coverage minimums */}
+                {/* Coverage minimums — renters (HO-4) only care about liability */}
                 <div className="pt-4 border-t border-slate-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <CurrencyInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
-                      onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} placeholder="200000" />
-                    <CurrencyInput label="Min Coverage E (Liability) ($)" value={reqForm.coverage_e_min}
-                      onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} placeholder="100000" />
-                  </div>
+                  {tenant.is_renter ? (
+                    <CurrencyInput label="Min HO-4 Liability ($)" value={reqForm.ho4_liability_min}
+                      onChange={v => setReqForm(r => ({ ...r, ho4_liability_min: v }))} placeholder="100000" />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <CurrencyInput label="Min Coverage A (Dwelling) ($)" value={reqForm.coverage_a_min}
+                        onChange={v => setReqForm(r => ({ ...r, coverage_a_min: v }))} placeholder="200000" />
+                      <CurrencyInput label="Min Coverage E (Liability) ($)" value={reqForm.coverage_e_min}
+                        onChange={v => setReqForm(r => ({ ...r, coverage_e_min: v }))} placeholder="100000" />
+                    </div>
+                  )}
                 </div>
 
               </div>

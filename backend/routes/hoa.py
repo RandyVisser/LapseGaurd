@@ -363,6 +363,7 @@ class HoaRequirementsUpdate(BaseModel):
     ho6_policy_in_force_required: Optional[bool] = None
     ho6_named_insured_match_required: Optional[bool] = None
     ho6_property_address_match_required: Optional[bool] = None
+    ho4_liability_min: Optional[float] = None
 
 
 @router.patch("/hoa/{hoa_id}/requirements")
