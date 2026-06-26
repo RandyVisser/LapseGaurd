@@ -45,6 +45,7 @@ _EXTRA = [
 _INTERNAL_EMAILS = [
     "troy@condo.insure", "randy@condo.insure",
     "troy.visser@gmail.com", "randy.redfish@gmail.com",
+    "troy@universalcondo.com",
 ]
 
 # In-memory per-IP rate limit so the public beacon can't bloat the table.
