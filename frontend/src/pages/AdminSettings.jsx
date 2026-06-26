@@ -351,21 +351,29 @@ export default function AdminSettings() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <p className="font-semibold text-slate-700">Email Previews</p>
               <p className="text-xs text-slate-500 mt-1 mb-3">See exactly what unit owners receive.</p>
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex flex-col gap-2">
                 {[
-                  { key: 'invite', label: 'Invite' },
-                  { key: 'non_compliant', label: 'Non-Compliant' },
-                  { key: 'renewal_30', label: 'Renewal 30' },
-                  { key: 'renewal_7', label: 'Renewal 7' },
-                  { key: 'renewal_1', label: 'Renewal 1' },
-                  { key: 'expired', label: 'Expired Policy' },
-                  { key: 'lease_expiration', label: 'Lease Expiration' },
-                ].map(b => (
-                  <button key={b.key} type="button"
-                    onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
-                    className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm whitespace-nowrap flex-shrink-0">
-                    {b.label}
-                  </button>
+                  [
+                    { key: 'invite', label: 'Invite' },
+                    { key: 'non_compliant', label: 'Non-Compliant' },
+                    { key: 'renewal_30', label: 'Renewal 30' },
+                    { key: 'renewal_7', label: 'Renewal 7' },
+                    { key: 'renewal_1', label: 'Renewal 1' },
+                    { key: 'expired', label: 'Expired Policy' },
+                  ],
+                  [
+                    { key: 'lease_expiration', label: 'Lease Expiration' },
+                  ],
+                ].map((row, ri) => (
+                  <div key={ri} className="flex gap-2 overflow-x-auto">
+                    {row.map(b => (
+                      <button key={b.key} type="button"
+                        onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
+                        className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm whitespace-nowrap flex-shrink-0">
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
 
