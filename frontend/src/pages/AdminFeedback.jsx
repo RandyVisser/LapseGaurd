@@ -39,11 +39,26 @@ function FunnelCard() {
               </div>
             )
           })}
-          {data.extra?.some(e => e.count > 0) && (
-            <div className="pt-3 mt-1 border-t border-slate-100 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
-              {data.extra.map(e => <span key={e.name}>{e.label}: <b className="text-slate-700">{e.count}</b></span>)}
-            </div>
-          )}
+          {data.extra?.length > 0 && (() => {
+            const extraMax = Math.max(1, ...data.extra.map(e => e.count))
+            return (
+              <div className="pt-3 mt-1 border-t border-slate-100 space-y-2">
+                {data.extra.map(e => {
+                  const pct = Math.round((e.count / extraMax) * 100)
+                  return (
+                    <div key={e.name} className="flex items-center gap-3">
+                      <span className="text-sm text-slate-600 w-32 flex-shrink-0">{e.label}</span>
+                      <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                        <div className="bg-emerald-500 h-5 rounded-full transition-all"
+                          style={{ width: `${e.count > 0 ? Math.max(pct, 5) : 0}%` }} />
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800 w-8 text-right">{e.count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
           {top === 0 && <p className="text-xs text-slate-400 pt-1">No visits recorded yet.</p>}
         </div>
       )}
