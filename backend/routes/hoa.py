@@ -19,7 +19,7 @@ from services.compliance import evaluate_compliance
 from services.email import (
     board_report_html, send_email,
     invite_email_html, renewal_notice_html, renewal_reminder_html, expired_email_html,
-    admin_notify_html, noncompliant_email_html,
+    admin_notify_html, noncompliant_email_html, lease_expiration_html,
 )
 from services.importer import (
     parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
@@ -970,6 +970,15 @@ async def email_previews(
             "Association requires wind coverage — this HO6 policy excludes wind",
         ],
     )
+    le_s, le_h = lease_expiration_html(
+        "101", name, "https://www.condo.insure/tenant/dashboard",
+        today + timedelta(days=30), 30,
+        recipient_name="Jane Smith", sender_email=(sender["email"] if sender else None),
+        corp_name=(sender["corp_name"] if sender else None),
+        sender_name=(sender["name"] if sender else None),
+        sender_title=(sender["title"] if sender else None),
+        unit_address="123 Ocean Dr, Miami, FL 33139",
+    )
     return {
         "invite": {"subject": inv_s, "html": inv_h},
         "renewal_30": {"subject": r30_s, "html": r30_h},
@@ -977,6 +986,7 @@ async def email_previews(
         "renewal_1": {"subject": r1_s, "html": r1_h},
         "expired": {"subject": exp_s, "html": exp_h},
         "non_compliant": {"subject": nc_s, "html": nc_h},
+        "lease_expiration": {"subject": le_s, "html": le_h},
     }
 
 

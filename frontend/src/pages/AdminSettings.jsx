@@ -359,6 +359,7 @@ export default function AdminSettings() {
                   { key: 'renewal_7', label: 'Renewal 7' },
                   { key: 'renewal_1', label: 'Renewal 1' },
                   { key: 'expired', label: 'Expired Policy' },
+                  { key: 'lease_expiration', label: 'Lease Expiration' },
                 ].map(b => (
                   <button key={b.key} type="button"
                     onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
@@ -745,6 +746,7 @@ export default function AdminSettings() {
                   { key: 'renewal_7', label: 'Renewal 7' },
                   { key: 'renewal_1', label: 'Renewal 1' },
                   { key: 'expired', label: 'Expired Policy' },
+                  { key: 'lease_expiration', label: 'Lease Expiration' },
                 ].map(b => (
                   <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg ${previewKind === b.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
