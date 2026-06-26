@@ -44,6 +44,7 @@ function fileNameFromUrl(url) {
 const COVERAGE_TYPE_OPTIONS = [
   { value: 'ho6_wind_excluded', label: 'HO-6 excl wind' },
   { value: 'ho6_with_wind',     label: 'HO-6 with wind' },
+  { value: 'ho4',               label: 'HO-4' },
   { value: 'wind_only',         label: 'Wind only' },
   { value: 'unknown',           label: 'Unknown' },
 ]

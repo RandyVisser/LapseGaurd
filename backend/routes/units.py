@@ -345,6 +345,16 @@ async def _run_parsing(policy_id: str, document_url: str, submitted: dict):
 
             pool = await get_pool()
             async with pool.acquire() as conn:
+                # Renter sub-units carry HO-4 policies — the HO-6 dec-page parser
+                # can't classify them, so force the type for renter policies.
+                is_renter_policy = await conn.fetchval(
+                    """SELECT u.parent_unit_id IS NOT NULL FROM policies p
+                       JOIN tenants t ON t.id = p.tenant_id JOIN units u ON u.id = t.unit_id
+                       WHERE p.id = $1""",
+                    policy_id,
+                )
+                if is_renter_policy:
+                    coverage_type = "ho4"
                 has_wind_only_companion = True
                 if coverage_type == "ho6_wind_excluded":
                     policy_row = await conn.fetchrow(
