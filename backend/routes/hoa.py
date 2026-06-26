@@ -684,12 +684,21 @@ async def get_pm_license(
     users (admins/PMs) can't see or edit this."""
     if user.role != "super_user":
         raise HTTPException(status_code=403, detail="Super-user only")
-    row = await conn.fetchrow("SELECT assoc_title, pm_license FROM units WHERE id = $1", unit_id)
+    row = await conn.fetchrow("SELECT assoc_title, email_primary, pm_license FROM units WHERE id = $1", unit_id)
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
     if (row["assoc_title"] or "").strip().lower() != "property manager":
         raise HTTPException(status_code=400, detail="Not a property manager")
     data = row["pm_license"]
+    # Licensing is per-PM (shared across their associations): if this row has no
+    # data yet, pull it from any other PM row with the same email.
+    email = (row["email_primary"] or "").strip()
+    if not data and email:
+        data = await conn.fetchval(
+            "SELECT pm_license FROM units WHERE lower(coalesce(assoc_title,'')) = 'property manager' "
+            "AND lower(coalesce(email_primary,'')) = lower($1) AND pm_license IS NOT NULL LIMIT 1",
+            email,
+        )
     if isinstance(data, str):
         data = json.loads(data)
     return PmLicense(**(data or {}))
@@ -704,13 +713,22 @@ async def update_pm_license(
 ):
     if user.role != "super_user":
         raise HTTPException(status_code=403, detail="Super-user only")
-    row = await conn.fetchrow("SELECT assoc_title FROM units WHERE id = $1", unit_id)
+    row = await conn.fetchrow("SELECT assoc_title, email_primary FROM units WHERE id = $1", unit_id)
     if not row:
         raise HTTPException(status_code=404, detail="Not found")
     if (row["assoc_title"] or "").strip().lower() != "property manager":
         raise HTTPException(status_code=400, detail="Not a property manager")
     payload = {k: (v.strip() if isinstance(v, str) else v) or None for k, v in body.dict().items()}
-    await conn.execute("UPDATE units SET pm_license = $1 WHERE id = $2", json.dumps(payload), unit_id)
+    email = (row["email_primary"] or "").strip()
+    if email:
+        # Share across every association this PM (by email) manages.
+        await conn.execute(
+            "UPDATE units SET pm_license = $1 WHERE lower(coalesce(assoc_title,'')) = 'property manager' "
+            "AND lower(coalesce(email_primary,'')) = lower($2)",
+            json.dumps(payload), email,
+        )
+    else:
+        await conn.execute("UPDATE units SET pm_license = $1 WHERE id = $2", json.dumps(payload), unit_id)
     return PmLicense(**payload)
 
 
