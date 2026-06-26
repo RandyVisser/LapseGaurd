@@ -120,6 +120,7 @@ def renewal_reminder_html(
     sender_name: str | None = None,
     sender_title: str | None = None,
     unit_address: str | None = None,
+    is_renter: bool = False,
 ) -> tuple[str, str]:
     """Renewal reminder sent at the 30/7/1-day milestones — same body, with the
     timing line escalating as the renewal date approaches."""
@@ -135,12 +136,14 @@ def renewal_reminder_html(
     else:
         when, subject = "in 30 days", f"Reminder — your policy renews in 30 days ({hoa_name})"
 
-    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    policy_word = "HO-4 renters insurance policy" if is_renter else "insurance policy"
+    quote_btn = "Get an HO-4 Quote" if is_renter else "Get a Quote"
+    greeting = "Dear " + ((recipient_name or "").strip() or ("Renter" if is_renter else "Unit Owner"))
     re_parts = [p for p in [(unit_address or "").strip(),
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
     contact_parts = [
         (sender_name or "").strip() or None,
         (sender_title or "").strip() or None,
@@ -153,7 +156,7 @@ def renewal_reminder_html(
       {re_line}
       <p style="color:#374151">{greeting},</p>
       <p style="color:#374151">
-        This is a friendly reminder that the insurance policy on file for your unit is
+        This is a friendly reminder that the {policy_word} on file for your unit is
         set to renew {when}, on <strong>{date_str}</strong>.
       </p>
       <p style="color:#374151">
@@ -171,7 +174,7 @@ def renewal_reminder_html(
       <div style="text-align:center;margin:4px 0 8px">
         <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">Get a Quote</a>
+           text-decoration:none">{quote_btn}</a>
       </div>
 
       <p style="color:#6b7280;font-size:13px;margin-top:16px">
@@ -291,19 +294,21 @@ def expired_email_html(
     sender_name: str | None = None,
     sender_title: str | None = None,
     unit_address: str | None = None,
+    is_renter: bool = False,
 ) -> tuple[str, str]:
     """Notice for owners whose policy has expired and no updated docs received."""
     try:
         date_str = expiration_date.strftime("%B %-d, %Y")
     except (AttributeError, ValueError):
         date_str = str(expiration_date)
-    subject = f"Action required — your insurance policy has expired ({hoa_name})"
-    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    policy_word = "HO-4 renters policy" if is_renter else "insurance policy"
+    subject = f"Action required — your {policy_word} has expired ({hoa_name})"
+    greeting = "Dear " + ((recipient_name or "").strip() or ("Renter" if is_renter else "Unit Owner"))
     re_parts = [p for p in [(unit_address or "").strip(),
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
     contact_parts = [
         (sender_name or "").strip() or None,
         (sender_title or "").strip() or None,
@@ -316,7 +321,7 @@ def expired_email_html(
       {re_line}
       <p style="color:#374151">{greeting},</p>
       <p style="color:#374151">
-        Our records indicate that the insurance policy on file for your unit expired on
+        Our records indicate that the {policy_word} on file for your unit expired on
         <strong>{date_str}</strong> and we have not yet received updated documentation.
       </p>
       <p style="color:#374151">
@@ -631,11 +636,12 @@ def noncompliant_email_html(
     sender_title: str | None = None,
     unit_address: str | None = None,
     items: list | None = None,
+    is_renter: bool = False,
 ) -> tuple[str, str]:
     """Compliance-review notice for owners whose policy is on file but does not
     meet the association's requirements. Lists the specific failing items."""
     subject = f"Insurance compliance review — {hoa_name}"
-    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    greeting = "Dear " + ((recipient_name or "").strip() or ("Renter" if is_renter else "Unit Owner"))
     re_parts = [p for p in [(unit_address or "").strip(),
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
@@ -655,7 +661,9 @@ def noncompliant_email_html(
         (sender_email or "").strip() or None,
     ]
     contact = "<br>".join(p for p in contact_parts if p)
-    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
+    quote_label = "Get a New HO-4 Quote" if is_renter else "Get a New HO-6 Quote"
+    quote_word = "HO-4" if is_renter else "HO-6"
 
     body = f"""
       {re_line}
@@ -684,12 +692,12 @@ def noncompliant_email_html(
 
       <p style="color:#374151;margin-top:8px">
         Need updated coverage, or want to compare your current rate? Get a fast,
-        no-obligation HO-6 quote in minutes:
+        no-obligation {quote_word} quote in minutes:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
         <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">Get a New HO-6 Quote</a>
+           text-decoration:none">{quote_label}</a>
       </div>
 
       <p style="color:#6b7280;font-size:13px;margin-top:16px">

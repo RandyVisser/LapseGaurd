@@ -979,6 +979,32 @@ async def email_previews(
         sender_title=(sender["title"] if sender else None),
         unit_address="123 Ocean Dr, Miami, FL 33139",
     )
+
+    # Renter (HO-4) variants — liability-only requirement, HO-4 wording + quote link
+    rkw = dict(_ren_kw); rkw["recipient_name"] = "Mike Renter"; rkw["is_renter"] = True
+    rinv_s, rinv_h = invite_email_html(
+        "renter@example.com", "101", name, "https://www.condo.insure/join/sample",
+        is_renter=True, sender_email=(sender["email"] if sender else None), recipient_name="Mike Renter",
+        corp_name=(sender["corp_name"] if sender else None),
+        sender_name=(sender["name"] if sender else None),
+        sender_title=(sender["title"] if sender else None),
+        unit_address="123 Ocean Dr, Miami, FL 33139",
+    )
+    rr30_s, rr30_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=30), 30, **rkw)
+    rr7_s, rr7_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=7), 7, **rkw)
+    rr1_s, rr1_h = renewal_reminder_html("101", name, "https://www.condo.insure/tenant/dashboard", today + timedelta(days=1), 1, **rkw)
+    rexp_s, rexp_h = expired_email_html("101", name, "https://www.condo.insure/tenant/dashboard",
+                                        today - timedelta(days=3), reminder_days=7, **rkw)
+    rnc_s, rnc_h = noncompliant_email_html(
+        "101", name, "https://www.condo.insure/tenant/dashboard",
+        recipient_name="Mike Renter", sender_email=(sender["email"] if sender else None),
+        corp_name=(sender["corp_name"] if sender else None),
+        sender_name=(sender["name"] if sender else None),
+        sender_title=(sender["title"] if sender else None),
+        unit_address="123 Ocean Dr, Miami, FL 33139",
+        is_renter=True,
+        items=["Liability coverage (Coverage E) below association minimum — requires at least $100,000, document shows $50,000"],
+    )
     return {
         "invite": {"subject": inv_s, "html": inv_h},
         "renewal_30": {"subject": r30_s, "html": r30_h},
@@ -987,6 +1013,12 @@ async def email_previews(
         "expired": {"subject": exp_s, "html": exp_h},
         "non_compliant": {"subject": nc_s, "html": nc_h},
         "lease_expiration": {"subject": le_s, "html": le_h},
+        "renter_invite": {"subject": rinv_s, "html": rinv_h},
+        "renter_non_compliant": {"subject": rnc_s, "html": rnc_h},
+        "renter_renewal_30": {"subject": rr30_s, "html": rr30_h},
+        "renter_renewal_7": {"subject": rr7_s, "html": rr7_h},
+        "renter_renewal_1": {"subject": rr1_s, "html": rr1_h},
+        "renter_expired": {"subject": rexp_s, "html": rexp_h},
     }
 
 

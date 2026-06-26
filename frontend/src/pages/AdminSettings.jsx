@@ -18,6 +18,27 @@ const HOA_FIELD_OPTIONS = {
   sunbiz_doc_number: { label: 'SunBiz DOC #', key: 'sunbiz_doc_number' },
 }
 
+// Email-preview rows: owner (HO-6) emails, then renter (HO-4) emails.
+const PREVIEW_ROWS = [
+  { label: 'Owners', items: [
+    { key: 'invite', label: 'Invite' },
+    { key: 'non_compliant', label: 'Non-Compliant' },
+    { key: 'renewal_30', label: 'Renewal 30' },
+    { key: 'renewal_7', label: 'Renewal 7' },
+    { key: 'renewal_1', label: 'Renewal 1' },
+    { key: 'expired', label: 'Expired Policy' },
+  ] },
+  { label: 'Renters', items: [
+    { key: 'renter_invite', label: 'Invite' },
+    { key: 'renter_non_compliant', label: 'Non-Compliant' },
+    { key: 'renter_renewal_30', label: 'Renewal 30' },
+    { key: 'renter_renewal_7', label: 'Renewal 7' },
+    { key: 'renter_renewal_1', label: 'Renewal 1' },
+    { key: 'renter_expired', label: 'Expired Policy' },
+    { key: 'lease_expiration', label: 'Lease Expiration' },
+  ] },
+]
+
 const ALL_HOAS = '__all__'
 
 export default function AdminSettings() {
@@ -351,28 +372,19 @@ export default function AdminSettings() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <p className="font-semibold text-slate-700">Email Previews</p>
               <p className="text-xs text-slate-500 mt-1 mb-3">See exactly what unit owners receive.</p>
-              <div className="flex flex-col gap-2">
-                {[
-                  [
-                    { key: 'invite', label: 'Invite' },
-                    { key: 'non_compliant', label: 'Non-Compliant' },
-                    { key: 'renewal_30', label: 'Renewal 30' },
-                    { key: 'renewal_7', label: 'Renewal 7' },
-                    { key: 'renewal_1', label: 'Renewal 1' },
-                    { key: 'expired', label: 'Expired Policy' },
-                  ],
-                  [
-                    { key: 'lease_expiration', label: 'Lease Expiration' },
-                  ],
-                ].map((row, ri) => (
-                  <div key={ri} className="flex gap-2 overflow-x-auto">
-                    {row.map(b => (
-                      <button key={b.key} type="button"
-                        onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
-                        className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm whitespace-nowrap flex-shrink-0">
-                        {b.label}
-                      </button>
-                    ))}
+              <div className="flex flex-col gap-3">
+                {PREVIEW_ROWS.map(row => (
+                  <div key={row.label}>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{row.label}</p>
+                    <div className="flex gap-2 overflow-x-auto">
+                      {row.items.map(b => (
+                        <button key={b.key} type="button"
+                          onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
+                          className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm whitespace-nowrap flex-shrink-0">
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -746,20 +758,17 @@ export default function AdminSettings() {
                 </div>
                 <button onClick={() => setPreviewKind(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">×</button>
               </div>
-              <div className="flex gap-1 px-3 pt-3 flex-wrap">
-                {[
-                  { key: 'invite', label: 'Invite' },
-                  { key: 'non_compliant', label: 'Non-Compliant' },
-                  { key: 'renewal_30', label: 'Renewal 30' },
-                  { key: 'renewal_7', label: 'Renewal 7' },
-                  { key: 'renewal_1', label: 'Renewal 1' },
-                  { key: 'expired', label: 'Expired Policy' },
-                  { key: 'lease_expiration', label: 'Lease Expiration' },
-                ].map(b => (
-                  <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg ${previewKind === b.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                    {b.label}
-                  </button>
+              <div className="flex flex-col gap-1.5 px-3 pt-3">
+                {PREVIEW_ROWS.map(row => (
+                  <div key={row.label} className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mr-1 w-14">{row.label}</span>
+                    {row.items.map(b => (
+                      <button key={b.key} type="button" onClick={() => setPreviewKind(b.key)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg ${previewKind === b.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
               <iframe title="Email preview" srcDoc={emailPreviews[previewKind].html}

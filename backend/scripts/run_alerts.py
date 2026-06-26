@@ -89,6 +89,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
             p.tenant_id,
             p.expiration_date,
             p.status,
+            (u.parent_unit_id IS NOT NULL) AS is_renter,
             t.name AS tenant_name,
             t.email AS tenant_email,
             u.unit_number, u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
@@ -176,6 +177,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
                 corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
                 sender_title=row.get("sender_title"),
                 unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
+                is_renter=row.get("is_renter") or False,
             )
         else:
             subject, html = renewal_reminder_html(
@@ -185,6 +187,7 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
                 corp_name=row.get("corp_name"), sender_name=row.get("sender_name"),
                 sender_title=row.get("sender_title"),
                 unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
+                is_renter=row.get("is_renter") or False,
             )
         sent = await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email"))
         if sent:
@@ -287,7 +290,8 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
     until the policy is corrected (status changes off non_compliant)."""
     rows = await conn.fetch(
         """
-        SELECT p.tenant_id, p.extracted_data, t.name AS tenant_name, t.email AS tenant_email,
+        SELECT p.tenant_id, p.extracted_data, (u.parent_unit_id IS NOT NULL) AS is_renter,
+               t.name AS tenant_name, t.email AS tenant_email,
                u.unit_number, u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                u.street_address, u.city, u.state, u.zip, h.name AS hoa_name,
                COALESCE(h.noncompliant_reminder_days, 7) AS days,
@@ -330,6 +334,7 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
             sender_title=row.get("sender_title"),
             unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
             items=items,
+            is_renter=row.get("is_renter") or False,
         )
         if await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email")):
             await conn.execute(
