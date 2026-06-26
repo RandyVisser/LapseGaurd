@@ -77,6 +77,48 @@ function addressMatches(unitStreet, policyAddress) {
 }
 
 function buildComplianceChecks(tenant, currentPolicies) {
+  // Renter sub-unit (HO-4) — different checks than an HO-6 owner.
+  if (tenant.is_renter) {
+    const rItems = []
+    const ho4 = currentPolicies.find(p => p.coverage_type === 'ho4') || currentPolicies[0]
+    if (!ho4) {
+      rItems.push({ type: 'fail', text: 'No HO-4 policy on file' })
+      return rItems
+    }
+    const ext = ho4.extracted_data || {}
+    // (1) Named insured matches the lessee (renter) name from the lease
+    const renterName = tenant.owner_primary || tenant.name
+    const insuredNames = [
+      ext.named_insured,
+      ...(Array.isArray(ext.additional_insureds) ? ext.additional_insureds : ext.additional_insureds ? [ext.additional_insureds] : []),
+    ].filter(Boolean)
+    if (renterName && insuredNames.length) {
+      const match = insuredNames.some(n => nameMatches(renterName, n))
+      rItems.push({
+        type: match ? 'pass' : 'fail',
+        text: match
+          ? `Named insured matches lease (${renterName})`
+          : `Named insured does not match lease — policy lists "${insuredNames.join('; ')}", lease shows "${renterName}"`,
+      })
+    }
+    // (2) Liability limit meets the association minimum
+    const liability = ext.liability_coverage
+    if (tenant.ho4_liability_min && liability != null) {
+      const meets = Number(liability) >= tenant.ho4_liability_min
+      rItems.push({ type: meets ? 'pass' : 'fail', text: `Liability limit ${currency(liability)} ${meets ? 'meets' : 'below'} ${currency(tenant.ho4_liability_min)} minimum` })
+    }
+    // (3) Coverage is in force (active now, not expired / not future-dated)
+    const today = new Date().toISOString().slice(0, 10)
+    const exp = ho4.expiration_date
+    const eff = ext.effective_date
+    const inForce = (!exp || exp >= today) && (!eff || eff <= today) && ho4.status !== 'lapsed'
+    rItems.push({
+      type: inForce ? 'pass' : 'fail',
+      text: inForce ? 'Coverage is in force' : 'Coverage is not in force (expired or not yet effective)',
+    })
+    return rItems
+  }
+
   const ho6  = currentPolicies.find(p => ['ho6_with_wind', 'ho6_wind_excluded'].includes(p.coverage_type))
   const wind = currentPolicies.find(p => p.coverage_type === 'wind_only')
   const items = []

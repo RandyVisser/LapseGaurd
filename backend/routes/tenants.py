@@ -376,6 +376,7 @@ async def get_tenant_detail(
         lease_required=row["lease_required"] if row["lease_required"] is not None else False,
         lease_min_term_days=row["lease_min_term_days"],
         ho4_required=row["ho4_required"] if row["ho4_required"] is not None else False,
+        ho4_liability_min=row["ho4_liability_min"],
         renter_unit_id=str(renter_unit_id) if renter_unit_id else None,
         renter_has_ho4=bool(renter_has_ho4),
         needs_wind_policy=evaluation["needs_wind_policy"],
