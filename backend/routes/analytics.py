@@ -41,6 +41,12 @@ _EXTRA = [
     ("owner_upload", "Dec pages uploaded"),
 ]
 
+# Internal/founder accounts excluded from the "Invited staff activated" count.
+_INTERNAL_EMAILS = [
+    "troy@condo.insure", "randy@condo.insure",
+    "troy.visser@gmail.com", "randy.redfish@gmail.com",
+]
+
 # In-memory per-IP rate limit so the public beacon can't bloat the table.
 _hits: dict[str, list[datetime]] = defaultdict(list)
 _LIMIT, _WINDOW = 300, timedelta(hours=1)
@@ -100,9 +106,12 @@ async def funnel(
 
     # Invited Admin/PM activations come from the source of truth (admin_invites),
     # not the funnel beacons — invited staff never hit the public signup page.
+    # Internal/founder accounts are excluded from the count.
     staff_activated = await conn.fetchval(
-        "SELECT count(*) FROM admin_invites WHERE accepted_at > now() - make_interval(days => $1)",
-        days,
+        """SELECT count(*) FROM admin_invites
+           WHERE accepted_at > now() - make_interval(days => $1)
+             AND lower(email) <> ALL($2::text[])""",
+        days, _INTERNAL_EMAILS,
     ) or 0
 
     extra = [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
