@@ -663,6 +663,7 @@ class PropertyManagerCreate(BaseModel):
 
 class PmLicense(BaseModel):
     cam_number: Optional[str] = None
+    cam_phone: Optional[str] = None
     cam_address: Optional[str] = None
     cam_city: Optional[str] = None
     cam_state: Optional[str] = None

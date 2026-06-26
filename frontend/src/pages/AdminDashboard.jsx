@@ -1255,9 +1255,12 @@ export default function AdminDashboard() {
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <h2 className="font-semibold text-slate-800 mb-1">Property Manager Licensing</h2>
-              <p className="text-xs text-slate-500 mb-4">
-                {pmLicenseUnit.owner_primary || pmLicenseUnit.email_primary || 'Property Manager'} — super-user only.
+              <p className="text-xs text-slate-500 mb-1">
+                {pmLicenseUnit.owner_primary || 'Property Manager'} — super-user only.
               </p>
+              {pmLicenseUnit.email_primary && (
+                <p className="text-xs text-slate-500 mb-4"><span className="font-medium text-slate-600">Email:</span> {pmLicenseUnit.email_primary}</p>
+              )}
               <form onSubmit={savePmLicense} className="space-y-4">
                 {[
                   { prefix: 'cam', title: 'CAM (Manager License)' },
@@ -1265,11 +1268,21 @@ export default function AdminDashboard() {
                 ].map(({ prefix, title }) => (
                   <div key={prefix} className="border border-slate-200 rounded-lg p-3 space-y-2">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{title}</p>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">{prefix.toUpperCase()} #</label>
-                      <input value={pmLicenseForm[`${prefix}_number`] || ''}
-                        onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_number`]: e.target.value }))}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">{prefix.toUpperCase()} #</label>
+                        <input value={pmLicenseForm[`${prefix}_number`] || ''}
+                          onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_number`]: e.target.value }))}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      {prefix === 'cam' && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">Phone #</label>
+                          <input value={pmLicenseForm.cam_phone || ''}
+                            onChange={e => setPmLicenseForm(f => ({ ...f, cam_phone: e.target.value }))}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
