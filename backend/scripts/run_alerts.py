@@ -14,7 +14,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, format_address
+from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -198,6 +198,89 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
     return count
 
 
+async def process_lease_alerts(conn: asyncpg.Connection) -> int:
+    """Remind the OWNER of a rented unit that the lease on file is expiring (using
+    the association's 30/7/1 milestones) or has expired, so they upload a renewal.
+    Throttled per owner-tenant/type via alert_log, like the policy reminders."""
+    today = date.today()
+    rows = await conn.fetch(
+        r"""
+        SELECT u.id AS unit_id, u.unit_number, u.email_primary, u.email_secondary,
+               u.owner_primary, u.owner_secondary,
+               u.street_address, u.city, u.state, u.zip,
+               (u.lease_extracted->>'lease_end')::date AS lease_end,
+               ot.id AS owner_tenant_id, ot.email AS owner_tenant_email, ot.name AS owner_tenant_name,
+               h.name AS hoa_name,
+               COALESCE(h.alert_lead_days, 30) AS alert_lead_days,
+               COALESCE(h.alert_days, '{30,7,1}') AS alert_days,
+               COALESCE(h.alerts_enabled, TRUE) AS alerts_enabled,
+               COALESCE(h.lapsed_reminder_days, 7) AS lapsed_reminder_days,
+               """ + _SENDER_EMAIL_SQL + """ AS sender_email,
+               (SELECT su.owner_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_name,
+               (SELECT su.assoc_title FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """) AS sender_title,
+               COALESCE(h.corp_name,
+                 (SELECT corp_name FROM units WHERE hoa_id = h.id AND corp_name IS NOT NULL LIMIT 1),
+                 h.name) AS corp_name
+        FROM units u
+        JOIN hoas h ON h.id = u.hoa_id
+        LEFT JOIN tenants ot ON ot.unit_id = u.id
+        WHERE u.is_rental AND u.parent_unit_id IS NULL
+          AND u.lease_extracted->>'lease_end' ~ '^\d{4}-\d{2}-\d{2}$'
+          AND (u.lease_extracted->>'lease_end')::date
+              <= CURRENT_DATE + (COALESCE(h.alert_lead_days, 30) * INTERVAL '1 day')
+        """,
+    )
+    count = 0
+    for row in rows:
+        if not row["alerts_enabled"] or not row["owner_tenant_id"]:
+            continue  # need a tenant_id to throttle via alert_log
+
+        # Notify the owner at a real address (skip placeholder @condo.insure)
+        def _real(addr):
+            a = (addr or "").strip()
+            return a if a and not a.lower().endswith("@condo.insure") else ""
+        recipient = _real(row["email_primary"]) or _real(row["owner_tenant_email"])
+        if not recipient:
+            continue
+
+        lease_end = row["lease_end"]
+        days_until = (lease_end - today).days
+        milestones = sorted({int(d) for d in (row["alert_days"] or [])}, reverse=True)
+        if days_until < 0:
+            alert_type, throttle_days, expired = "lease_expired", row["lapsed_reminder_days"], True
+        else:
+            applicable = min((m for m in milestones if m >= days_until), default=None)
+            if applicable is None:
+                continue
+            alert_type, throttle_days, expired = f"lease_renewal_{applicable}", applicable + 1, False
+
+        already = await conn.fetchval(
+            f"""SELECT 1 FROM alert_log WHERE tenant_id = $1 AND alert_type = $2
+                AND sent_at > NOW() - INTERVAL '{throttle_days} days' LIMIT 1""",
+            row["owner_tenant_id"], alert_type,
+        )
+        if already:
+            continue
+
+        recipient_name = row["owner_primary"] or row["owner_tenant_name"]
+        subject, html = lease_expiration_html(
+            row["unit_number"], row["hoa_name"], f"{APP_URL}/tenant/dashboard",
+            lease_end, days_until, recipient_name=recipient_name,
+            sender_email=row.get("sender_email"), corp_name=row.get("corp_name"),
+            sender_name=row.get("sender_name"), sender_title=row.get("sender_title"),
+            unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
+            expired=expired,
+        )
+        if await send_email(recipient, subject, html, reply_to=row.get("sender_email")):
+            await conn.execute(
+                "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
+                row["owner_tenant_id"], alert_type,
+            )
+            count += 1
+            print(f"[alerts] Sent {alert_type} to {recipient}")
+    return count
+
+
 async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
     """Remind owners whose policy is on file but doesn't meet the association's
     requirements (Active · Non-Compliant), spaced by noncompliant_reminder_days,
@@ -264,8 +347,10 @@ async def main():
         count = await process_alerts(conn)
         reminders = await process_invite_reminders(conn)
         noncompliant = await process_noncompliant_reminders(conn)
+        lease = await process_lease_alerts(conn)
     await pool.close()
-    print(f"[alerts] Done. {count} alerts, {reminders} invite reminders, {noncompliant} non-compliant reminders sent.")
+    print(f"[alerts] Done. {count} alerts, {reminders} invite reminders, "
+          f"{noncompliant} non-compliant reminders, {lease} lease reminders sent.")
 
 
 if __name__ == "__main__":

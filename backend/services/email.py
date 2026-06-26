@@ -200,6 +200,83 @@ def renewal_reminder_html(
     return subject, html
 
 
+def lease_expiration_html(
+    unit_number: str,
+    hoa_name: str,
+    portal_url: str,
+    lease_end,
+    days_until: int,
+    recipient_name: str | None = None,
+    sender_email: str | None = None,
+    corp_name: str | None = None,
+    sender_name: str | None = None,
+    sender_title: str | None = None,
+    unit_address: str | None = None,
+    expired: bool = False,
+) -> tuple[str, str]:
+    """Sent to the unit OWNER of a rented unit when the lease on file is
+    expiring (30/7/1) or has expired — prompts them to upload the renewed lease."""
+    try:
+        date_str = lease_end.strftime("%B %-d, %Y")
+    except (AttributeError, ValueError):
+        date_str = str(lease_end)
+
+    if expired:
+        when, subject = "has expired", f"Action required — the lease on file has expired ({hoa_name})"
+    elif days_until is not None and days_until <= 1:
+        when, subject = "expires tomorrow", f"Final reminder — the lease on file expires tomorrow ({hoa_name})"
+    elif days_until is not None and days_until <= 7:
+        when, subject = "expires in 7 days", f"Reminder — the lease on file expires in 7 days ({hoa_name})"
+    else:
+        when, subject = "expires in 30 days", f"Reminder — the lease on file expires in 30 days ({hoa_name})"
+
+    greeting = "Dear " + ((recipient_name or "").strip() or "Unit Owner")
+    re_parts = [p for p in [(unit_address or "").strip(),
+                            (f"Unit {unit_number}" if unit_number else "")] if p]
+    re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
+               f'{", ".join(re_parts)}</p>') if re_parts else ""
+    contact_parts = [
+        (sender_name or "").strip() or None,
+        (sender_title or "").strip() or None,
+        (corp_name or hoa_name),
+        (sender_email or "").strip() or None,
+    ]
+    contact = "<br>".join(p for p in contact_parts if p)
+
+    body = f"""
+      {re_line}
+      <p style="color:#374151">{greeting},</p>
+      <p style="color:#374151">
+        Our records show the lease on file for your rented unit <strong>{when}</strong>
+        on <strong>{date_str}</strong>.
+      </p>
+      <p style="color:#374151">
+        Because this unit is rented, the Association requires a current lease on file.
+        Please upload the renewed lease so the unit stays compliant — when you do, we'll
+        read the new renter details automatically.
+      </p>
+      {_btn(portal_url, "Upload Renewed Lease")}
+      <p style="color:#374151;margin-top:16px">
+        If the tenancy has ended and the unit is no longer rented, let your association
+        know so the rental flag can be removed.
+      </p>
+      <p style="color:#374151">If you have questions, please contact:</p>
+      <p style="color:#374151">{contact or hoa_name}</p>
+      <p style="color:#374151;margin-top:20px">
+        Thank you,<br>
+        Condo.insure Compliance Team<br>
+        On behalf of {corp_name or hoa_name}
+      </p>"""
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      {body}
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def expired_email_html(
     unit_number: str,
     hoa_name: str,
