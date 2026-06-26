@@ -106,6 +106,7 @@ export default function AdminSettings() {
           corp_name: hoa.corp_name || '',
           sunbiz_doc_number: hoa.sunbiz_doc_number || '',
           dpbr_license_number: hoa.dpbr_license_number || '',
+          fein: hoa.fein || '',
           alerts_enabled: hoa.alerts_enabled ?? true,
           alert_days: hoa.alert_days?.length ? hoa.alert_days : [30, 7, 1],
           lapsed_reminders_enabled: hoa.lapsed_reminders_enabled ?? true,
@@ -290,15 +291,27 @@ export default function AdminSettings() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
               <p className="font-semibold text-slate-700">Association Info</p>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Association Name</label>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Association Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">FEIN #</label>
+                  <input
+                    type="text"
+                    value={form.fein}
+                    onChange={e => setForm(f => ({ ...f, fein: e.target.value }))}
+                    placeholder="e.g. 12-3456789"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 gap-3">
                 <div>
