@@ -4,8 +4,9 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 import useIsMobile from '../hooks/useIsMobile'
 
-// Quote button points at the agency quote page.
+// Quote button points at the agency quote page (HO-4 page for renters).
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
+const HO4_QUOTE_URL = 'https://www.universalcondo.com/ho4quote.html'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1125,7 +1126,7 @@ export default function AdminTenantDetail() {
           </div>
           {QUOTE_FORM_URL && (
             <a
-              href={QUOTE_FORM_URL}
+              href={tenant?.is_renter ? HO4_QUOTE_URL : QUOTE_FORM_URL}
               target="_blank" rel="noopener noreferrer"
               className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap mt-0.5">
               Get a New {tenant?.is_renter ? 'HO-4' : 'HO-6'} Quote →

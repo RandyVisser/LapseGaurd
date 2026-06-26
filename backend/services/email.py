@@ -6,6 +6,8 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
 # Quote links in emails point at the agency quote page.
 QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
+# Renters get an HO-4-specific quote page.
+HO4_QUOTE_URL = "https://www.universalcondo.com/ho4quote.html"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # Dec-page email-in intake address shown to owners who'd rather email their
 # document than upload it. Override in Railway via INBOUND_ADDRESS if needed.
@@ -440,7 +442,7 @@ def invite_email_html(
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = QUOTE_FORM_URL or "https://www.universalcondo.com/quote"
+    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
