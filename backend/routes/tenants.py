@@ -511,20 +511,25 @@ async def bulk_notify_tenants(
         raise HTTPException(status_code=404, detail="No matching tenants found in this HOA")
 
     async def _send_all():
-        for row in rows:
-            subject, html = admin_notify_html(
-                row["name"], row["unit_number"], row["hoa_name"], body.message
-            )
-            sent = await send_email(row["email"], subject, html)
-            if sent:
-                await conn.execute(
-                    "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
-                    row["id"],
+        # Runs after the response is sent, so the request's `conn` is already
+        # released back to the pool — acquire a fresh one for the bookkeeping.
+        from models.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as bg_conn:
+            for row in rows:
+                subject, html = admin_notify_html(
+                    row["name"], row["unit_number"], row["hoa_name"], body.message
                 )
-        await log_audit(conn, hoa_id, user.sub, user.email, "notify_bulk", {
-            "count": len(rows),
-            "tenant_ids": [str(r["id"]) for r in rows],
-        })
+                sent = await send_email(row["email"], subject, html)
+                if sent:
+                    await bg_conn.execute(
+                        "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
+                        row["id"],
+                    )
+            await log_audit(bg_conn, hoa_id, user.sub, user.email, "notify_bulk", {
+                "count": len(rows),
+                "tenant_ids": [str(r["id"]) for r in rows],
+            })
 
     background_tasks.add_task(_send_all)
     return {"queued": len(rows)}

@@ -1060,7 +1060,12 @@ async def send_board_report(
 
     async def _send():
         await send_email(to_email, report["subject"], report["html"])
-        await log_audit(conn, hoa_id, user.sub, user.email, "board_report_sent", {"to": to_email})
+        # As a background task the request `conn` is already released; acquire a
+        # fresh pool connection for the audit write (also fine on the sync path).
+        from models.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as bg_conn:
+            await log_audit(bg_conn, hoa_id, user.sub, user.email, "board_report_sent", {"to": to_email})
 
     if background_tasks:
         background_tasks.add_task(_send)
