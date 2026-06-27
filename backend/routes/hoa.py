@@ -70,7 +70,8 @@ async def _compliance_status_by_tenant(
     if not tenant_ids:
         return {}, {}
     rows = await conn.fetch(
-        """SELECT id, tenant_id, status, coverage_type, expiration_date, uploaded_at, extracted_data
+        """SELECT id, tenant_id, status, coverage_type, expiration_date, uploaded_at,
+                  extracted_data, review_overrides
            FROM policies WHERE tenant_id = ANY($1::uuid[])""",
         tenant_ids,
     )
@@ -102,6 +103,12 @@ async def _compliance_status_by_tenant(
             current_ids = result.get("current_ids", set())
             current_policies = [p for p in policies if p["id"] in current_ids]
             has_wind_policy = any(p.get("coverage_type") == "wind_only" for p in current_policies)
+            # A PM/Admin can manually approve a unit despite failing checks. The
+            # approval lives on a current policy's review_overrides.manual_approval.
+            def _ovr(p):
+                ro = p.get("review_overrides")
+                return _json.loads(ro) if isinstance(ro, str) else (ro or {})
+            manually_approved = any(_ovr(p).get("manual_approval") for p in current_policies)
             found_non_compliant = False
             for p in current_policies:
                 raw = p.get("extracted_data")
@@ -185,10 +192,10 @@ async def _compliance_status_by_tenant(
                                             found_non_compliant = True
                                     except (ValueError, TypeError):
                                         pass
-            if found_non_compliant or result.get("needs_ho6_policy"):
+            if not manually_approved and (found_non_compliant or result.get("needs_ho6_policy")):
                 status = PolicyStatus.non_compliant.value
-            elif status == PolicyStatus.non_compliant.value:
-                # Was non-compliant but all issues are now resolved — revert to active/expiring from DB
+            elif status == PolicyStatus.non_compliant.value or manually_approved:
+                # Resolved, or manually approved by a PM/Admin — show compliant.
                 best = min(current_policies, key=lambda p: (p.get("expiration_date") or "9999"), default=None)
                 if best:
                     status = best["status"] if best["status"] not in (PolicyStatus.non_compliant.value,) else PolicyStatus.active.value

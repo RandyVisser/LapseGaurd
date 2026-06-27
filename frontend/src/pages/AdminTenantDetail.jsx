@@ -618,7 +618,22 @@ export default function AdminTenantDetail() {
   const [ho4Msg, setHo4Msg] = useState('')
   const [ho4Err, setHo4Err] = useState('')
   const [ho4TenantId, setHo4TenantId] = useState(null)
+  const [approveOpen, setApproveOpen] = useState(false)
+  const [approveReason, setApproveReason] = useState('')
+  const [savingApproval, setSavingApproval] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+
+  async function submitApproval(approved, reason) {
+    if (!approveTargetId) return
+    setSavingApproval(true); setError('')
+    try {
+      await apiPost(`/policy/${approveTargetId}/approval`, { approved, reason: reason || null })
+      const fresh = await apiGet(`/tenant/${tenantId}`)
+      initFromTenant(fresh)
+      setApproveOpen(false); setApproveReason('')
+    } catch (e) { setError(e.message) }
+    finally { setSavingApproval(false) }
+  }
   const [removingOwner, setRemovingOwner] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -742,6 +757,10 @@ export default function AdminTenantDetail() {
   // Prefer the backend's rental-aware status so the hero matches the dashboard;
   // fall back to the policy-derived status if it isn't present.
   const overallStatus   = tenant?.compliance_status || worstStatus(currentPolicies)
+  // Manual compliance approval (PM/Admin override) lives on a current policy
+  const approvalPolicy  = currentPolicies.find(p => p.review_overrides?.manual_approval)
+  const approval        = approvalPolicy?.review_overrides?.manual_approval || null
+  const approveTargetId = approvalPolicy?.id || currentPolicies[0]?.id || null
   const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
 
   const hasLapsedPolicy = currentPolicies.some(p => p.status === 'lapsed')
@@ -1151,7 +1170,26 @@ export default function AdminTenantDetail() {
               <p className={`font-bold text-base mb-3 flex items-center gap-2 flex-wrap ${ss.text}`}>
                 <span>{ss.icon}</span> {ss.label}
                 {isExpiringSoon && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">Expiring Soon</span>}
+                {approval && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">Manually approved</span>}
               </p>
+
+              {/* Manual approval / override (PM/Admin) */}
+              {approval ? (
+                <div className="mb-3 bg-white/70 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-slate-600">
+                  <span className="font-semibold text-emerald-700">✓ Approved</span> by {approval.by}
+                  {approval.at && <> on {new Date(approval.at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</>}
+                  {approval.reason && <div className="mt-1 text-slate-500">Reason: {approval.reason}</div>}
+                  <button type="button" onClick={() => submitApproval(false)} disabled={savingApproval}
+                    className="mt-2 text-xs font-semibold text-red-600 hover:underline disabled:opacity-60">
+                    {savingApproval ? 'Working…' : 'Withdraw approval'}
+                  </button>
+                </div>
+              ) : overallStatus === 'non_compliant' && approveTargetId && (
+                <button type="button" onClick={() => { setApproveReason(''); setApproveOpen(true) }}
+                  className="mb-3 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg">
+                  Approve / override compliance
+                </button>
+              )}
               {complianceChecks.length > 0 && (() => {
                 const baseChecks = complianceChecks.filter(c => c.group !== 'rented')
                 const rentedChecks = complianceChecks.filter(c => c.group === 'rented')
@@ -1435,6 +1473,32 @@ export default function AdminTenantDetail() {
             )}
 
           </form>
+        )}
+
+        {approveOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-slate-800 mb-1">Approve / override compliance</h2>
+              <p className="text-xs text-slate-500 mb-4">
+                This marks the unit compliant despite the failing checks. Your name, the date/time,
+                and the reason are recorded, and you can withdraw it anytime.
+              </p>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Reason</label>
+              <textarea value={approveReason} onChange={e => setApproveReason(e.target.value)} rows={3}
+                placeholder="e.g. Owner provided a binder confirming coverage; updated dec page to follow."
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="flex gap-2 mt-3">
+                <button type="button" onClick={() => submitApproval(true, approveReason)} disabled={savingApproval || !approveReason.trim()}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                  {savingApproval ? 'Approving…' : 'Approve'}
+                </button>
+                <button type="button" onClick={() => setApproveOpen(false)}
+                  className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

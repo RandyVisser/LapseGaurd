@@ -535,6 +535,55 @@ async def bulk_notify_tenants(
     return {"queued": len(rows)}
 
 
+class PolicyApproval(BaseModel):
+    approved: bool
+    reason: str | None = None
+
+
+@router.post("/policy/{policy_id}/approval")
+async def set_policy_approval(
+    policy_id: str,
+    body: PolicyApproval,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Manually approve (or withdraw approval of) a unit's compliance despite a
+    failing/non-compliant check. PM/Admin/super-user only. The who/when/reason is
+    stored on the policy's review_overrides.manual_approval and forces the unit
+    to compliant until withdrawn."""
+    row = await conn.fetchrow(
+        """SELECT p.id, p.review_overrides, u.hoa_id
+           FROM policies p JOIN tenants t ON t.id = p.tenant_id
+           JOIN units u ON u.id = t.unit_id WHERE p.id = $1""",
+        policy_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    overrides = row["review_overrides"]
+    if isinstance(overrides, str):
+        overrides = json.loads(overrides)
+    overrides = dict(overrides or {})
+    if body.approved:
+        overrides["manual_approval"] = {
+            "value": "approved",
+            "by": user.email,
+            "at": datetime.now(timezone.utc).isoformat(),
+            "reason": (body.reason or "").strip() or None,
+        }
+    else:
+        overrides.pop("manual_approval", None)
+
+    updated = await conn.fetchrow(
+        "UPDATE policies SET review_overrides = $1 WHERE id = $2 RETURNING review_overrides",
+        json.dumps(overrides), policy_id,
+    )
+    result = updated["review_overrides"]
+    return {"review_overrides": json.loads(result) if isinstance(result, str) else result}
+
+
 @router.post("/policy/{policy_id}/review")
 async def set_policy_review(
     policy_id: str,
