@@ -27,7 +27,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
-        <img src="/logo.svg" alt="condo.insure" className="h-24 w-24 mx-auto mb-2" />
+        <img src="/logo.svg" alt="condo.insure" className="h-72 w-72 max-w-full mx-auto mb-2" />
         <p className="text-sm text-slate-500 mb-4 text-center">Condo Association Insurance Compliance</p>
         {welcome === '1' && (
           <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
