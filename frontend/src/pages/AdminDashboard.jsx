@@ -110,7 +110,7 @@ function OwnerStatusBadge({ status, bounced }) {
 // All available table columns. `group` drives the picker layout; columns
 // without a group are the always-sensible core set shown by default.
 const COLUMNS = [
-  { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} /> },
+  { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} manuallyApproved={u.manually_approved} /> },
   { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => (
@@ -1656,7 +1656,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex-shrink-0">
-                      <StatusBadge status={u.status} expirationDate={u.expiration_date} />
+                      <StatusBadge status={u.status} expirationDate={u.expiration_date} manuallyApproved={u.manually_approved} />
                     </div>
                   </button>
                   <button

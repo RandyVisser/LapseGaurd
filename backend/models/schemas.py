@@ -127,6 +127,7 @@ class UnitComplianceOut(BaseModel):
     invite_sent: bool = False
     account_status: str = "not_invited"  # verified | invited | not_invited
     email_bounced: bool = False
+    manually_approved: bool = False  # PM/Admin override forces compliant
 
 
 class ComplianceSummary(BaseModel):

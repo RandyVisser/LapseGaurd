@@ -198,7 +198,7 @@ async def get_tenant_detail(
         "lease_min_term_days": row["lease_min_term_days"],
         "ho4_required": row["ho4_required"],
     }
-    _statuses, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
+    _statuses, _, _ = await _compliance_status_by_tenant(conn, [row["id"]], _reqs)
     compliance_status = _statuses.get(row["id"])
 
     # The linked renter sub-unit (for the owner's page to add the renter's HO-4)

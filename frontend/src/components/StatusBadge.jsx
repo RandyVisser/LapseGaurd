@@ -29,16 +29,19 @@ export function ExpiringBadge() {
   )
 }
 
-export default function StatusBadge({ status, expirationDate }) {
+export default function StatusBadge({ status, expirationDate, manuallyApproved }) {
   const isExpiringSoon = expirationDate && status !== 'lapsed' && status !== 'missing' && (() => {
     const days = Math.ceil((new Date(expirationDate) - new Date()) / (1000 * 60 * 60 * 24))
     return days >= 0 && days <= 30
   })()
 
+  // A PM/Admin override forces the unit compliant — flag it distinctly.
+  const approved = manuallyApproved && (status === 'active' || status === 'expiring')
+
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors[status] || colors.missing}`}>
-        {labels[status] || status}
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${approved ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (colors[status] || colors.missing)}`}>
+        {approved ? 'Active · Manually Approved' : (labels[status] || status)}
       </span>
       {isExpiringSoon && <ExpiringBadge />}
     </span>

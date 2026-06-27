@@ -63,10 +63,10 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
 
 async def _compliance_status_by_tenant(
     conn: asyncpg.Connection, tenant_ids: list, hoa_reqs: dict | None = None
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict]:
     """Evaluate each tenant's overall compliance status, accounting for the
     HO6-with-wind vs (HO6-wind-excluded + standalone wind) coverage combo.
-    Returns (statuses_dict, expiration_dates_dict)."""
+    Returns (statuses, expiration_dates, manually_approved) keyed by tenant_id."""
     if not tenant_ids:
         return {}, {}
     rows = await conn.fetch(
@@ -94,10 +94,12 @@ async def _compliance_status_by_tenant(
         by_tenant.setdefault(r["tenant_id"], []).append(dict(r))
     statuses = {}
     exp_dates = {}
+    approved = {}
     import json as _json
     for tid, policies in by_tenant.items():
         result = evaluate_compliance(policies)
         status = result["status"]
+        manually_approved = False
         # Override to non_compliant if any current policy fails validation
         if status in (PolicyStatus.active.value, PolicyStatus.expiring.value, PolicyStatus.pending_review.value, PolicyStatus.non_compliant.value):
             current_ids = result.get("current_ids", set())
@@ -200,13 +202,14 @@ async def _compliance_status_by_tenant(
                 if best:
                     status = best["status"] if best["status"] not in (PolicyStatus.non_compliant.value,) else PolicyStatus.active.value
         statuses[tid] = status
+        approved[tid] = manually_approved
         # Pick expiration date from the current policy set
         current_ids = result.get("current_ids", set())
         current = [p for p in policies if p["id"] in current_ids]
         if current:
             best_exp = max((p["expiration_date"] for p in current if p["expiration_date"]), default=None)
             exp_dates[tid] = best_exp
-    return statuses, exp_dates
+    return statuses, exp_dates, approved
 
 
 class HoaOut(BaseModel):
@@ -458,7 +461,7 @@ async def list_units(
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
     hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
-    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
+    statuses, exp_dates, approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     return [
         UnitComplianceOut(
@@ -499,6 +502,7 @@ async def list_units(
                 else ("verified" if r["has_account"] else "invited" if r["has_invite"] else "not_invited")
             ),
             email_bounced=r["email_bounced"],
+            manually_approved=approved.get(r["tenant_id"], False),
         )
         for r in rows
     ]
@@ -524,7 +528,7 @@ async def compliance_summary(
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
     hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
-    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
+    statuses, exp_dates, approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = board_members = rented_units = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = admins = 0
@@ -1145,7 +1149,7 @@ async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | No
 
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
     hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
-    statuses, exp_dates = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
+    statuses, exp_dates, _approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
 
     total_units = compliant = expiring = lapsed = missing = 0
     lapsed_units = []
