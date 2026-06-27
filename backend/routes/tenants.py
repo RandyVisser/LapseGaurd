@@ -570,6 +570,7 @@ async def set_policy_approval(
         overrides["manual_approval"] = {
             "value": "approved",
             "by": user.email,
+            "by_id": user.sub,  # Supabase user id of the approver, for audit
             "at": datetime.now(timezone.utc).isoformat(),
             "reason": (body.reason or "").strip() or None,
         }
