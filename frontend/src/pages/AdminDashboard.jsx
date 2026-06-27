@@ -875,7 +875,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'rented_units', 'admins', 'property_managers', 'compliant', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
+            for (const key of ['total_units', 'board_members', 'rented_units', 'admins', 'property_managers', 'compliant', 'manually_approved', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -914,7 +914,8 @@ export default function AdminDashboard() {
         else if (activeFilter === 'staff') { if (!['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false }
         else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
-        else if (activeFilter === 'active') { if (u.status !== 'active' && u.status !== 'expiring') return false }
+        else if (activeFilter === 'active') { if ((u.status !== 'active' && u.status !== 'expiring') || u.manually_approved) return false }
+        else if (activeFilter === 'manual') { if (!u.manually_approved) return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
         else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
         else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
@@ -1087,7 +1088,8 @@ export default function AdminDashboard() {
                   <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Active · Meets Requirements" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="Active · Meets Reqs" value={summary.compliant} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="Active · Manual" value={summary.manually_approved ?? 0} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
                   <StatCard compact label="Active · Non-Compliant" value={summary.non_compliant ?? 0} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
                   <StatCard compact label="Expired" value={summary.lapsed} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
                   <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />

@@ -137,6 +137,7 @@ class ComplianceSummary(BaseModel):
     admins: int = 0  # unit-owners whose email matches the association admin
     property_managers: int = 0  # kept for backwards compat, always 0
     compliant: int
+    manually_approved: int = 0  # units forced compliant by a PM/Admin override
     expiring: int = 0
     lapsed: int
     non_compliant: int = 0

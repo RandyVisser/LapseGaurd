@@ -532,6 +532,7 @@ async def compliance_summary(
 
     total_units = board_members = rented_units = 0
     compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = admins = 0
+    manually_approved_count = 0
     invite_sent = not_invited = 0
     for r in rows:
         title = (r["assoc_title"] or "").strip().lower()
@@ -547,7 +548,11 @@ async def compliance_summary(
         if r["assoc_title"] and (r["assoc_title"] or "").strip().lower() != "property manager":
             board_members += 1
         status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-        if status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
+        if approved.get(r["tenant_id"]):
+            # Manually approved by a PM/Admin — counted separately from genuinely
+            # compliant units so "Meets Reqs" reflects only real passes.
+            manually_approved_count += 1
+        elif status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
             compliant += 1  # expiring = still meets requirements, sub-indicator only
             if status == PolicyStatus.expiring.value:
                 expiring += 1  # tracked separately for the sub-badge count
@@ -581,6 +586,7 @@ async def compliance_summary(
         admins=admins,
         property_managers=property_managers,
         compliant=compliant,
+        manually_approved=manually_approved_count,
         expiring=expiring,
         lapsed=lapsed,
         non_compliant=non_compliant,
