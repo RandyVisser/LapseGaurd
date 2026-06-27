@@ -1178,7 +1178,6 @@ export default function AdminTenantDetail() {
                 <div className="mb-3 bg-white/70 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-slate-600">
                   <span className="font-semibold text-emerald-700">✓ Approved</span> by {approval.by}
                   {approval.at && <> on {new Date(approval.at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</>}
-                  {approval.by_id && <div className="mt-0.5 text-[11px] text-slate-400">User ID: {approval.by_id}</div>}
                   {approval.reason && <div className="mt-1 text-slate-500">Reason: {approval.reason}</div>}
                   <button type="button" onClick={() => submitApproval(false)} disabled={savingApproval}
                     className="mt-2 text-xs font-semibold text-red-600 hover:underline disabled:opacity-60">
@@ -1479,10 +1478,10 @@ export default function AdminTenantDetail() {
         {approveOpen && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Approve / override compliance</h2>
+              <h2 className="font-semibold text-slate-800 mb-1">Manually Approve / override compliance</h2>
               <p className="text-xs text-slate-500 mb-4">
-                This marks the unit compliant despite the failing checks. Your name, the date/time,
-                and the reason are recorded, and you can withdraw it anytime.
+                This marks the unit compliant despite the failing checks. Enter the reason,
+                and you can withdraw approval anytime.
               </p>
               <label className="block text-xs font-medium text-slate-500 mb-1">Reason</label>
               <textarea value={approveReason} onChange={e => setApproveReason(e.target.value)} rows={3}
