@@ -8,7 +8,7 @@ function NavBar() {
   const navigate = useNavigate()
   return (
     <nav className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 max-w-6xl mx-auto">
-      <img src="/logo.svg" alt="condo.insure" className="h-11 w-11 shrink-0" />
+      <img src="/logo.svg" alt="condo.insure" className="h-56 w-56 max-w-full shrink-0" />
       <span className="sr-only">condo.insure</span>
       <div className="flex items-center gap-2 sm:gap-4">
         <button onClick={() => navigate('/pricing')} className="text-sm text-slate-600 hover:text-slate-900">
