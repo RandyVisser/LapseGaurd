@@ -1,0 +1,28 @@
+name: Backup Storage docs to Backblaze B2
+
+# Nightly, append-only backup of the document buckets (dec pages + leases) from
+# Supabase Storage to Backblaze B2. Uses `rclone copy` — additive only, NEVER
+# sync — so a doc accidentally deleted in Supabase is never deleted from B2.
+
+on:
+  schedule:
+    - cron: "0 7 * * *"     # daily 07:00 UTC (~3am ET)
+  workflow_dispatch: {}       # lets you run it on demand from the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install rclone
+        run: curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      - name: Write rclone config from secret
+        run: |
+          mkdir -p ~/.config/rclone
+          printf '%s' "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+
+      - name: Backup policy-documents (dec pages + leases)
+        run: rclone copy supabase:policy-documents "b2:condo-insure-backup/policy-documents" --fast-list -v
+
+      - name: Backup hoa-documents (shared association docs)
+        run: rclone copy supabase:hoa-documents "b2:condo-insure-backup/hoa-documents" --fast-list -v
