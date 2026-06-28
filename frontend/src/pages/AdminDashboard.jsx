@@ -1082,7 +1082,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   {RENTALS_ENABLED && (
-                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
+                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={summary.total_units > 0 ? Math.round(((summary.rented_units ?? 0) / summary.total_units) * 100) : 0} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
                   <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
                     if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
