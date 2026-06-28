@@ -1081,8 +1081,8 @@ export default function AdminDashboard() {
         {summary && (
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   <StatCard compact label="Total Approved" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
+                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   {RENTALS_ENABLED && (
                     <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={summary.total_units > 0 ? Math.round(((summary.rented_units ?? 0) / summary.total_units) * 100) : 0} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
