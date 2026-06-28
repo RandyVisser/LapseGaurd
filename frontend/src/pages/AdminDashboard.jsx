@@ -919,6 +919,7 @@ export default function AdminDashboard() {
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
         else if (activeFilter === 'active') { if ((u.status !== 'active' && u.status !== 'expiring') || u.manually_approved) return false }
         else if (activeFilter === 'manual') { if (!u.manually_approved) return false }
+        else if (activeFilter === 'approved') { if (u.status !== 'active' && u.status !== 'expiring') return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
         else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
         else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
@@ -1081,7 +1082,7 @@ export default function AdminDashboard() {
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="Total Approved" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" onClick={() => {}} />
+                  <StatCard compact label="Total Approved" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
                   {RENTALS_ENABLED && (
                     <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={summary.total_units > 0 ? Math.round(((summary.rented_units ?? 0) / summary.total_units) * 100) : 0} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
