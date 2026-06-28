@@ -10,11 +10,11 @@ const colors = {
 }
 
 const labels = {
-  active:         'Active · Meets Requirements',
-  expiring:       'Active · Meets Requirements',
-  non_compliant:  'Active · Non-Compliant',
+  active:         'AI Approved',
+  expiring:       'AI Approved',
+  non_compliant:  'Needs Attention',
   lapsed:         'Expired',
-  missing:        'No Policy Received',
+  missing:        'Missing Policy',
   pending_review: 'Pending Review',
   fail:           'Fail',
   pass:           'Pass',
@@ -41,7 +41,7 @@ export default function StatusBadge({ status, expirationDate, manuallyApproved }
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${approved ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (colors[status] || colors.missing)}`}>
-        {approved ? 'Active · Manually Approved' : (labels[status] || status)}
+        {approved ? 'Manual Approval' : (labels[status] || status)}
       </span>
       {isExpiringSoon && <ExpiringBadge />}
     </span>
