@@ -1089,18 +1089,18 @@ export default function AdminDashboard() {
                   <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-indigo-600" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                  <StatCard compact label="🏢 Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
                   {RENTALS_ENABLED && (
-                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
+                    <StatCard compact label="🏠 Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
-                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
+                  <StatCard compact label="👥 Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
                     if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
                     else setActiveFilter('staff')
                   }} />
-                  <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
-                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
+                  <StatCard compact label="👔 Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                  <StatCard compact label="🤖 AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="👨‍💼 Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
+                  <StatCard compact label="👤 Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
                 </div>
               </div>
             ) })()}
