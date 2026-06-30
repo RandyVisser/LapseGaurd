@@ -578,12 +578,12 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         {/* COVERAGE */}
         <div>
           <SectionLabel>Coverage</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
             {!isHo4 && (
-              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} failed={failed('dwelling_coverage')} highlighted={hi('dwelling_coverage')} />
+              <CurrencyInput className="sm:col-span-2" label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} failed={failed('dwelling_coverage')} highlighted={hi('dwelling_coverage')} />
             )}
             {(isHo6 || isHo4) && (
-              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} failed={failed('liability_coverage')} highlighted={hi('liability_coverage')} />
+              <CurrencyInput className="sm:col-span-2" label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} failed={failed('liability_coverage')} highlighted={hi('liability_coverage')} />
             )}
             {isHo6 && (
               <FieldSelect
