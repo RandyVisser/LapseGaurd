@@ -97,6 +97,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
     if (renterName && insuredNames.length) {
       const match = insuredNames.some(n => nameMatches(renterName, n))
       rItems.push({
+        field: 'named_insured',
         type: match ? 'pass' : 'fail',
         text: match
           ? `Named insured matches lease (${renterName})`
@@ -107,7 +108,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const liability = ext.liability_coverage
     if (tenant.ho4_liability_min && liability != null) {
       const meets = Number(liability) >= tenant.ho4_liability_min
-      rItems.push({ type: meets ? 'pass' : 'fail', text: `Liability limit ${currency(liability)} ${meets ? 'meets' : 'below'} ${currency(tenant.ho4_liability_min)} minimum` })
+      rItems.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Liability limit ${currency(liability)} ${meets ? 'meets' : 'below'} ${currency(tenant.ho4_liability_min)} minimum` })
     }
     // (3) Coverage is in force (active now, not expired / not future-dated)
     const today = new Date().toISOString().slice(0, 10)
@@ -115,6 +116,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const eff = ext.effective_date
     const inForce = (!exp || exp >= today) && (!eff || eff <= today) && ho4.status !== 'lapsed'
     rItems.push({
+      field: 'expiration_date',
       type: inForce ? 'pass' : 'fail',
       text: inForce ? 'Coverage is in force' : 'Coverage is not in force (expired or not yet effective)',
     })
@@ -151,6 +153,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const match = allInsuredNames.some(n => nameMatches(ownerName, n))
     if (allInsuredNames.length > 0) {
       items.push({
+        field: 'named_insured',
         type: match ? 'pass' : 'fail',
         text: match
           ? `Named insured matches unit-owner (${ownerName})`
@@ -173,7 +176,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const ho6CovA = ho6?.extracted_data?.dwelling_coverage
   if (tenant.ho6_coverage_a_min && ho6CovA != null) {
     const meets = Number(ho6CovA) >= tenant.ho6_coverage_a_min
-    items.push({ type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A (Dwelling) ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ field: 'dwelling_coverage', type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A (Dwelling) ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
   }
   const windCovA = wind?.extracted_data?.dwelling_coverage
   if (wind && windCovA != null)
@@ -181,11 +184,12 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const covE = ho6?.extracted_data?.liability_coverage
   if (tenant.ho6_coverage_e_min && covE != null) {
     const meets = Number(covE) >= tenant.ho6_coverage_e_min
-    items.push({ type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
   }
   if (tenant.ho6_wind_required) {
     const hasWind = ho6?.coverage_type === 'ho6_with_wind' || wind != null
     items.push({
+      field: 'coverage_type',
       type: hasWind ? 'pass' : 'fail',
       text: hasWind
         ? 'Wind coverage present'
@@ -196,8 +200,8 @@ function buildComplianceChecks(tenant, currentPolicies) {
   }
   if (tenant.ho6_additional_interest_required) {
     const v = ho6?.review_overrides?.association_additional_interest?.value
-    if (v === 'pass' || v === 'override') items.push({ type: 'pass', text: 'Association listed on HO-6' })
-    else if (v === 'fail')               items.push({ type: 'fail', text: 'Association not listed on HO-6' })
+    if (v === 'pass' || v === 'override') items.push({ field: 'association_listed', type: 'pass', text: 'Association listed on HO-6' })
+    else if (v === 'fail')               items.push({ field: 'association_listed', type: 'fail', text: 'Association not listed on HO-6' })
   }
 
   // Flagged-rented owner unit: needs a lease on file and (if required) a rental
@@ -263,7 +267,7 @@ function SectionLabel({ children }) {
 
 // ─── Currency input ──────────────────────────────────────────────────────────
 
-function CurrencyInput({ label, value, onChange, placeholder, className = '' }) {
+function CurrencyInput({ label, value, onChange, placeholder, failed, className = '' }) {
   const [focused, setFocused] = useState(false)
   const raw = value === '' || value == null ? '' : String(value)
   const formatted = raw !== '' && !isNaN(Number(raw))
@@ -271,7 +275,10 @@ function CurrencyInput({ label, value, onChange, placeholder, className = '' }) 
     : raw
   return (
     <div className={className}>
-      <label className="block text-xs font-medium mb-1.5 text-slate-500">{label}</label>
+      <label className={`block text-xs font-medium mb-1.5 ${failed ? 'text-red-700' : 'text-slate-500'}`}>
+        {label}
+        {failed && <span className="ml-1.5 text-red-600 font-semibold">— fails requirement</span>}
+      </label>
       <input
         type="text"
         value={focused ? raw : formatted}
@@ -283,7 +290,7 @@ function CurrencyInput({ label, value, onChange, placeholder, className = '' }) 
           onChange(stripped)
         }}
         placeholder={placeholder ? '$' + Number(placeholder).toLocaleString('en-US', { maximumFractionDigits: 0 }) : ''}
-        className="w-full rounded-lg px-3 py-2 text-sm border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${failed ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800' : 'border border-slate-200 bg-white focus:ring-blue-500'}`}
       />
     </div>
   )
@@ -291,16 +298,18 @@ function CurrencyInput({ label, value, onChange, placeholder, className = '' }) 
 
 // ─── Input components ────────────────────────────────────────────────────────
 
-function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, danger, className = '' }) {
+function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLength, readOnly, highlighted, missing, danger, failed, className = '' }) {
   const isEmpty = !value && value !== 0
   const showMissing = missing && isEmpty && !highlighted
+  const isRed = danger || failed
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${danger ? 'text-red-700' : highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${isRed ? 'text-red-700' : highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
         {label}
         {highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
         {showMissing && <span className="ml-1.5 text-red-400 font-semibold">— required</span>}
         {danger && <span className="ml-1.5 text-red-600 font-semibold">— expired</span>}
+        {failed && !danger && <span className="ml-1.5 text-red-600 font-semibold">— fails requirement</span>}
       </label>
       {readOnly
         ? <p className="text-sm text-slate-700 py-2">{value || '—'}</p>
@@ -311,7 +320,7 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
             placeholder={placeholder || (showMissing ? 'Enter value…' : undefined)}
             maxLength={maxLength}
             className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-              danger
+              isRed
                 ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
                 : highlighted
                 ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
@@ -351,7 +360,8 @@ function FieldSelect({ label, value, onChange, options, highlighted, danger, cla
 
 // ─── Policy edit card ────────────────────────────────────────────────────────
 
-function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded, windRequired, validationFlags = [] }) {
+function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningAiId, onDelete, deleting, isDraft, unitId, onDocumentUploaded, windRequired, validationFlags = [], failedFields }) {
+  const failed = key => !!failedFields?.has(key)
   const fileInputRef = useRef()
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
@@ -532,18 +542,18 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Insured parties</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FieldInput label="Named insured" value={form.named_insured} onChange={f('named_insured')} highlighted={hi('named_insured')} missing={true} />
+            <FieldInput label="Named insured" value={form.named_insured} onChange={f('named_insured')} highlighted={hi('named_insured')} missing={true} failed={failed('named_insured')} />
             <FieldInput label="Additional insured" value={form.additional_insured} onChange={f('additional_insured')} placeholder="e.g. association" highlighted={hi('additional_insured')} />
             <div className="flex flex-col gap-1.5">
               <FieldInput label="Additional interests" value={form.additional_interests} onChange={f('additional_interests')} placeholder="Mortgagee, lender, etc." highlighted={hi('additional_interests')} />
-              <label className="flex items-center gap-2 text-sm text-slate-600 mt-1 cursor-pointer">
+              <label className={`flex items-center gap-2 text-sm mt-1 cursor-pointer ${failed('association_listed') ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
                 <input
                   type="checkbox"
                   checked={!!form.association_listed}
                   onChange={e => onChange('association_listed', e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className={`rounded text-blue-600 focus:ring-blue-500 ${failed('association_listed') ? 'border-red-400' : 'border-slate-300'}`}
                 />
-                Association listed
+                Association listed{failed('association_listed') && ' — fails requirement'}
               </label>
             </div>
           </div>
@@ -556,7 +566,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
             <FieldInput label="Carrier" value={form.insurer} onChange={f('insurer')} highlighted={hi('insurer')} missing={true} />
             <FieldInput label="Policy #" value={form.policy_number} onChange={f('policy_number')} highlighted={hi('policy_number')} missing={true} />
             <FieldInput label="Effective date" value={toDateInputValue(form.effective_date)} onChange={f('effective_date')} type="date" highlighted={hi('effective_date')} />
-            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} missing={true} danger={isLapsed} />
+            <FieldInput label="Expiration date" value={toDateInputValue(form.expiration_date)} onChange={f('expiration_date')} type="date" highlighted={hi('expiration_date')} missing={true} danger={isLapsed} failed={failed('expiration_date')} />
           </div>
         </div>
 
@@ -565,10 +575,10 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
           <SectionLabel>Coverage</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {!isHo4 && (
-              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} />
+              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} failed={failed('dwelling_coverage')} />
             )}
             {(isHo6 || isHo4) && (
-              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} />
+              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} failed={failed('liability_coverage')} />
             )}
             {isHo6 && (
               <FieldSelect
@@ -767,6 +777,8 @@ export default function AdminTenantDetail() {
   const approval        = approvalPolicy?.review_overrides?.manual_approval || null
   const approveTargetId = approvalPolicy?.id || currentPolicies[0]?.id || null
   const complianceChecks = tenant ? buildComplianceChecks(tenant, currentPolicies) : []
+  // Field keys whose compliance check is failing — so the policy card can flag them red.
+  const failedFields = new Set(complianceChecks.filter(c => c.type === 'fail' && c.field).map(c => c.field))
 
   const hasLapsedPolicy = currentPolicies.some(p => p.status === 'lapsed')
 
@@ -1274,6 +1286,7 @@ export default function AdminTenantDetail() {
                     onDocumentUploaded={handleDocumentUploaded}
                     windRequired={tenant.ho6_wind_required}
                     validationFlags={p.extracted_data?.validation?.passed === false ? (p.extracted_data.validation.flags || []) : []}
+                    failedFields={failedFields}
                   />
                 ))}
 
