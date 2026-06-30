@@ -29,6 +29,17 @@ _SENDER_UNIT_SQL = """COALESCE(h.email_sender_unit_id,
 _SENDER_EMAIL_SQL = """(SELECT su.email_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """)"""
 
 
+def _alert_recipient(row) -> str | None:
+    """Send to the owner at the email the admin manages on the dashboard
+    (units.email_primary), falling back to the tenant record's email. Skips
+    placeholder @condo.insure addresses (no real inbox)."""
+    for addr in (row.get("email_primary"), row.get("tenant_email")):
+        a = (addr or "").strip()
+        if a and not a.lower().endswith("@condo.insure"):
+            return a
+    return None
+
+
 async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     """Re-send pending invites to unit owners who haven't accepted yet, spaced by
     each association's invite_reminder_days (default 7). Runs every cron tick;
@@ -167,7 +178,10 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         if already_sent:
             continue
 
-        em = (row["tenant_email"] or "").strip().lower()
+        recipient = _alert_recipient(row)
+        if not recipient:
+            continue
+        em = recipient.lower()
         recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
         if alert_type == "lapsed":
             subject, html = expired_email_html(
@@ -189,14 +203,14 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
                 unit_address=format_address(row.get("street_address"), row.get("city"), row.get("state"), row.get("zip")),
                 is_renter=row.get("is_renter") or False,
             )
-        sent = await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email"))
+        sent = await send_email(recipient, subject, html, reply_to=row.get("sender_email"))
         if sent:
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, $2)",
                 row["tenant_id"], alert_type,
             )
             count += 1
-            print(f"[alerts] Sent {alert_type} alert to {row['tenant_email']}")
+            print(f"[alerts] Sent {alert_type} alert to {recipient}")
 
     return count
 
@@ -308,7 +322,7 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
         WHERE p.status = 'non_compliant'
           AND p.superseded_by IS NULL
           AND COALESCE(h.noncompliant_reminders_enabled, TRUE) = TRUE
-          AND t.email IS NOT NULL
+          AND (t.email IS NOT NULL OR u.email_primary IS NOT NULL)
         """,
     )
     count = 0
@@ -321,7 +335,10 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
         )
         if already:
             continue
-        em = (row["tenant_email"] or "").strip().lower()
+        recipient = _alert_recipient(row)
+        if not recipient:
+            continue
+        em = recipient.lower()
         recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
         # Pull the specific failing items from the policy's stored validation
         raw = row.get("extracted_data")
@@ -336,13 +353,13 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
             items=items,
             is_renter=row.get("is_renter") or False,
         )
-        if await send_email(row["tenant_email"], subject, html, reply_to=row.get("sender_email")):
+        if await send_email(recipient, subject, html, reply_to=row.get("sender_email")):
             await conn.execute(
                 "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'non_compliant')",
                 row["tenant_id"],
             )
             count += 1
-            print(f"[alerts] Sent non-compliant reminder to {row['tenant_email']}")
+            print(f"[alerts] Sent non-compliant reminder to {recipient}")
     return count
 
 
