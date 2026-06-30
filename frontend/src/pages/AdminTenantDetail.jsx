@@ -267,7 +267,7 @@ function SectionLabel({ children }) {
 
 // ─── Currency input ──────────────────────────────────────────────────────────
 
-function CurrencyInput({ label, value, onChange, placeholder, failed, className = '' }) {
+function CurrencyInput({ label, value, onChange, placeholder, failed, highlighted, className = '' }) {
   const [focused, setFocused] = useState(false)
   const raw = value === '' || value == null ? '' : String(value)
   const formatted = raw !== '' && !isNaN(Number(raw))
@@ -275,9 +275,10 @@ function CurrencyInput({ label, value, onChange, placeholder, failed, className 
     : raw
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${failed ? 'text-red-700' : 'text-slate-500'}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${failed ? 'text-red-700' : highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
         {label}
         {failed && <span className="ml-1.5 text-red-600 font-semibold">— fails requirement</span>}
+        {highlighted && !failed && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
       </label>
       <input
         type="text"
@@ -290,7 +291,11 @@ function CurrencyInput({ label, value, onChange, placeholder, failed, className 
           onChange(stripped)
         }}
         placeholder={placeholder ? '$' + Number(placeholder).toLocaleString('en-US', { maximumFractionDigits: 0 }) : ''}
-        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${failed ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800' : 'border border-slate-200 bg-white focus:ring-blue-500'}`}
+        className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+          failed ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
+          : highlighted ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
+          : 'border border-slate-200 bg-white focus:ring-blue-500'
+        }`}
       />
     </div>
   )
@@ -575,10 +580,10 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
           <SectionLabel>Coverage</SectionLabel>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {!isHo4 && (
-              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} failed={failed('dwelling_coverage')} />
+              <CurrencyInput label="Coverage A (Dwelling) ($)" value={form.dwelling_coverage ?? ''} onChange={v => onChange('dwelling_coverage', v)} failed={failed('dwelling_coverage')} highlighted={hi('dwelling_coverage')} />
             )}
             {(isHo6 || isHo4) && (
-              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} failed={failed('liability_coverage')} />
+              <CurrencyInput label="Coverage E (Liability) ($)" value={form.liability_coverage ?? ''} onChange={v => onChange('liability_coverage', v)} failed={failed('liability_coverage')} highlighted={hi('liability_coverage')} />
             )}
             {isHo6 && (
               <FieldSelect
@@ -587,6 +592,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
                 onChange={v => onChange('coverage_type', v === 'yes' ? 'ho6_with_wind' : 'ho6_wind_excluded')}
                 options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]}
                 danger={windRequired && form.coverage_type === 'ho6_wind_excluded'}
+                highlighted={hi('coverage_type')}
               />
             )}
           </div>
