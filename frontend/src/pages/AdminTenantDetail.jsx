@@ -365,6 +365,9 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
   const isExpiringSoon = days !== null && days >= 0 && days <= 30
   const aiCount = aiUpdated?.length || 0
   const fileName = fileNameFromUrl(form.document_url)
+  // While adding a new policy, show only the upload box — the detail fields
+  // appear once the document is uploaded and the saved policy has been parsed.
+  const showFields = !isDraft
 
   async function handleFileChange(e) {
     const file = e.target.files?.[0]
@@ -504,6 +507,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
           {isDraft && form.document_url && <p className="text-xs text-slate-400 mt-1.5">Save the policy first, then extract</p>}
         </div>
 
+        {showFields && (<>
         {/* AI review findings for this policy */}
         {validationFlags.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
@@ -577,6 +581,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
             )}
           </div>
         </div>
+        </>)}
 
       </div>
     </div>
