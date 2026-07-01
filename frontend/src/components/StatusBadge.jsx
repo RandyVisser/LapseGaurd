@@ -1,12 +1,12 @@
 const colors = {
-  active:         'bg-green-100 text-green-800',
-  expiring:       'bg-green-100 text-green-800',  // same as active — expiring is a sub-indicator
-  non_compliant:  'bg-orange-100 text-orange-800',
-  lapsed:         'bg-red-100 text-red-800',
-  missing:        'bg-slate-100 text-slate-500',
-  pending_review: 'bg-blue-100 text-blue-800',
-  fail:           'bg-red-100 text-red-800',
-  pass:           'bg-green-100 text-green-800',
+  active:         'bg-[#E2F4EC] text-[#0E8E68]',
+  expiring:       'bg-[#E2F4EC] text-[#0E8E68]',  // same as active — expiring is a sub-indicator
+  non_compliant:  'bg-[#FAEDD2] text-[#946410]',
+  lapsed:         'bg-[#F9E1DA] text-[#C0492F]',
+  missing:        'bg-[#E8ECF2] text-[#54627A]',
+  pending_review: 'bg-[#E7EEFA] text-[#014AC5]',
+  fail:           'bg-[#F9E1DA] text-[#C0492F]',
+  pass:           'bg-[#E2F4EC] text-[#0E8E68]',
 }
 
 const labels = {
@@ -23,7 +23,7 @@ const labels = {
 // Expiring Soon sub-badge — shown alongside the main status when policy expires within 30 days
 export function ExpiringBadge() {
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FAEDD2] text-[#946410] border border-[#F0DDAE]">
       Expiring Soon
     </span>
   )
@@ -40,7 +40,7 @@ export default function StatusBadge({ status, expirationDate, manuallyApproved }
 
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${approved ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (colors[status] || colors.missing)}`}>
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${approved ? 'bg-[#E2F4EC] text-[#0E8E68] border border-[#0E8E68]/30' : (colors[status] || colors.missing)}`}>
         {approved ? 'Manual Approval' : (labels[status] || status)}
       </span>
       {isExpiringSoon && <ExpiringBadge />}

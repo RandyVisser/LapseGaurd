@@ -958,7 +958,7 @@ export default function AdminDashboard() {
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
         <div className="mb-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">
+            <h2 className="text-xl font-bold text-[#0B1B33]" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
               {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
             </h2>
             {selectedHoa?.corp_name && hoaId !== ALL_HOAS && (

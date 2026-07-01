@@ -30,22 +30,24 @@ export default function Nav({ role, title }) {
       : []
 
   return (
-    <nav className="bg-blue-800 text-white px-4 sm:px-6 py-3 relative">
+    <nav className="bg-[#001842] text-white px-4 sm:px-6 py-3 relative">
       <div className="flex items-center justify-between">
-        <span className="font-bold text-lg tracking-tight">condo.insure</span>
-        {title && <span className="hidden md:block font-bold text-xl text-white absolute left-1/2 -translate-x-1/2">{title}</span>}
+        <span className="font-bold text-lg tracking-tight" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+          condo.insure
+        </span>
+        {title && <span className="hidden md:block font-bold text-xl text-white absolute left-1/2 -translate-x-1/2" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>{title}</span>}
 
         {/* Desktop links */}
         <div className="hidden sm:flex items-center gap-4 text-sm">
           {links.map(l => (
             <Link key={l.to} to={l.to}
               className={location.pathname === l.to
-                ? 'bg-white text-blue-800 font-semibold px-3 py-1 rounded'
+                ? 'bg-white text-[#001842] font-semibold px-3 py-1 rounded'
                 : 'hover:underline'}>
               {l.label}
             </Link>
           ))}
-          <button onClick={handleLogout} className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded">
+          <button onClick={handleLogout} className="bg-[#014AC5] hover:bg-[#0139a3] px-3 py-1 rounded">
             Sign out
           </button>
         </div>
@@ -66,15 +68,15 @@ export default function Nav({ role, title }) {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="sm:hidden mt-3 pb-1 flex flex-col gap-1 text-sm border-t border-blue-700 pt-3">
+        <div className="sm:hidden mt-3 pb-1 flex flex-col gap-1 text-sm border-t border-[#06245C] pt-3">
           {links.map(l => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-              className={`px-2 py-2 rounded ${location.pathname === l.to ? 'bg-white text-blue-800 font-semibold' : 'hover:bg-blue-700'}`}>
+              className={`px-2 py-2 rounded ${location.pathname === l.to ? 'bg-white text-[#001842] font-semibold' : 'hover:bg-[#06245C]'}`}>
               {l.label}
             </Link>
           ))}
           <button onClick={handleLogout}
-            className="text-left px-2 py-2 rounded hover:bg-blue-700">
+            className="text-left px-2 py-2 rounded hover:bg-[#06245C]">
             Sign out
           </button>
         </div>
