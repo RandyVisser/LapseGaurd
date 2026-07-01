@@ -18,11 +18,11 @@ function SortTh({ label, col, sortCol, sortDir, onSort }) {
   return (
     <th
       onClick={() => onSort(col)}
-      className="text-left px-4 py-3 font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
+      className="text-left px-4 py-3 font-semibold text-[#54627A] cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
     >
       <span className="flex items-center gap-1">
         {label}
-        <span className="text-slate-400 text-xs">
+        <span className="text-[#8493A8] text-xs">
           {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
         </span>
       </span>
@@ -35,24 +35,24 @@ function StatCard({ label, value, sublabel, color, active, onClick, compact, pct
     return (
       <button
         onClick={onClick}
-        className={`bg-white rounded-lg border shadow-sm px-3 py-2.5 sm:px-5 sm:py-3.5 flex flex-col text-left transition-all sm:min-w-[154px] ${color} ${active ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+        className={`bg-white rounded-lg border shadow-sm px-3 py-2.5 sm:px-5 sm:py-3.5 flex flex-col text-left transition-all sm:min-w-[154px] ${color} ${active ? 'border-[#014AC5] ring-1 ring-[#014AC5]/20' : 'border-[#E8ECF2] hover:border-[#DCE3EC]'}`}
       >
         <span className="text-2xl sm:text-3xl font-bold leading-tight">
           {value ?? '—'}
-          {pct != null && <span className="text-sm sm:text-base font-semibold text-slate-400 ml-1.5">{pct}%</span>}
+          {pct != null && <span className="text-sm sm:text-base font-semibold text-[#8493A8] ml-1.5">{pct}%</span>}
         </span>
-        <span className="text-xs sm:text-sm text-slate-500 leading-tight sm:whitespace-nowrap">{label}</span>
+        <span className="text-xs sm:text-sm text-[#54627A] leading-tight sm:whitespace-nowrap">{label}</span>
       </button>
     )
   }
   return (
     <button
       onClick={onClick}
-      className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col gap-1 text-left w-full transition-all ${color} ${active ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+      className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col gap-1 text-left w-full transition-all ${color} ${active ? 'border-[#014AC5] ring-2 ring-[#014AC5]/20' : 'border-[#E8ECF2] hover:border-[#DCE3EC]'}`}
     >
       <span className="text-3xl font-bold">{value ?? '—'}</span>
-      <span className="text-sm text-slate-500">{label}</span>
-      {sublabel && <span className="text-xs text-slate-400">{sublabel}</span>}
+      <span className="text-sm text-[#54627A]">{label}</span>
+      {sublabel && <span className="text-xs text-[#8493A8]">{sublabel}</span>}
     </button>
   )
 }
@@ -64,8 +64,8 @@ function displayEmail(email) {
 function TrendChart({ data }) {
   if (!data || data.length === 0) return null
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Compliance Trend (6 months)</p>
+    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-4 mb-4">
+      <p className="text-xs font-semibold text-[#54627A] uppercase tracking-wide mb-3">Compliance Trend (6 months)</p>
       <ResponsiveContainer width="100%" height={110}>
         <LineChart data={data} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -84,11 +84,11 @@ function TrendChart({ data }) {
 }
 
 function TitlePill({ title }) {
-  if (!title) return <span className="text-slate-400">—</span>
+  if (!title) return <span className="text-[#8493A8]">—</span>
   const t = (title || '').trim().toLowerCase()
-  const cls = t === 'property manager' ? 'bg-purple-100 text-purple-800 border-purple-300'
-    : t === 'admin' ? 'bg-blue-100 text-blue-800 border-blue-300'
-    : 'bg-green-100 text-green-800 border-green-300'
+  const cls = t === 'property manager' ? 'bg-[#E2E8F5] text-[#001842] border-[#C7D2E8]'
+    : t === 'admin' ? 'bg-[#E7EEFA] text-[#014AC5] border-[#C7DBF5]'
+    : 'bg-[#E2F4EC] text-[#0E8E68] border-[#BFE3D2]'
   return (
     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${cls}`}>
       {title}
@@ -99,12 +99,12 @@ function TitlePill({ title }) {
 // Where an owner is in the onboarding funnel: invited → signed up → (bounced)
 function OwnerStatusBadge({ status, bounced }) {
   if (bounced) return (
-    <span title="Invite email bounced — check the address" className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-300 whitespace-nowrap">✉ Bounced</span>
+    <span title="Invite email bounced — check the address" className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-[#F9E1DA] text-[#C0492F] border-[#F0C4B4] whitespace-nowrap">✉ Bounced</span>
   )
   const map = {
-    verified:    ['bg-green-100 text-green-800 border-green-300', '✓ Active', 'Owner has created an account'],
-    invited:     ['bg-amber-100 text-amber-800 border-amber-300', 'Invited', 'Invited — waiting on them to sign up'],
-    not_invited: ['bg-slate-100 text-slate-500 border-slate-200', 'Not invited', 'No invite sent yet'],
+    verified:    ['bg-[#E2F4EC] text-[#0E8E68] border-[#BFE3D2]', '✓ Active', 'Owner has created an account'],
+    invited:     ['bg-[#FAEDD2] text-[#946410] border-[#F0DDAE]', 'Invited', 'Invited — waiting on them to sign up'],
+    not_invited: ['bg-[#E8ECF2] text-[#54627A] border-[#DCE3EC]', 'Not invited', 'No invite sent yet'],
   }
   const [cls, label, title] = map[status] || map.not_invited
   return <span title={title} className={`text-xs font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>{label}</span>
@@ -118,22 +118,22 @@ const COLUMNS = [
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => (
       <span className="flex items-center gap-1.5">
-        {u.is_renter && <span className="text-slate-400">↳</span>}
+        {u.is_renter && <span className="text-[#8493A8]">↳</span>}
         <span>{u.unit_number}</span>
         {RENTALS_ENABLED && u.is_rental && !u.is_renter && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Rental</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E7EEFA] text-[#014AC5] border border-[#C7DBF5]">Rental</span>
         )}
         {RENTALS_ENABLED && u.is_renter && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 border border-teal-200">Renter</span>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E8ECF2] text-[#54627A] border border-[#DCE3EC]">Renter</span>
         )}
       </span>
     ) },
-  { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span> },
+  { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-[#8493A8]">No unit-owner</span> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
   { key: 'purchase_date',          label: 'Purchase Date',         group: 'Owner details', render: u => u.purchase_date || '—' },
-  { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-slate-400">—</span> },
+  { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-[#8493A8]">—</span> },
   { key: 'city',                   label: 'City',                  group: 'Address', render: u => u.city || '—' },
   { key: 'state',                  label: 'St',                    group: 'Address', render: u => u.state || '—' },
   { key: 'zip',                    label: 'Zip',                   group: 'Address', render: u => u.zip || '—' },
@@ -220,40 +220,40 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onAddEma
     return (
       <button
         onClick={() => { setDismissed(false); try { localStorage.removeItem(GETTING_STARTED_DISMISSED_KEY) } catch { /* ignore */ } }}
-        className="mb-4 w-full sm:w-auto text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-100 flex items-center justify-center gap-2"
+        className="mb-4 w-full sm:w-auto text-sm font-medium text-[#014AC5] bg-[#E7EEFA] border border-[#C7DBF5] rounded-lg px-4 py-2 hover:bg-[#DCE9FB] flex items-center justify-center gap-2"
       >
         ✦ Finish setting up your association
-        <span className="text-blue-400">({steps.length - doneCount} left) ▸</span>
+        <span className="text-[#5C8FDB]">({steps.length - doneCount} left) ▸</span>
       </button>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border border-blue-200 shadow-sm mb-4 overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 bg-blue-50 border-b border-blue-100">
-        <p className="text-sm font-semibold text-blue-900">
-          Getting started <span className="font-normal text-blue-600">— {doneCount} of {steps.length} done</span>
+    <div className="bg-white rounded-xl border border-[#C7DBF5] shadow-sm mb-4 overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 bg-[#E7EEFA] border-b border-[#DCE9FB]">
+        <p className="text-sm font-semibold text-[#001842]">
+          Getting started <span className="font-normal text-[#014AC5]">— {doneCount} of {steps.length} done</span>
         </p>
-        <button onClick={dismiss} className="text-xs text-blue-500 hover:text-blue-700">Dismiss</button>
+        <button onClick={dismiss} className="text-xs text-[#5C8FDB] hover:text-[#014AC5]">Dismiss</button>
       </div>
-      <ol className="flex overflow-x-auto divide-x divide-slate-100">
+      <ol className="flex overflow-x-auto divide-x divide-[#E8ECF2]">
         {steps.map((step, i) => (
           <li key={step.title} className={`px-5 py-4 flex-1 min-w-[15rem] ${step.done ? 'bg-slate-50/50' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
-                step.done ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'
+                step.done ? 'bg-[#0E8E68] text-white' : 'bg-[#E8ECF2] text-[#54627A]'
               }`}>
                 {step.done ? '✓' : i + 1}
               </span>
-              <p className={`text-sm font-semibold ${step.done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+              <p className={`text-sm font-semibold ${step.done ? 'text-[#8493A8] line-through' : 'text-[#0B1B33]'}`}>
                 {step.title}
               </p>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">{step.detail}</p>
+            <p className="text-xs text-[#54627A] leading-relaxed">{step.detail}</p>
             {!step.done && step.action && (
               step.action.href
-                ? <a href={step.action.href} className="inline-block mt-2 text-xs font-semibold text-blue-600 hover:underline">{step.action.label} →</a>
-                : <button onClick={step.action.onClick} className="mt-2 text-xs font-semibold text-blue-600 hover:underline">{step.action.label} →</button>
+                ? <a href={step.action.href} className="inline-block mt-2 text-xs font-semibold text-[#014AC5] hover:underline">{step.action.label} →</a>
+                : <button onClick={step.action.onClick} className="mt-2 text-xs font-semibold text-[#014AC5] hover:underline">{step.action.label} →</button>
             )}
           </li>
         ))}
@@ -300,7 +300,7 @@ function RowActionsMenu({ items }) {
       <button
         ref={btnRef}
         onClick={toggle}
-        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
+        className="text-[#8493A8] hover:text-[#0B1B33] hover:bg-slate-100 rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
         title="Actions"
       >
         ⋯
@@ -308,13 +308,13 @@ function RowActionsMenu({ items }) {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={e => { e.stopPropagation(); setOpen(false) }} />
-          <div className="fixed z-40 min-w-[180px] flex flex-col bg-white border border-slate-200 rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
+          <div className="fixed z-40 min-w-[180px] flex flex-col bg-white border border-[#E8ECF2] rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
             {items.map(item => (
               <button
                 key={item.label}
                 onClick={e => { e.stopPropagation(); setOpen(false); item.onClick() }}
                 disabled={item.disabled}
-                className={`block w-full text-left whitespace-nowrap px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-red-600' : 'text-slate-700'}`}
+                className={`block w-full text-left whitespace-nowrap px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-[#C0492F]' : 'text-[#0B1B33]'}`}
               >
                 {item.label}
               </button>
@@ -328,7 +328,7 @@ function RowActionsMenu({ items }) {
 
 // Quiet uniform style for the toolbar buttons — the old mix of solid
 // slate/blue/indigo buttons read as three unrelated alerts
-const TOOLBAR_BTN = 'text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg disabled:opacity-50'
+const TOOLBAR_BTN = 'text-sm border border-[#DCE3EC] bg-white hover:bg-slate-50 text-[#0B1B33] font-medium px-3 py-1.5 rounded-lg disabled:opacity-50'
 
 function RequirementsPopover({ hoa }) {
   const [open, setOpen] = useState(false)
@@ -352,16 +352,16 @@ function RequirementsPopover({ hoa }) {
       {open && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-80">
-            <ul className="space-y-1.5 text-sm text-slate-600">
+          <div className="absolute right-0 mt-1 z-30 bg-white border border-[#E8ECF2] rounded-xl shadow-lg p-4 w-80">
+            <ul className="space-y-1.5 text-sm text-[#54627A]">
               {rows.map(([label, value]) => (
                 <li key={label} className="flex items-center justify-between gap-4">
                   <span>{label}</span>
-                  <span className="font-medium text-slate-800 flex-shrink-0">{value}</span>
+                  <span className="font-medium text-[#0B1B33] flex-shrink-0">{value}</span>
                 </li>
               ))}
             </ul>
-            <a href="/admin/settings" className="block text-xs text-blue-600 hover:underline mt-3 pt-3 border-t border-slate-100">
+            <a href="/admin/settings" className="block text-xs text-[#014AC5] hover:underline mt-3 pt-3 border-t border-[#E8ECF2]">
               Edit in Settings →
             </a>
           </div>
@@ -383,28 +383,28 @@ function ColumnsPicker({ visible, setVisible }) {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium px-3 py-1.5 rounded-lg"
+        className="text-sm border border-[#DCE3EC] bg-white hover:bg-slate-50 text-[#0B1B33] font-medium px-3 py-1.5 rounded-lg"
       >
         Columns ({visible.length}/{COLUMNS.length}) ▾
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 max-h-[60vh] overflow-y-auto">
+          <div className="absolute right-0 mt-1 z-30 bg-white border border-[#E8ECF2] rounded-xl shadow-lg p-4 w-64 max-h-[60vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
-              <button onClick={() => setVisible(COLUMNS.map(c => c.key))} className="text-xs text-blue-600 hover:underline">Show all</button>
-              <button onClick={() => setVisible(DEFAULT_COLUMNS)} className="text-xs text-slate-500 hover:underline">Reset to defaults</button>
+              <button onClick={() => setVisible(COLUMNS.map(c => c.key))} className="text-xs text-[#014AC5] hover:underline">Show all</button>
+              <button onClick={() => setVisible(DEFAULT_COLUMNS)} className="text-xs text-[#54627A] hover:underline">Reset to defaults</button>
             </div>
             {groups.map(group => (
               <div key={group} className="mb-3 last:mb-0">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">{group}</p>
+                <p className="text-[11px] font-semibold text-[#8493A8] uppercase tracking-wider mb-1.5">{group}</p>
                 {COLUMNS.filter(c => (c.group || 'Core') === group).map(c => (
-                  <label key={c.key} className="flex items-center gap-2 py-1 text-sm text-slate-700 cursor-pointer">
+                  <label key={c.key} className="flex items-center gap-2 py-1 text-sm text-[#0B1B33] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={visible.includes(c.key)}
                       onChange={() => toggle(c.key)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]"
                     />
                     {c.label}
                   </label>
@@ -962,10 +962,10 @@ export default function AdminDashboard() {
               {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
             </h2>
             {selectedHoa?.corp_name && hoaId !== ALL_HOAS && (
-              <p className="text-xs text-slate-400 mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
             )}
             {selectedHoa?.sunbiz_doc_number && hoaId !== ALL_HOAS && (
-              <p className="text-xs text-slate-400 mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
             )}
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2 mt-2 flex-nowrap overflow-x-auto">
@@ -974,20 +974,20 @@ export default function AdminDashboard() {
                 <select
                   value={hoaId || ''}
                   onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[50ch]"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
                 >
                   <option value={ALL_HOAS}>All Associations</option>
                   {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                     .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                 </select>
-                <span className="text-xs text-slate-300 whitespace-nowrap flex-shrink-0">or search by</span>
+                <span className="text-xs text-[#8493A8] whitespace-nowrap flex-shrink-0">or search by</span>
                 <select
                   value={hoaFieldType}
                   onChange={e => {
                     setHoaFieldType(e.target.value)
                     setHoaFieldValue('')
                   }}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0"
                 >
                   {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
                     <option key={key} value={key}>{opt.label}</option>
@@ -996,7 +996,7 @@ export default function AdminDashboard() {
                 <select
                   value={hoaFieldValue}
                   onChange={e => handleHoaFieldValueChange(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0 max-w-[50ch]"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
                 >
                   <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
                   <option value={ALL_HOAS}>All</option>
@@ -1057,8 +1057,8 @@ export default function AdminDashboard() {
                   {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
                 </button>
               </div>
-              {inviteAllMsg && <p className="text-xs text-green-600">{inviteAllMsg}</p>}
-              {bulkSuccess && <p className="text-xs text-green-600">{bulkSuccess}</p>}
+              {inviteAllMsg && <p className="text-xs text-[#0E8E68]">{inviteAllMsg}</p>}
+              {bulkSuccess && <p className="text-xs text-[#0E8E68]">{bulkSuccess}</p>}
             </div>
           )}
         </div>
@@ -1081,26 +1081,26 @@ export default function AdminDashboard() {
         {summary && (() => { const pctOf = v => (summary.total_units > 0 ? Math.round(((v ?? 0) / summary.total_units) * 100) : 0); return (
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Compliant" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
-                  <StatCard compact label="Needs Attention" value={summary.non_compliant ?? 0} pct={pctOf(summary.non_compliant)} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
-                  <StatCard compact label="Expired" value={summary.lapsed} pct={pctOf(summary.lapsed)} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
-                  <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} pct={pctOf(summary.pending_review)} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
-                  <StatCard compact label="Missing Policy" value={summary.missing} pct={pctOf(summary.missing)} color="text-slate-500" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
-                  <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-indigo-600" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
+                  <StatCard compact label="Compliant" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-[#0E8E68]" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
+                  <StatCard compact label="Needs Attention" value={summary.non_compliant ?? 0} pct={pctOf(summary.non_compliant)} color="text-[#946410]" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
+                  <StatCard compact label="Expired" value={summary.lapsed} pct={pctOf(summary.lapsed)} color="text-[#C0492F]" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+                  <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} pct={pctOf(summary.pending_review)} color="text-[#014AC5]" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
+                  <StatCard compact label="Missing Policy" value={summary.missing} pct={pctOf(summary.missing)} color="text-[#54627A]" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
+                  <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-[#014AC5]" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
+                  <StatCard compact label="Total Units" value={summary.total_units} color="text-[#0B1B33]" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-[#0E8E68]" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-[#0E8E68]" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
                   {RENTALS_ENABLED && (
-                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
+                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-[#014AC5]" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
-                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
+                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-[#54627A]" active={activeFilter === 'staff'} onClick={() => {
                     if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
                     else setActiveFilter('staff')
                   }} />
-                  <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
+                  <StatCard compact label="Board Members" value={summary.board_members} color="text-[#54627A]" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-[#54627A]" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
                 </div>
               </div>
             ) })()}
@@ -1109,7 +1109,7 @@ export default function AdminDashboard() {
           <div className="mb-4">
             <button
               onClick={() => setTrendOpen(o => !o)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 mb-1"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#8493A8] uppercase tracking-wide hover:text-[#54627A] mb-1"
             >
               Compliance trend
               <svg className={`w-3.5 h-3.5 transition-transform ${trendOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1120,22 +1120,22 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {error && <p className="text-red-600 mb-4">{error}</p>}
+        {error && <p className="text-[#C0492F] mb-4">{error}</p>}
 
         {/* Bulk action bar */}
         {selectedTenantIds.size > 0 && (
-          <div className="flex items-center gap-3 mb-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
-            <span className="text-sm text-blue-800 font-medium">{selectedTenantIds.size} owner{selectedTenantIds.size !== 1 ? 's' : ''} selected</span>
+          <div className="flex items-center gap-3 mb-3 bg-[#E7EEFA] border border-[#C7DBF5] rounded-lg px-4 py-2.5">
+            <span className="text-sm text-[#014AC5] font-medium">{selectedTenantIds.size} owner{selectedTenantIds.size !== 1 ? 's' : ''} selected</span>
             <button
               onClick={() => handleBulkNotify([...selectedTenantIds])}
               disabled={bulkNotifying}
-              className="text-sm bg-blue-700 hover:bg-blue-800 text-white font-medium px-3 py-1 rounded-lg disabled:opacity-60"
+              className="text-sm bg-[#001842] hover:bg-[#0A2A63] text-white font-medium px-3 py-1 rounded-lg disabled:opacity-60"
             >
               {bulkNotifying ? 'Notifying…' : 'Notify Selected'}
             </button>
             <button
               onClick={() => setSelectedTenantIds(new Set())}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-[#014AC5] hover:underline"
             >
               Clear
             </button>
@@ -1173,8 +1173,8 @@ export default function AdminDashboard() {
         {pmInviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Invite property manager</h2>
-              <p className="text-xs text-slate-500 mb-4">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Invite property manager</h2>
+              <p className="text-xs text-[#54627A] mb-4">
                 We'll email a set-up link to this address. They set a password and get
                 dashboard access to this association. Confirm or correct it before sending.
               </p>
@@ -1185,15 +1185,15 @@ export default function AdminDashboard() {
                   value={pmInviteEmail}
                   onChange={e => setPmInviteEmail(e.target.value)}
                   placeholder="manager@email.com"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 />
                 <div className="flex gap-2">
                   <button type="submit" disabled={invitingPmLogin}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {invitingPmLogin ? 'Sending…' : 'Send invite'}
                   </button>
                   <button type="button" onClick={() => setPmInviteUnit(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1206,49 +1206,49 @@ export default function AdminDashboard() {
         {inviteAdminOpen && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Invite to dashboard</h2>
-              <p className="text-xs text-slate-500 mb-4">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Invite to dashboard</h2>
+              <p className="text-xs text-[#54627A] mb-4">
                 We'll email a set-up link (to set a password and access the dashboard) to this person.
               </p>
               <form onSubmit={handleInviteContact} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Role</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Role</label>
                   <div className="flex gap-2">
                     {[
                       ['property_manager', 'Property Manager'],
                       ['hoa_admin', 'Admin'],
                     ].map(([val, label]) => (
                       <button key={val} type="button" onClick={() => setInviteRole(val)}
-                        className={`flex-1 border rounded-lg px-3 py-2 text-sm ${inviteRole === val ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                        className={`flex-1 border rounded-lg px-3 py-2 text-sm ${inviteRole === val ? 'border-[#014AC5] bg-[#E7EEFA] text-[#014AC5] font-medium' : 'border-[#DCE3EC] text-[#54627A] hover:bg-slate-50'}`}>
                         {label}
                       </button>
                     ))}
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-[#8493A8] mt-1">
                     {inviteRole === 'hoa_admin'
                       ? 'Admin manages only this association.'
                       : 'Property Manager — can manage this and other associations.'}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Name</label>
                   <input value={inviteName} onChange={e => setInviteName(e.target.value)}
                     placeholder="Full name"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Email</label>
                   <input type="email" required value={inviteAdminEmail} onChange={e => setInviteAdminEmail(e.target.value)}
                     placeholder="name@email.com"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={invitingAdmin}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {invitingAdmin ? 'Sending…' : 'Send invite'}
                   </button>
                   <button type="button" onClick={() => setInviteAdminOpen(false)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1261,71 +1261,71 @@ export default function AdminDashboard() {
         {pmLicenseUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="font-semibold text-slate-800 mb-1">Property Manager Licensing</h2>
-              <p className="text-xs text-slate-500 mb-1">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Property Manager Licensing</h2>
+              <p className="text-xs text-[#54627A] mb-1">
                 {pmLicenseUnit.owner_primary || 'Property Manager'} — super-user only.
               </p>
               {pmLicenseUnit.email_primary && (
-                <p className="text-xs text-slate-500 mb-4"><span className="font-medium text-slate-600">Email:</span> {pmLicenseUnit.email_primary}</p>
+                <p className="text-xs text-[#54627A] mb-4"><span className="font-medium text-[#54627A]">Email:</span> {pmLicenseUnit.email_primary}</p>
               )}
               <form onSubmit={savePmLicense} className="space-y-4">
                 {[
                   { prefix: 'cam', title: 'CAM (Manager License)' },
                   { prefix: 'cab', title: 'CAB (Management Firm)' },
                 ].map(({ prefix, title }) => (
-                  <div key={prefix} className="border border-slate-200 rounded-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{title}</p>
+                  <div key={prefix} className="border border-[#E8ECF2] rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-[#54627A] uppercase tracking-widest">{title}</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">{prefix.toUpperCase()} #</label>
+                        <label className="block text-xs font-medium text-[#54627A] mb-1">{prefix.toUpperCase()} #</label>
                         <input value={pmLicenseForm[`${prefix}_number`] || ''}
                           onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_number`]: e.target.value }))}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                       </div>
                       {prefix === 'cam' && (
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Phone #</label>
+                          <label className="block text-xs font-medium text-[#54627A] mb-1">Phone #</label>
                           <input value={pmLicenseForm.cam_phone || ''}
                             onChange={e => setPmLicenseForm(f => ({ ...f, cam_phone: e.target.value }))}
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                         </div>
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Address</label>
+                      <label className="block text-xs font-medium text-[#54627A] mb-1">Address</label>
                       <input value={pmLicenseForm[`${prefix}_address`] || ''}
                         onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_address`]: e.target.value }))}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                     </div>
                     <div className="grid grid-cols-4 gap-2">
                       <div className="col-span-2">
-                        <label className="block text-xs font-medium text-slate-500 mb-1">City</label>
+                        <label className="block text-xs font-medium text-[#54627A] mb-1">City</label>
                         <input value={pmLicenseForm[`${prefix}_city`] || ''}
                           onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_city`]: e.target.value }))}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">ST</label>
+                        <label className="block text-xs font-medium text-[#54627A] mb-1">ST</label>
                         <input value={pmLicenseForm[`${prefix}_state`] || ''}
                           onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_state`]: e.target.value }))}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Zip</label>
+                        <label className="block text-xs font-medium text-[#54627A] mb-1">Zip</label>
                         <input value={pmLicenseForm[`${prefix}_zip`] || ''}
                           onChange={e => setPmLicenseForm(f => ({ ...f, [`${prefix}_zip`]: e.target.value }))}
-                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                       </div>
                     </div>
                   </div>
                 ))}
                 <div className="flex gap-2">
                   <button type="submit" disabled={savingPmLicense}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {savingPmLicense ? 'Saving…' : 'Save'}
                   </button>
                   <button type="button" onClick={() => setPmLicenseUnit(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1337,7 +1337,7 @@ export default function AdminDashboard() {
         {inviteUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-4">Invite {inviteType === 'secondary' ? 'Secondary' : 'Primary'} {units.find(x => x.unit_id === inviteUnit)?.is_renter ? 'Renter' : 'Owner'}</h2>
+              <h2 className="font-semibold text-[#0B1B33] mb-4">Invite {inviteType === 'secondary' ? 'Secondary' : 'Primary'} {units.find(x => x.unit_id === inviteUnit)?.is_renter ? 'Renter' : 'Owner'}</h2>
               <form onSubmit={handleInvite} className="space-y-3">
                 <input
                   type="email"
@@ -1345,19 +1345,19 @@ export default function AdminDashboard() {
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   placeholder="unit-owner@email.com"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 />
                 <button type="button" onClick={() => openInvitePreview(inviteUnit)}
-                  className="text-sm text-blue-700 hover:text-blue-800 hover:underline font-medium">
+                  className="text-sm text-[#014AC5] hover:text-[#0139a3] hover:underline font-medium">
                   Preview the email that will be sent
                 </button>
                 <div className="flex gap-2">
                   <button type="submit" disabled={inviting}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {inviting ? 'Sending…' : 'Send Invite'}
                   </button>
                   <button type="button" onClick={() => { setInviteUnit(null); setInviteEmail('') }}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1370,57 +1370,57 @@ export default function AdminDashboard() {
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
               {(() => { const isAdminEdit = (editUnit.assoc_title || '').trim().toLowerCase() === 'admin'; const isRenterEdit = !!editUnit.is_renter; return (<>
-              <h2 className="font-semibold text-slate-800 mb-1">{isAdminEdit ? 'Edit Admin' : editIsPm ? 'Edit Property Manager' : isRenterEdit ? 'Edit Renter Info' : 'Edit Owner Info'}</h2>
-              <p className="text-xs text-slate-400 mb-4">{isAdminEdit ? 'Update the admin name or email.' : editIsPm ? 'Update the property manager name or email.' : isRenterEdit ? `Unit ${editUnit.unit_number} — update the renter's name or email.` : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
+              <h2 className="font-semibold text-[#0B1B33] mb-1">{isAdminEdit ? 'Edit Admin' : editIsPm ? 'Edit Property Manager' : isRenterEdit ? 'Edit Renter Info' : 'Edit Owner Info'}</h2>
+              <p className="text-xs text-[#8493A8] mb-4">{isAdminEdit ? 'Update the admin name or email.' : editIsPm ? 'Update the property manager name or email.' : isRenterEdit ? `Unit ${editUnit.unit_number} — update the renter's name or email.` : `Unit ${editUnit.unit_number} — fix a typo or update after a sale.`}</p>
               </>) })()}
               <form onSubmit={handleSaveOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{editIsPm ? 'Name' : 'Primary name'}</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">{editIsPm ? 'Name' : 'Primary name'}</label>
                     <input value={editForm.owner_primary} onChange={e => setEditForm(f => ({ ...f, owner_primary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{editIsPm ? 'Email' : 'Primary email'}</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">{editIsPm ? 'Email' : 'Primary email'}</label>
                     <input type="email" value={editForm.email_primary} onChange={e => setEditForm(f => ({ ...f, email_primary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   {!editIsPm && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary name</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Secondary name</label>
                     <input value={editForm.owner_secondary} onChange={e => setEditForm(f => ({ ...f, owner_secondary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   )}
                   {!editIsPm && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Secondary email</label>
                     <input type="email" value={editForm.email_secondary} onChange={e => setEditForm(f => ({ ...f, email_secondary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   )}
                   {!editIsPm && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary phone #</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Primary phone #</label>
                     <input type="tel" value={editForm.phone_primary} onChange={e => setEditForm(f => ({ ...f, phone_primary: e.target.value }))}
                       placeholder="(555) 555-5555"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   )}
                   {!editIsPm && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary phone #</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Secondary phone #</label>
                     <input type="tel" value={editForm.phone_secondary} onChange={e => setEditForm(f => ({ ...f, phone_secondary: e.target.value }))}
                       placeholder="(555) 555-5555"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   )}
                   {!editIsPm && (
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Board title <span className="font-normal text-slate-400">(blank = not on the board)</span></label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Board title <span className="font-normal text-[#8493A8]">(blank = not on the board)</span></label>
                     <input list="board-titles" value={editForm.assoc_title} onChange={e => setEditForm(f => ({ ...f, assoc_title: e.target.value }))}
                       placeholder="e.g. President, Treasurer"
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                     <datalist id="board-titles">
                       <option value="President" />
                       <option value="Vice President" />
@@ -1434,11 +1434,11 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingOwner}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {savingOwner ? 'Saving…' : 'Save'}
                   </button>
                   <button type="button" onClick={() => setEditUnit(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1450,12 +1450,12 @@ export default function AdminDashboard() {
         {emailPreview && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => setEmailPreview(null)}>
             <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-4">
+              <div className="px-5 py-3 border-b border-[#E8ECF2] flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs text-slate-400">Subject</p>
-                  <p className="text-sm font-semibold text-slate-800 truncate">{emailPreview.subject}</p>
+                  <p className="text-xs text-[#8493A8]">Subject</p>
+                  <p className="text-sm font-semibold text-[#0B1B33] truncate">{emailPreview.subject}</p>
                 </div>
-                <button onClick={() => setEmailPreview(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0">×</button>
+                <button onClick={() => setEmailPreview(null)} className="text-[#8493A8] hover:text-[#54627A] text-xl leading-none flex-shrink-0">×</button>
               </div>
               <iframe title="Invite preview" srcDoc={emailPreview.html} className="flex-1 w-full border-0" style={{ minHeight: '420px' }} />
             </div>
@@ -1465,42 +1465,42 @@ export default function AdminDashboard() {
         {soldUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-              <h2 className="font-semibold text-slate-800 mb-1">{soldUnit.is_renter ? 'New Renter' : 'Unit Sold — New Owner'}</h2>
-              <p className="text-xs text-slate-500 mb-1">Unit {soldUnit.unit_number}</p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">{soldUnit.is_renter ? 'New Renter' : 'Unit Sold — New Owner'}</h2>
+              <p className="text-xs text-[#54627A] mb-1">Unit {soldUnit.unit_number}</p>
+              <div className="bg-[#FAEDD2] border border-[#F0DDAE] rounded-lg px-3 py-2 text-xs text-[#946410] mb-4">
                 This removes the current {soldUnit.is_renter ? 'renter' : 'owner'}'s login, their policy on file, and any pending invites.
                 The new {soldUnit.is_renter ? 'renter' : 'owner'} will need to be invited to upload their own policy.
               </div>
               <form onSubmit={handleNewOwner} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary name</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Primary name</label>
                     <input value={soldForm.owner_primary} onChange={e => setSoldForm(f => ({ ...f, owner_primary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Primary email</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Primary email</label>
                     <input type="email" value={soldForm.email_primary} onChange={e => setSoldForm(f => ({ ...f, email_primary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary name</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Secondary name</label>
                     <input value={soldForm.owner_secondary} onChange={e => setSoldForm(f => ({ ...f, owner_secondary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Secondary email</label>
+                    <label className="block text-xs font-medium text-[#54627A] mb-1">Secondary email</label>
                     <input type="email" value={soldForm.email_secondary} onChange={e => setSoldForm(f => ({ ...f, email_secondary: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingSold}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {savingSold ? 'Saving…' : soldUnit.is_renter ? 'Save New Renter' : 'Save New Owner'}
                   </button>
                   <button type="button" onClick={() => setSoldUnit(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1512,40 +1512,40 @@ export default function AdminDashboard() {
         {addPmFor && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Add New Property Manager</h2>
-              <p className="text-xs text-slate-400 mb-4">Creates a new PM position in this subdivision.</p>
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Add New Property Manager</h2>
+              <p className="text-xs text-[#8493A8] mb-4">Creates a new PM position in this subdivision.</p>
               <form onSubmit={handleAddPm} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Name</label>
                   <input value={pmForm.name} onChange={e => setPmForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Manager name"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Management Firm</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Management Firm</label>
                   <input value={pmForm.firm} onChange={e => setPmForm(f => ({ ...f, firm: e.target.value }))}
                     placeholder="Company name"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Email</label>
                   <input type="email" value={pmForm.email} onChange={e => setPmForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="manager@email.com"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Phone</label>
                   <input type="tel" value={pmForm.phone} onChange={e => setPmForm(f => ({ ...f, phone: e.target.value }))}
                     placeholder="(555) 555-5555"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={addingPm}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {addingPm ? 'Adding…' : 'Add PM'}
                   </button>
                   <button type="button" onClick={() => setAddPmFor(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1557,28 +1557,28 @@ export default function AdminDashboard() {
         {addAdminFor && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Add Admin</h2>
-              <p className="text-xs text-slate-400 mb-4">Adds an Admin entry for this association (no unit). Use <strong>Invite admin</strong> in the toolbar to give them a login.</p>
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Add Admin</h2>
+              <p className="text-xs text-[#8493A8] mb-4">Adds an Admin entry for this association (no unit). Use <strong>Invite admin</strong> in the toolbar to give them a login.</p>
               <form onSubmit={handleAddAdmin} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Name</label>
                   <input value={adminForm.name} onChange={e => setAdminForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Admin name"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Email</label>
                   <input type="email" value={adminForm.email} onChange={e => setAdminForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="admin@email.com"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={addingAdmin}
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                     {addingAdmin ? 'Adding…' : 'Add Admin'}
                   </button>
                   <button type="button" onClick={() => setAddAdminFor(null)}
-                    className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
                 </div>
@@ -1595,10 +1595,10 @@ export default function AdminDashboard() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or unit…"
-              className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="ml-2 text-sm text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setSearch('')} className="ml-2 text-sm text-[#8493A8] hover:text-[#54627A]">✕</button>
             )}
           </div>
           {isMobile && (
@@ -1606,7 +1606,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleInviteAll}
                 disabled={invitingAll || !hoaId || hoaId === '__all__'}
-                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-[#DCE3EC] bg-white text-[#0B1B33] disabled:opacity-50"
                 title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
               >
                 {invitingAll ? '…' : 'Invite owners'}
@@ -1614,7 +1614,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setImportOpen(true)}
                 disabled={!hoaId || hoaId === '__all__'}
-                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 disabled:opacity-50"
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-[#DCE3EC] bg-white text-[#0B1B33] disabled:opacity-50"
               >
                 Import
               </button>
@@ -1622,13 +1622,13 @@ export default function AdminDashboard() {
           )}
           {!isMobile && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 mr-1">View:</span>
+              <span className="text-xs text-[#8493A8] mr-1">View:</span>
               <button
                 onClick={() => setShowAllInfo(s => !s)}
                 className={`text-sm font-medium px-3 py-1.5 rounded-lg border ${
                   showAllInfo
-                    ? 'bg-blue-50 border-blue-400 text-blue-700 ring-1 ring-blue-200'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                    ? 'bg-[#E7EEFA] border-[#7CA9E8] text-[#014AC5] ring-1 ring-[#014AC5]/20'
+                    : 'bg-white border-[#DCE3EC] text-[#0B1B33] hover:bg-slate-50'
                 }`}
                 title="Toggle between your column selection and every field"
               >
@@ -1644,7 +1644,7 @@ export default function AdminDashboard() {
             {filteredUnits.map(u => {
               const expanded = expandedUnitId === u.unit_id
               return (
-              <div key={u.unit_id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div key={u.unit_id} className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-hidden">
                 <div className="flex items-stretch">
                   <button
                     onClick={() => openUnit(u)}
@@ -1652,11 +1652,11 @@ export default function AdminDashboard() {
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-slate-800">Unit {u.unit_number}</p>
+                        <p className="font-semibold text-[#0B1B33]">Unit {u.unit_number}</p>
                         {u.assoc_title && <TitlePill title={u.assoc_title} />}
                       </div>
-                      <p className="text-sm text-slate-500 truncate">
-                        {u.owner_primary || u.tenant_name || <span className="italic text-slate-400">No unit-owner</span>}
+                      <p className="text-sm text-[#54627A] truncate">
+                        {u.owner_primary || u.tenant_name || <span className="italic text-[#8493A8]">No unit-owner</span>}
                       </p>
                       <div className="mt-1">
                         <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} />
@@ -1668,7 +1668,7 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setExpandedUnitId(expanded ? null : u.unit_id)}
-                    className="px-3 flex items-center text-slate-400 border-l border-slate-100 active:bg-slate-50"
+                    className="px-3 flex items-center text-[#8493A8] border-l border-[#E8ECF2] active:bg-slate-50"
                     aria-label={expanded ? 'Hide details' : 'Show details'}
                   >
                     <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1677,32 +1677,32 @@ export default function AdminDashboard() {
                   </button>
                 </div>
                 {expanded && (
-                  <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+                  <div className="border-t border-[#E8ECF2] bg-slate-50 px-4 py-3">
                     <dl className="space-y-1.5 text-sm">
                       {COLUMNS.filter(c => !['status', 'assoc_title', 'unit_number', 'owner_primary'].includes(c.key)).map(c => (
                         <div key={c.key} className="flex items-start justify-between gap-3">
-                          <dt className="text-slate-400 flex-shrink-0">{c.label}</dt>
-                          <dd className="text-slate-700 text-right break-words min-w-0">{c.render(u)}</dd>
+                          <dt className="text-[#8493A8] flex-shrink-0">{c.label}</dt>
+                          <dd className="text-[#0B1B33] text-right break-words min-w-0">{c.render(u)}</dd>
                         </div>
                       ))}
                     </dl>
-                    <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-slate-200">
+                    <div className="flex gap-2 flex-wrap mt-3 pt-3 border-t border-[#E8ECF2]">
                       {inviteSuccess === u.unit_id + '-primary' ? (
-                        <span className="text-xs text-green-600 font-medium py-1">Invite sent ✓</span>
+                        <span className="text-xs text-[#0E8E68] font-medium py-1">Invite sent ✓</span>
                       ) : (
                         <button
                           onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') }}
-                          className="text-xs bg-slate-700 active:bg-slate-800 text-white px-3 py-1.5 rounded-full"
+                          className="text-xs bg-[#001842] active:bg-[#0A2A63] text-white px-3 py-1.5 rounded-full"
                         >
                           Invite Primary
                         </button>
                       )}
                       {inviteSuccess === u.unit_id + '-secondary' ? (
-                        <span className="text-xs text-green-600 font-medium py-1">Invite sent ✓</span>
+                        <span className="text-xs text-[#0E8E68] font-medium py-1">Invite sent ✓</span>
                       ) : (
                         <button
                           onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
-                          className="text-xs bg-slate-500 active:bg-slate-600 text-white px-3 py-1.5 rounded-full"
+                          className="text-xs bg-[#014AC5] active:bg-[#0139a3] text-white px-3 py-1.5 rounded-full"
                         >
                           Invite Secondary
                         </button>
@@ -1710,7 +1710,7 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => handleDeleteUnit(u.unit_id)}
                         disabled={deletingUnit && deleteUnitId === u.unit_id}
-                        className="text-xs text-red-500 active:text-red-700 px-2 py-1.5 disabled:opacity-50"
+                        className="text-xs text-[#C0492F] active:text-[#a83d26] px-2 py-1.5 disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -1721,14 +1721,14 @@ export default function AdminDashboard() {
               )
             })}
             {filteredUnits.length === 0 && !error && (
-              <p className="px-4 py-6 text-center text-slate-400 italic">No units found</p>
+              <p className="px-4 py-6 text-center text-[#8493A8] italic">No units found</p>
             )}
           </div>
         ) : (
         <>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[70vh]">
+        <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+            <thead className="bg-slate-50 border-b border-[#E8ECF2] sticky top-0 z-10">
               <tr>
                 {(() => {
                   const filteredForHeader = units.filter(u => u.tenant_id && u.assoc_title !== 'Property Manager')
@@ -1739,7 +1739,7 @@ export default function AdminDashboard() {
                         type="checkbox"
                         checked={allSelected}
                         onChange={() => selectAllVisible(filteredForHeader)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]"
                       />
                     </th>
                   )
@@ -1747,10 +1747,10 @@ export default function AdminDashboard() {
                 {activeColumns.map(c => (
                   <SortTh key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 ))}
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Action</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8ECF2]">
               {filteredUnits.map(u => {
                 const tenantIdStr = u.tenant_id ? String(u.tenant_id) : null
                 const isSelected = tenantIdStr ? selectedTenantIds.has(tenantIdStr) : false
@@ -1761,7 +1761,7 @@ export default function AdminDashboard() {
                 return (
                 <tr
                   key={u.unit_id}
-                  className={`hover:bg-slate-50 ${(!isContact && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+                  className={`hover:bg-slate-50 ${(!isContact && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-[#E7EEFA]' : ''}`}
                 >
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     {tenantIdStr && !isContact ? (
@@ -1769,19 +1769,19 @@ export default function AdminDashboard() {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleTenantSelect(tenantIdStr)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]"
                       />
                     ) : null}
                   </td>
                   {activeColumns.map(c => (
-                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-slate-600'} ${isPm && role === 'super_user' ? 'cursor-pointer' : ''}`} onClick={() => { if (!isContact) openUnit(u); else if (isPm && role === 'super_user') openPmLicense(u) }}>
+                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-[#54627A]'} ${isPm && role === 'super_user' ? 'cursor-pointer' : ''}`} onClick={() => { if (!isContact) openUnit(u); else if (isPm && role === 'super_user') openPmLicense(u) }}>
                       {isContact && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
                     </td>
                   ))}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1.5">
                       {(inviteSuccess === u.unit_id + '-primary' || inviteSuccess === u.unit_id + '-secondary') && (
-                        <span className="text-xs text-green-600 font-medium whitespace-nowrap">Invite sent ✓</span>
+                        <span className="text-xs text-[#0E8E68] font-medium whitespace-nowrap">Invite sent ✓</span>
                       )}
                       <RowActionsMenu
                         items={isPm ? [
@@ -1865,7 +1865,7 @@ export default function AdminDashboard() {
               })}
               {filteredUnits.length === 0 && !error && (
                 <tr>
-                  <td colSpan={activeColumns.length + 2} className="px-4 py-6 text-center text-slate-400 italic">No units found</td>
+                  <td colSpan={activeColumns.length + 2} className="px-4 py-6 text-center text-[#8493A8] italic">No units found</td>
                 </tr>
               )}
             </tbody>

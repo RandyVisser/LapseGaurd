@@ -18,32 +18,32 @@ const STATUS_HERO = {
   active: {
     icon: '✓', title: "You're covered",
     blurb: 'Your policy is on file and meets your association\'s requirements.',
-    card: 'bg-green-50 border-green-200', accent: 'bg-green-600 text-white', text: 'text-green-900', sub: 'text-green-700',
+    card: 'bg-[#E2F4EC] border-[#BFE3D2]', accent: 'bg-[#0E8E68] text-white', text: 'text-[#0E8E68]', sub: 'text-[#0E8E68]',
   },
   expiring: {
     icon: '⏳', title: 'Renewal due soon',
     blurb: 'Your policy is active but expires soon — upload your renewal when you have it.',
-    card: 'bg-amber-50 border-amber-200', accent: 'bg-amber-500 text-white', text: 'text-amber-900', sub: 'text-amber-700',
+    card: 'bg-[#FAEDD2] border-[#F0DDAE]', accent: 'bg-[#946410] text-white', text: 'text-[#946410]', sub: 'text-[#946410]',
   },
   pending_review: {
     icon: '🔍', title: 'Under review',
     blurb: 'We received your document and your association is reviewing it.',
-    card: 'bg-blue-50 border-blue-200', accent: 'bg-blue-600 text-white', text: 'text-blue-900', sub: 'text-blue-700',
+    card: 'bg-[#E7EEFA] border-[#C7DBF5]', accent: 'bg-[#014AC5] text-white', text: 'text-[#014AC5]', sub: 'text-[#014AC5]',
   },
   non_compliant: {
     icon: '!', title: 'Action needed',
     blurb: 'Your policy is on file but doesn\'t meet a requirement — details below.',
-    card: 'bg-orange-50 border-orange-200', accent: 'bg-orange-500 text-white', text: 'text-orange-900', sub: 'text-orange-700',
+    card: 'bg-[#FAEDD2] border-[#F0DDAE]', accent: 'bg-[#946410] text-white', text: 'text-[#946410]', sub: 'text-[#946410]',
   },
   lapsed: {
     icon: '!', title: 'Policy expired',
     blurb: 'Your association requires active insurance — upload your current policy below.',
-    card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
+    card: 'bg-[#F9E1DA] border-[#F0C4B4]', accent: 'bg-[#C0492F] text-white', text: 'text-[#C0492F]', sub: 'text-[#C0492F]',
   },
   missing: {
     icon: '!', title: 'No policy on file',
     blurb: 'Your association requires proof of insurance — upload your declaration page in the YELLOW box below.',
-    card: 'bg-red-50 border-red-200', accent: 'bg-red-600 text-white', text: 'text-red-900', sub: 'text-red-700',
+    card: 'bg-[#F9E1DA] border-[#F0C4B4]', accent: 'bg-[#C0492F] text-white', text: 'text-[#C0492F]', sub: 'text-[#C0492F]',
   },
 }
 
@@ -92,22 +92,22 @@ function RentalOwnerSection({ unitId, hasLease }) {
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 mb-5">
-      <h2 className="font-bold text-slate-800 mb-1">Rental — action needed</h2>
-      <p className="text-sm text-slate-500 mb-4">
+    <section className="bg-white rounded-2xl border border-[#C7DBF5] shadow-sm p-6 mb-5">
+      <h2 className="font-bold text-[#0B1B33] mb-1">Rental — action needed</h2>
+      <p className="text-sm text-[#54627A] mb-4">
         Your association flagged this unit as a rental. Upload the lease, then invite your renter so they can add their HO-4 policy.
       </p>
 
       <div className="mb-5">
-        <p className="text-sm font-semibold text-slate-700 mb-2">1. Upload the signed lease</p>
+        <p className="text-sm font-semibold text-[#0B1B33] mb-2">1. Upload the signed lease</p>
         {leaseDone ? (
-          <p className="text-sm text-green-700">
+          <p className="text-sm text-[#0E8E68]">
             ✓ Lease on file{result?.renter_names?.length ? ` — renter: ${result.renter_names.join(', ')}` : ''}
           </p>
         ) : (
           <form onSubmit={uploadLease} className="flex flex-wrap items-center gap-2">
             <input type="file" accept=".pdf,image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-sm" />
-            <button disabled={busy} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
+            <button disabled={busy} className="bg-[#014AC5] hover:bg-[#0139a3] text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
               {busy ? 'Reading…' : 'Upload lease'}
             </button>
           </form>
@@ -115,22 +115,22 @@ function RentalOwnerSection({ unitId, hasLease }) {
       </div>
 
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-2">2. Invite your renter</p>
+        <p className="text-sm font-semibold text-[#0B1B33] mb-2">2. Invite your renter</p>
         {invited ? (
-          <p className="text-sm text-green-700">✓ Invite sent to {renterEmail}.</p>
+          <p className="text-sm text-[#0E8E68]">✓ Invite sent to {renterEmail}.</p>
         ) : (
           <form onSubmit={sendInvite} className="space-y-2 max-w-sm">
             <input value={renterName} onChange={e => setRenterName(e.target.value)} placeholder="Renter name"
-                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                   className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
             <input type="email" value={renterEmail} onChange={e => setRenterEmail(e.target.value)} placeholder="Renter email"
-                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <button disabled={busy} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
+                   className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+            <button disabled={busy} className="bg-[#014AC5] hover:bg-[#0139a3] text-white text-sm font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60">
               {busy ? 'Sending…' : 'Send invite'}
             </button>
           </form>
         )}
       </div>
-      {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
+      {err && <p className="text-sm text-[#C0492F] mt-3">{err}</p>}
     </section>
   )
 }
@@ -269,12 +269,12 @@ export default function TenantDashboard() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       {profileError ? (
         <div className="text-center max-w-sm">
-          <p className="text-slate-700 font-medium mb-1">Couldn't load your profile</p>
-          <p className="text-sm text-slate-500">{profileError}</p>
-          <p className="text-xs text-slate-400 mt-3">Contact your association manager if this persists.</p>
+          <p className="text-[#0B1B33] font-medium mb-1">Couldn't load your profile</p>
+          <p className="text-sm text-[#54627A]">{profileError}</p>
+          <p className="text-xs text-[#8493A8] mt-3">Contact your association manager if this persists.</p>
         </div>
       ) : (
-        <p className="text-slate-400 text-sm">Loading your profile…</p>
+        <p className="text-[#8493A8] text-sm">Loading your profile…</p>
       )}
     </div>
   )
@@ -304,7 +304,7 @@ export default function TenantDashboard() {
         isMobile && !helperExpanded ? (
           <button
             onClick={() => setHelperExpanded(true)}
-            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}
+            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}
           >
             {nextSteps[0]?.success ? '✓ All set' : 'Next Steps'}
             {!nextSteps[0]?.success && (
@@ -312,8 +312,8 @@ export default function TenantDashboard() {
             )}
           </button>
         ) : (
-          <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
-            <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+          <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-[#BFE3D2]' : 'border-[#C7DBF5]'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
+            <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}>
               <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
               {isMobile && (
                 <button onClick={() => setHelperExpanded(false)} aria-label="Collapse" className="text-white/90 hover:text-white text-xl leading-none">×</button>
@@ -321,10 +321,10 @@ export default function TenantDashboard() {
             </div>
             <ul className="p-4 space-y-3">
               {nextSteps.map((s, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+                <li key={i} className="flex items-start gap-3 text-sm text-[#0B1B33]">
                   <span className="text-base leading-snug">{s.icon}</span>
                   <span>
-                    {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                    {!s.success && <span className="font-semibold text-[#014AC5]">{s.wait ? 'Wait: ' : 'Next: '}</span>}
                     {s.text}
                   </span>
                 </li>
@@ -339,22 +339,22 @@ export default function TenantDashboard() {
         <header className="mb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-800">
+              <h1 className="text-xl font-bold text-[#0B1B33]">
                 {activeUnit?.unit_number ? `Unit ${activeUnit.unit_number}` : 'My Policy'}
               </h1>
               {activeUnit?.street_address && (
-                <p className="text-sm text-slate-500 mt-0.5">
+                <p className="text-sm text-[#54627A] mt-0.5">
                   {[activeUnit.street_address, activeUnit.city, [activeUnit.state, activeUnit.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
                 </p>
               )}
               {activeUnit?.hoa_name && (
-                <p className="text-sm text-slate-500 mt-0.5">{activeUnit.hoa_name}</p>
+                <p className="text-sm text-[#54627A] mt-0.5">{activeUnit.hoa_name}</p>
               )}
             </div>
             {(activeUnit?.owner_primary || activeUnit?.owner_secondary) && (
               <div className="text-right">
-                {activeUnit.owner_primary && <h1 className="text-xl font-bold text-slate-800">{activeUnit.owner_primary}</h1>}
-                {activeUnit.owner_secondary && <h1 className="text-xl font-bold text-slate-800">{activeUnit.owner_secondary}</h1>}
+                {activeUnit.owner_primary && <h1 className="text-xl font-bold text-[#0B1B33]">{activeUnit.owner_primary}</h1>}
+                {activeUnit.owner_secondary && <h1 className="text-xl font-bold text-[#0B1B33]">{activeUnit.owner_secondary}</h1>}
               </div>
             )}
           </div>
@@ -366,8 +366,8 @@ export default function TenantDashboard() {
                   onClick={() => selectUnit(u.unit_id)}
                   className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
                     u.unit_id === unitId
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'
+                      ? 'bg-[#001842] border-[#001842] text-white'
+                      : 'bg-white border-[#E8ECF2] text-[#54627A] hover:border-[#7CA9E8]'
                   }`}
                 >
                   Unit {u.unit_number || '—'}
@@ -385,18 +385,18 @@ export default function TenantDashboard() {
         )}
 
         {RENTALS_ENABLED && activeUnit?.is_renter && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-5 text-sm text-indigo-900">
+          <div className="bg-[#E7EEFA] border border-[#C7DBF5] rounded-xl p-4 mb-5 text-sm text-[#014AC5]">
             You're listed as the <strong>renter</strong> of this unit. Upload your{' '}
             <strong>HO-4 (renters) policy</strong> below — your association requires renters to
             carry personal liability coverage.
           </div>
         )}
 
-        {error && !uploading && <p className="text-sm text-red-600 mb-4">{error}</p>}
+        {error && !uploading && <p className="text-sm text-[#C0492F] mb-4">{error}</p>}
 
         {/* ── Status hero ─────────────────────────────────────────────── */}
         {policyLoading ? (
-          <div className="bg-white rounded-2xl border border-slate-200 h-36 animate-pulse mb-5" />
+          <div className="bg-white rounded-2xl border border-[#E8ECF2] h-36 animate-pulse mb-5" />
         ) : (
           <section className={`rounded-2xl border p-6 mb-5 ${hero.card}`}>
             <div className="flex items-start gap-4">
@@ -466,11 +466,11 @@ export default function TenantDashboard() {
         )}
 
         {/* ── Upload card ─────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-5">
-          <h2 className="font-semibold text-slate-800">
+        <section className="bg-white rounded-2xl border border-[#E8ECF2] shadow-sm p-6 mb-5">
+          <h2 className="font-semibold text-[#0B1B33]">
             {policy ? 'Upload a new or renewed policy' : 'Upload your proof of insurance'}
           </h2>
-          <p className="text-sm text-slate-500 mt-1 mb-4">
+          <p className="text-sm text-[#54627A] mt-1 mb-4">
             Attach your declaration page — we'll read the details automatically.
           </p>
 
@@ -482,20 +482,20 @@ export default function TenantDashboard() {
               onClick={() => document.getElementById('file-input-hidden').click()}
               className={`relative border-2 border-dashed rounded-xl px-4 py-8 text-center cursor-pointer transition-colors ${
                 dragOver
-                  ? 'border-blue-400 bg-blue-50'
+                  ? 'border-[#7CA9E8] bg-[#E7EEFA]'
                   : file
-                  ? 'border-green-400 bg-green-50'
-                  : 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:bg-amber-100'
+                  ? 'border-[#8FCFB2] bg-[#E2F4EC]'
+                  : 'border-[#EAC98A] bg-[#FAEDD2] hover:border-[#DDAF5E] hover:bg-[#F7E4B8]'
               }`}
             >
               {file ? (
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-sm text-green-700 font-medium">{file.name}</span>
+                  <span className="text-[#0E8E68] text-lg">✓</span>
+                  <span className="text-sm text-[#0E8E68] font-medium">{file.name}</span>
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); setFile(null); setFileInputKey(k => k + 1) }}
-                    className="text-xs text-slate-400 hover:text-slate-600 ml-1"
+                    className="text-xs text-[#8493A8] hover:text-[#54627A] ml-1"
                   >
                     ✕
                   </button>
@@ -503,12 +503,12 @@ export default function TenantDashboard() {
               ) : (
                 <div>
                   <p className="text-2xl mb-1.5">📄</p>
-                  <p className="text-sm text-slate-600 font-medium hidden sm:block">
+                  <p className="text-sm text-[#54627A] font-medium hidden sm:block">
                     {dragOver ? 'Drop to upload' : 'Drag & drop your dec page'}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
-                  <p className="text-sm text-slate-600 font-medium sm:hidden">Tap to upload your dec page</p>
-                  <p className="text-xs text-slate-400 mt-1 sm:hidden">A PDF works best · a clear, full-page photo is OK too</p>
+                  <p className="text-xs text-[#8493A8] mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
+                  <p className="text-sm text-[#54627A] font-medium sm:hidden">Tap to upload your dec page</p>
+                  <p className="text-xs text-[#8493A8] mt-1 sm:hidden">A PDF works best · a clear, full-page photo is OK too</p>
                 </div>
               )}
               <input
@@ -521,12 +521,12 @@ export default function TenantDashboard() {
               />
             </div>
 
-            {success && <p className="text-sm text-green-600">{success}</p>}
+            {success && <p className="text-sm text-[#0E8E68]">{success}</p>}
 
             <button
               type="submit"
               disabled={uploading}
-              className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-60"
+              className="w-full sm:w-auto bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-60"
             >
               {uploading ? 'Uploading…' : 'Submit'}
             </button>
@@ -536,46 +536,46 @@ export default function TenantDashboard() {
         {/* Quote card — shown for covered owners and those with no policy yet */}
         {QUOTE_FORM_URL && (
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-5 py-4 mb-5 hover:border-blue-300 transition-colors">
+            className="flex items-center justify-between bg-white border border-[#E8ECF2] rounded-2xl px-5 py-4 mb-5 hover:border-[#7CA9E8] transition-colors">
             <div>
-              <p className="text-sm font-semibold text-slate-700">Get a new HO-6 Quote</p>
-              <p className="text-xs text-slate-400 mt-0.5">Get a free HO-6 insurance quote sent via email</p>
+              <p className="text-sm font-semibold text-[#0B1B33]">Get a new HO-6 Quote</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">Get a free HO-6 insurance quote sent via email</p>
             </div>
-            <span className="bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>
+            <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>
           </a>
         )}
 
         {/* ── History, collapsed ──────────────────────────────────────── */}
         {history.length > 0 && (
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <section className="bg-white rounded-2xl border border-[#E8ECF2] shadow-sm overflow-hidden">
             <button
               onClick={() => setShowHistory(s => !s)}
               className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50"
             >
-              <span className="text-sm font-semibold text-slate-700">
-                Previous submissions <span className="text-slate-400 font-normal">({history.length})</span>
+              <span className="text-sm font-semibold text-[#0B1B33]">
+                Previous submissions <span className="text-[#8493A8] font-normal">({history.length})</span>
               </span>
-              <svg className={`w-4 h-4 text-slate-400 transition-transform ${showHistory ? 'rotate-180' : ''}`}
+              <svg className={`w-4 h-4 text-[#8493A8] transition-transform ${showHistory ? 'rotate-180' : ''}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             {showHistory && (
-              <ul className="divide-y divide-slate-100 border-t border-slate-100">
+              <ul className="divide-y divide-[#E8ECF2] border-t border-[#E8ECF2]">
                 {history.map(p => (
                   <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
                     <div className="min-w-0">
-                      <span className="text-slate-700">{p.insurer || 'Unknown insurer'}</span>
-                      {p.policy_number && <span className="text-slate-400 ml-2">#{p.policy_number}</span>}
+                      <span className="text-[#0B1B33]">{p.insurer || 'Unknown insurer'}</span>
+                      {p.policy_number && <span className="text-[#8493A8] ml-2">#{p.policy_number}</span>}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-[#8493A8]">
                         {p.expiration_date ? `Exp ${p.expiration_date}` : 'No expiration'}
                       </span>
                       <StatusBadge status={p.status} />
                       {p.document_url && (
                         <a href={p.document_url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline">View</a>
+                          className="text-xs text-[#014AC5] hover:underline">View</a>
                       )}
                     </div>
                   </li>
