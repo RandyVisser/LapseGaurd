@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+
+const DISPLAY = '"Bricolage Grotesque", sans-serif'
+const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -81,21 +85,26 @@ export default function ResetPassword() {
   }
 
   if (status === 'verifying') return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+    <div className="min-h-screen bg-white flex items-center justify-center text-[#54627A] text-sm" style={{ fontFamily: BODY }}>
       Verifying reset link…
     </div>
   )
 
   if (status === 'invalid') return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
-        <h1 className="text-xl font-bold text-slate-800 mb-1">Reset link expired</h1>
-        <p className="text-sm text-slate-500 mb-6">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
+      <div className="w-full max-w-sm">
+        <Link to="/" className="inline-block mb-8">
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11" />
+        </Link>
+        <h1 className="text-2xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
+          Reset link expired
+        </h1>
+        <p className="text-sm text-[#54627A] mb-6">
           {error || 'This password reset link is no longer valid.'} Reset links can
           only be used once and expire after a short time — please request a new one.
         </p>
         <button onClick={() => navigate('/forgot-password')}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm">
+          className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors">
           Request a new link
         </button>
       </div>
@@ -103,14 +112,19 @@ export default function ResetPassword() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-sm">
-        <h1 className="text-xl font-bold text-slate-800 mb-1">Set a new password</h1>
-        <p className="text-sm text-slate-500 mb-6">Choose a strong password for your account.</p>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
+      <div className="w-full max-w-sm">
+        <Link to="/" className="inline-block mb-8">
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11" />
+        </Link>
+        <h1 className="text-2xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
+          Set a new password
+        </h1>
+        <p className="text-sm text-[#54627A] mb-6">Choose a strong password for your account.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+            <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">New Password</label>
             <input
               type="password"
               required
@@ -118,23 +132,23 @@ export default function ResetPassword() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={INPUT}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+            <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">Confirm Password</label>
             <input
               type="password"
               required
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               placeholder="Re-enter password"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={INPUT}
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" disabled={loading}
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-60">
+            className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
             {loading ? 'Saving…' : 'Set Password'}
           </button>
         </form>
