@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { track } from '../analytics'
 import './landing.css'
 
-const TOUR_VIDEO_URL = '/assets/tour.mp4'
+const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
 
 export default function Landing() {

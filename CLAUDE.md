@@ -140,9 +140,10 @@ documents     id, hoa_id, name, file_url, uploaded_by
 alert_log     id, tenant_id, alert_type, sent_at
 ```
 
-Storage buckets (both public):
-- `policy-documents` — tenant dec page uploads, path: `{unit_id}/{timestamp}.{ext}`
-- `hoa-documents` — admin shared docs, path: `{hoa_id}/{timestamp}.{ext}`
+Storage buckets:
+- `policy-documents` (private) — tenant dec page uploads, path: `{unit_id}/{timestamp}.{ext}`. INSERT-only RLS; reads go through backend-minted signed URLs (`services/storage.py`), never a public URL.
+- `hoa-documents` (private) — admin shared docs, path: `{hoa_id}/{timestamp}.{ext}`. Same private/signed-URL pattern as `policy-documents`.
+- `public-assets` (public) — static marketing assets meant for anonymous visitors (e.g. the landing page tour video), served directly via Supabase's CDN URL. Not for tenant/HOA documents — those stay in the private buckets above.
 
 ## Deploy
 
