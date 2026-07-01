@@ -391,7 +391,7 @@ html{scroll-behavior:smooth}
 }
 @media(max-width:560px){
   .lp{font-size:16px}
-  .lp .nav-links a.txt{display:none}
+  .lp .nav-links a.txt[href^="#"]{display:none}
   .lp .summary{grid-template-columns:1fr 1fr 1fr}
   .lp .dec{grid-template-columns:1fr}
   .lp .docs-grid, .lp .docs-grid.g3{grid-template-columns:1fr}

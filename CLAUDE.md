@@ -7,8 +7,13 @@ B2B SaaS for condo associations to track unit-owner insurance compliance. Associ
 - **Frontend**: React + Vite + Tailwind, deployed on Railway
 - **Backend**: FastAPI (Python), deployed on Railway
 - **Database/Auth/Storage**: Supabase (project ref: ykbjvmqdkczqyzyylwxo)
-- **Email**: Resend (domain: condo.insure)
+- **Email**: Resend (domain: condo.insure) — sent via raw `httpx` calls in `services/email.py`, no `resend` SDK
 - **AI**: Claude Haiku for dec page parsing (pdfplumber for text extraction, vision fallback for scanned docs)
+- **Billing**: Stripe (`stripe` package) — checkout/portal/webhook, flag-gated (see Feature flags)
+- **Error tracking**: Sentry (`sentry-sdk[fastapi]` backend, `@sentry/react` frontend)
+- **Charts**: `recharts` (compliance trend graphs)
+
+Supabase user management (`onboarding.py`) and DB access (`models/db.py`) go through direct REST/`asyncpg` calls, not the `supabase-py` SDK.
 
 ## Repo layout
 
@@ -20,14 +25,20 @@ backend/
     db.py              # asyncpg connection pool
     schemas.py         # Pydantic models
   routes/
-    hoa.py             # GET/POST /hoa/{id}/units, /hoa/{id}/compliance
-    units.py           # GET/POST /unit/{id}/policy (upload + AI parse)
-    tenants.py         # GET /tenant/me, /tenant/{id}, POST notify + invite
+    hoa.py             # /hoa/{id}/units, /compliance, /compliance/trend, import wizard,
+                        # admin+PM management, contacts, CSV export, board reports
+    units.py           # /unit/{id}/policy (upload + AI parse), owner transfer, policy approve
+    tenants.py         # /tenant/me, /tenant/{id}, notify + bulk-notify, invite flows
     documents.py       # GET/POST /hoa/{id}/documents, /unit/{id}/documents
-    onboarding.py      # POST /onboard/association, GET/POST /invite/{token}
-    alerts.py          # POST /alerts/run (cron endpoint)
+    onboarding.py      # POST /onboard/association, admin/PM invite tokens
+    alerts.py          # POST /alerts/run (cron endpoint), /reports/board/run
+    billing.py         # /hoa/{id}/billing, checkout/portal, Stripe webhook — BILLING_ENABLED
+    rentals.py         # /unit/{id}/rental, /lease, rental invite — RENTALS_ENABLED
+    feedback.py        # POST/GET/PATCH /feedback — backs in-app FeedbackWidget
+    inbound.py         # POST /inbound/email — docs@condo.insure email-in flow
+    analytics.py       # POST /analytics/event, GET /analytics/funnel
   services/
-    email.py           # Resend email templates
+    email.py           # Resend email templates (raw httpx, no SDK)
     policy_parser.py   # Claude Haiku dec page extraction + validation
   scripts/
     run_alerts.py      # Alert logic (throttled to 1 per 7 days per tenant/type)
@@ -43,19 +54,33 @@ frontend/src/
     Join.jsx           # /join/:token — tenant invite acceptance
     ForgotPassword.jsx # /forgot-password
     ResetPassword.jsx  # /reset-password (handles Supabase recovery session)
+    AdminSetup.jsx      # /admin-setup/:token — admin/PM invite acceptance
     AdminDashboard.jsx # /admin/dashboard — unit compliance table, invite/notify
     AdminTenantDetail.jsx  # /admin/tenant/:id — policy history, AI validation
     AdminDocuments.jsx # /admin/documents — upload shared HOA docs
+    AdminSettings.jsx  # /admin/settings — HOA settings, billing panel (flag-gated)
+    AdminFeedback.jsx  # /admin/feedback — super_user only
     TenantDashboard.jsx    # /tenant/dashboard — policy upload, building docs
+    TenantDocuments.jsx    # /tenant/documents — HOA shared docs (tenant view)
+    Pricing.jsx         # /pricing — not yet restyled to current brand (see BRANDING.md)
+    Legal.jsx            # exports Privacy (/privacy) and Terms (/terms)
   components/
-    Nav.jsx            # Top nav (uses React Router Link, not <a> tags)
-    StatusBadge.jsx    # active/expiring/lapsed/missing pill
+    Nav.jsx             # Top nav (uses React Router Link, not <a> tags)
+    StatusBadge.jsx     # active/expiring/lapsed/missing pill
+    ImportWizard.jsx    # bulk unit import (CSV) flow
+    AddEmailsWizard.jsx # bulk tenant email add flow
+    BillingPanel.jsx    # Stripe billing UI, flag-gated
+    FeedbackWidget.jsx  # in-app feedback submission
 ```
 
 ## Roles
 
 - `hoa_admin` — association manager. `hoa_id` in JWT `app_metadata`. Sees admin routes.
+- `property_manager` — manages multiple associations (PM company). Admin-equivalent access; no single fixed `hoa_id` (selects an active HOA client-side, see `AuthContext`'s `effectiveHoaId`).
+- `super_user` — Randy + dad only. Admin-equivalent access across all HOAs, plus `/admin/feedback`.
 - `tenant` — unit owner. No `hoa_id` in JWT; fetched from `/tenant/me`. Sees tenant routes.
+
+Backend guards (`auth/jwt.py`): `require_hoa_admin` accepts `hoa_admin`, `super_user`, and `property_manager`; `require_super_user` is stricter (super_user only); `require_tenant` for tenant-only routes.
 
 Role and `hoa_id` live in Supabase `app_metadata`, read by the backend JWT decoder and the frontend `AuthContext`.
 
@@ -70,11 +95,19 @@ Backend (Railway):
 - `ALLOWED_ORIGINS=https://condo.insure`
 - `INTERNAL_API_KEY` — cron endpoint auth
 - `QUOTE_FORM_URL` — Typeform quote link (optional; buttons hidden when unset)
+- `SENTRY_DSN` — backend error tracking (optional)
+- `RENTALS_ENABLED` — gates `rentals.py` routes (`"true"` to enable; unset = off)
+- `BILLING_ENABLED` — gates `billing.py` Stripe routes (`"true"` to enable; unset = off)
+- Stripe: `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` (only needed when `BILLING_ENABLED=true`)
 
 Frontend (Railway, baked at build time via Vite):
 - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
 - `VITE_API_URL` — Railway backend URL (no trailing slash)
 - `VITE_QUOTE_FORM_URL` — same Typeform URL as backend (optional)
+- `VITE_SENTRY_DSN` — frontend error tracking (optional)
+- `VITE_RENTALS_ENABLED` / `VITE_BILLING_ENABLED` — must match their backend counterparts; any new `VITE_` var must also be added as ARG+ENV in `frontend/Dockerfile.prod` or Railway silently drops it from the build
+
+Both feature flags are OFF by default and undocumented in `.env.example` today — code is merged but dark.
 
 ## Local dev
 
