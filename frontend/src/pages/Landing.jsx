@@ -153,7 +153,7 @@ export default function Landing() {
       <header className="nav">
         <div className="wrap nav-in">
           <Link className="brand" to="/">
-            <img src="/assets/mark.svg" alt="condo.insure shield logo" />
+            <img src="/assets/logo-mark.svg" alt="condo.insure shield logo" />
             <span><span className="w-condo">condo</span><span className="w-ins">.insure</span></span>
           </Link>
           <nav className="nav-links">
@@ -463,10 +463,10 @@ export default function Landing() {
       <footer className="ft">
         <div className="wrap ft-in">
           <Link className="brand" to="/">
-            <img src="/assets/mark.svg" alt="condo.insure" />
-            <span><span className="w-condo">condo</span><span className="w-ins">.insure</span></span>
+            <img src="/assets/logo-mark.svg" alt="condo.insure" />
+            <span><span className="w-condo">condo</span><span className="w-ins">.insure</span><sup style={{ fontSize: '.6em', fontWeight: 600, marginLeft: '1px' }}>™</sup></span>
           </Link>
-          <span>© {new Date().getFullYear()} condo.insure · Insurance Compliance. Simplified.</span>
+          <span>Insurance Compliance. Simplified.</span>
           <span className="lk"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
         </div>
       </footer>
