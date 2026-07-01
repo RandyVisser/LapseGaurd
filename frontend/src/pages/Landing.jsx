@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { track } from '../analytics'
 import './landing.css'
 
-const TOUR_EMBED_URL = 'https://share.descript.com/embed/yR7DW1QXNOZ'
+const TOUR_VIDEO_URL = '/assets/tour.mp4'
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
 
 export default function Landing() {
@@ -478,12 +478,12 @@ export default function Landing() {
             <button onClick={() => setTourOpen(false)}
               className="absolute -top-9 right-0 text-white/80 hover:text-white text-2xl leading-none" aria-label="Close">✕</button>
             <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl" style={{ paddingBottom: '56.25%' }}>
-              <iframe
-                src={TOUR_EMBED_URL}
+              <video
+                src={TOUR_VIDEO_URL}
                 title="condo.insure — 2-minute tour"
                 className="absolute inset-0 w-full h-full"
-                allow="autoplay; fullscreen"
-                allowFullScreen
+                controls
+                autoPlay
               />
             </div>
           </div>
