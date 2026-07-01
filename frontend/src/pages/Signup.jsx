@@ -7,7 +7,15 @@ const API = import.meta.env.VITE_API_URL || '/api'
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
 const MONO = '"JetBrains Mono", monospace'
-const BRAND_GRAD = 'linear-gradient(135deg,#001842 0%,#06245C 60%,#014AC5 140%)'
+const BRAND_GRAD = 'linear-gradient(150deg,#001842 0%,#06245C 62%,#014AC5 150%)'
+// faint 32px grid "squares" over the brand panel, faded with a radial mask
+const SQUARES = {
+  position: 'absolute', inset: 0, pointerEvents: 'none',
+  backgroundImage: 'linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px)',
+  backgroundSize: '32px 32px',
+  WebkitMaskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
+  maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
+}
 const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
 
@@ -280,21 +288,23 @@ export default function Signup() {
         className="hidden lg:flex lg:w-[40%] flex-col justify-center px-14 text-white lg:sticky lg:top-0 lg:h-screen relative overflow-hidden"
         style={{ background: BRAND_GRAD }}
       >
+        <div aria-hidden="true" style={SQUARES} />
         <div className="relative max-w-md">
           <span className="text-xs uppercase tracking-[.14em] text-[#6FE3B6]" style={{ fontFamily: MONO }}>
-            Start free
+            Set up in minutes
           </span>
-          <h2 className="mt-4 text-4xl leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-            Put your whole building on one board.
+          <h2 className="mt-4 text-[34px] leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
+            From a spreadsheet of unknowns to a board that stays green.
           </h2>
-          <p className="mt-4 text-[#C6D6F2] text-base leading-relaxed">
-            We build your unit list from public records, then keep every owner&rsquo;s policy current for you.
-          </p>
-          <ul className="mt-8 space-y-3 text-sm text-[#BFCCE0]">
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; No credit card to start</li>
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; Set up in minutes</li>
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; $50/mo minimum · cancel anytime</li>
+          <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">1</span><span>Add your association — that&rsquo;s the whole form</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">2</span><span>We build your owner list from public records</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">3</span><span>Invite owners; they email their policy in</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">4</span><span>Watch every unit go compliant, hands-off</span></li>
           </ul>
+          <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
+            $1/unit/mo · $50/mo minimum · cancel anytime
+          </p>
         </div>
       </aside>
     </div>

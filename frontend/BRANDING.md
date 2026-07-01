@@ -20,7 +20,7 @@ Pulled from the shield logo. **Color encodes meaning** (status), it isn't decora
 | Ink body | `#0B1B33` | body text |
 | Muted | `#54627A` / `#8493A8` | secondary/tertiary text |
 | Lines | `#E8ECF2` / `#DCE3EC` | borders |
-| Navy brand gradient | `linear-gradient(135deg,#001842 0%,#06245C 60%,#014AC5 140%)` | auth brand panels, CTA band |
+| Navy brand gradient | `linear-gradient(150deg,#001842 0%,#06245C 62%,#014AC5 150%)` | auth brand panels, CTA band |
 
 ## 2. Typography
 
@@ -84,7 +84,7 @@ delicate; kept the app's Tailwind convention). Shared constants at top of each f
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
 const MONO = '"JetBrains Mono", monospace'
-const BRAND_GRAD = 'linear-gradient(135deg,#001842 0%,#06245C 60%,#014AC5 140%)'
+const BRAND_GRAD = 'linear-gradient(150deg,#001842 0%,#06245C 62%,#014AC5 150%)'
 const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
 ```
@@ -93,9 +93,14 @@ const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
   `text-[#001842]`, `text-[#54627A]`, `text-[#014AC5]`, etc. (Tailwind v3 JIT — fine.)
 - **Primary button** = navy: `bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold`.
 - **Layout:** Login + Signup use a **split** — white form left (`flex-1`), navy gradient
-  **brand panel right** (`hidden lg:flex`, mint `#6FE3B6` check bullets); panel drops away
-  on mobile. Forgot + Reset are single centered columns. Every page has the full logo
+  **brand panel right** (`hidden lg:flex`, mint `#6FE3B6` bullets); panel drops away on
+  mobile. Forgot + Reset are single centered columns. Every page has the full logo
   (`logo-full.svg`) at top.
+- **Brand panel "squares":** the panel has a `SQUARES` overlay `<div aria-hidden>` — a
+  faint 32px white grid faded by a radial mask (`radial-gradient(90% 90% at 80% 25%,#000,
+  transparent 72%)`), over the `BRAND_GRAD`. Ported from the offline mockup's `.auth-brand`.
+  Panel copy: an eyebrow, a Bricolage headline, a mint feature/step list, and a bottom
+  quote line with `border-t border-white/15`.
 - **⚠️ DO NOT touch the auth logic.** All Supabase calls, form fields, validation, the
   Signup HO-6 requirements + certifications + success state, the ResetPassword
   recovery-session `verify()` effect (token_hash / PKCE / error / implicit flows) and its

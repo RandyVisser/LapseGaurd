@@ -5,7 +5,15 @@ import { supabase } from '../supabase'
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
 const MONO = '"JetBrains Mono", monospace'
-const BRAND_GRAD = 'linear-gradient(135deg,#001842 0%,#06245C 60%,#014AC5 140%)'
+const BRAND_GRAD = 'linear-gradient(150deg,#001842 0%,#06245C 62%,#014AC5 150%)'
+// faint 32px grid "squares" over the brand panel, faded with a radial mask
+const SQUARES = {
+  position: 'absolute', inset: 0, pointerEvents: 'none',
+  backgroundImage: 'linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px)',
+  backgroundSize: '32px 32px',
+  WebkitMaskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
+  maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
+}
 const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 
 export default function Login() {
@@ -108,21 +116,23 @@ export default function Login() {
         className="hidden lg:flex flex-1 flex-col justify-center px-14 text-white relative overflow-hidden"
         style={{ background: BRAND_GRAD }}
       >
+        <div aria-hidden="true" style={SQUARES} />
         <div className="relative max-w-md">
           <span className="text-xs uppercase tracking-[.14em] text-[#6FE3B6]" style={{ fontFamily: MONO }}>
             condo.insure
           </span>
-          <h2 className="mt-4 text-4xl leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-            Every unit covered, without the paperwork chase.
+          <h2 className="mt-4 text-[34px] leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
+            Your whole building, covered — on one board.
           </h2>
-          <p className="mt-4 text-[#C6D6F2] text-base leading-relaxed">
+          <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>See every unit&rsquo;s insurance status at a glance</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>AI reads each declaration page for you</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners email their policy in — no login needed</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Automated renewal reminders on autopilot</span></li>
+          </ul>
+          <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
             Insurance compliance for condo &amp; HOA boards. Built for Florida.
           </p>
-          <ul className="mt-8 space-y-3 text-sm text-[#BFCCE0]">
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; Live compliance board</li>
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; AI declaration-page review</li>
-            <li><span className="text-[#6FE3B6] font-bold">✓</span>&nbsp; Owners need no login</li>
-          </ul>
         </div>
       </aside>
     </div>
