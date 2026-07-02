@@ -213,16 +213,16 @@ export default function AdminDocuments() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       {nextSteps.length > 0 && (
-        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'}`}>
-          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-[#BFE3D2]' : 'border-[#C7DBF5]'}`}>
+          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}>
             <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Done' : 'Next Steps'}</span>
           </div>
           <ul className="p-4 space-y-3">
             {nextSteps.map((s, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
+              <li key={i} className="flex items-start gap-3 text-sm text-[#0B1B33]">
                 <span className="text-base leading-snug">{s.icon}</span>
                 <span>
-                  {!s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                  {!s.success && <span className="font-semibold text-[#014AC5]">{s.wait ? 'Wait: ' : 'Next: '}</span>}
                   {s.text}
                 </span>
               </li>
@@ -233,14 +233,14 @@ export default function AdminDocuments() {
       <main className="max-w-full mx-auto px-4 pt-8 pb-44">
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
           <header className="mb-6">
-            <h1 className="text-xl font-bold text-slate-800">
+            <h1 className="text-xl font-bold text-[#0B1B33]">
               {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Shared Documents')}
             </h1>
             {selectedHoa?.corp_name && (
-              <p className="text-xs text-slate-400 mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
             )}
             {selectedHoa?.sunbiz_doc_number && (
-              <p className="text-xs text-slate-400 mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
             )}
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -249,17 +249,17 @@ export default function AdminDocuments() {
                 <select
                   value={hoaId || ''}
                   onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 >
                   <option value={ALL_HOAS}>All Associations</option>
                   {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
                     .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                 </select>
-                <span className="text-xs text-slate-300">or search by</span>
+                <span className="text-xs text-[#8493A8]">or search by</span>
                 <select
                   value={hoaFieldType}
                   onChange={e => { setHoaFieldType(e.target.value); setHoaFieldValue('') }}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 >
                   {Object.entries(HOA_FIELD_OPTIONS).map(([key, opt]) => (
                     <option key={key} value={key}>{opt.label}</option>
@@ -268,7 +268,7 @@ export default function AdminDocuments() {
                 <select
                   value={hoaFieldValue}
                   onChange={e => handleHoaFieldValueChange(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 >
                   <option value="">Select {HOA_FIELD_OPTIONS[hoaFieldType]?.label}…</option>
                   <option value={ALL_HOAS}>All</option>
@@ -278,23 +278,23 @@ export default function AdminDocuments() {
                 </select>
               </div>
             )}
-            <h2 className="text-base font-semibold text-slate-700 mt-4">Shared Documents</h2>
+            <h2 className="text-base font-semibold text-[#0B1B33] mt-4">Shared Documents</h2>
           </header>
         ) })()}
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-          <h2 className="font-semibold text-slate-700 mb-4">Upload New Document</h2>
+        <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-8">
+          <h2 className="font-semibold text-[#0B1B33] mb-4">Upload New Document</h2>
           <form onSubmit={handleUpload} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Document Type</label>
+              <label className="block text-sm font-medium text-[#54627A] mb-1">Document Type</label>
               <select
                 required
                 value={docType}
                 onChange={e => setDocType(e.target.value)}
                 className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
                   docType
-                    ? 'border-slate-300 bg-white focus:ring-blue-500'
-                    : 'border-amber-300 bg-amber-50 focus:ring-amber-400'
+                    ? 'border-[#DCE3EC] bg-white focus:ring-[#014AC5]'
+                    : 'border-[#EAC98A] bg-[#FAEDD2] focus:ring-[#946410]'
                 }`}
               >
                 <option value="">Select a document type…</option>
@@ -302,231 +302,231 @@ export default function AdminDocuments() {
               </select>
             </div>
             {docType === 'Wind Mitigation' && (
-              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-[#E8ECF2] rounded-lg p-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Inspection Date</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Inspection Date</label>
                   <input
                     type="date"
                     required
                     value={windFields.inspection_date}
                     onChange={e => setWindFields(f => ({ ...f, inspection_date: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Address</label>
                   <input
                     required
                     value={windFields.address}
                     onChange={e => setWindFields(f => ({ ...f, address: e.target.value }))}
                     placeholder="123 Ocean Dr"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Building # or Name <span className="font-normal text-[#8493A8]">(optional)</span></label>
                   <input
                     value={windFields.building}
                     onChange={e => setWindFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
               </div>
             )}
             {docType === 'Association Flood Dec Page' && (
-              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-[#E8ECF2] rounded-lg p-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building Address</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Building Address</label>
                   <input
                     required
                     value={floodFields.building_address}
                     onChange={e => setFloodFields(f => ({ ...f, building_address: e.target.value }))}
                     placeholder="123 Ocean Dr"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Building # or Name <span className="font-normal text-[#8493A8]">(optional)</span></label>
                   <input
                     value={floodFields.building}
                     onChange={e => setFloodFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Expiration Date</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Expiration Date</label>
                   <input
                     type="date"
                     required
                     value={floodFields.expiration_date}
                     onChange={e => setFloodFields(f => ({ ...f, expiration_date: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
               </div>
             )}
             {docType === 'Sprinkler and Fire Alarm Form' && (
-              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-[#E8ECF2] rounded-lg p-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Date Signed</label>
                   <input
                     type="date"
                     required
                     value={fireFields.date_signed}
                     onChange={e => setFireFields(f => ({ ...f, date_signed: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Address</label>
                   <input
                     required
                     value={fireFields.address}
                     onChange={e => setFireFields(f => ({ ...f, address: e.target.value }))}
                     placeholder="123 Ocean Dr"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Building # or Name <span className="font-normal text-[#8493A8]">(optional)</span></label>
                   <input
                     value={fireFields.building}
                     onChange={e => setFireFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
               </div>
             )}
             {docType === 'Elevation Certificate' && (
-              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-3 gap-3 bg-slate-50 border border-[#E8ECF2] rounded-lg p-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Date Signed</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Date Signed</label>
                   <input
                     type="date"
                     required
                     value={elevFields.date_signed}
                     onChange={e => setElevFields(f => ({ ...f, date_signed: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Address</label>
                   <input
                     required
                     value={elevFields.address}
                     onChange={e => setElevFields(f => ({ ...f, address: e.target.value }))}
                     placeholder="123 Ocean Dr"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Building # or Name <span className="font-normal text-slate-400">(optional)</span></label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Building # or Name <span className="font-normal text-[#8493A8]">(optional)</span></label>
                   <input
                     value={elevFields.building}
                     onChange={e => setElevFields(f => ({ ...f, building: e.target.value }))}
                     placeholder="e.g. Building 3 or Seaside Tower"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
               </div>
             )}
             {docType === 'Association Evidence of Insurance' && (
-              <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 border border-[#E8ECF2] rounded-lg p-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">EOI Date</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">EOI Date</label>
                   <input
                     type="date"
                     required
                     value={eoiFields.eoi_date}
                     onChange={e => setEoiFields(f => ({ ...f, eoi_date: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Expiration Date</label>
+                  <label className="block text-sm font-medium text-[#54627A] mb-1">Expiration Date</label>
                   <input
                     type="date"
                     required
                     value={eoiFields.expiration_date}
                     onChange={e => setEoiFields(f => ({ ...f, expiration_date: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">File</label>
+              <label className="block text-sm font-medium text-[#54627A] mb-1">File</label>
               <input
                 key={fileInputKey}
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                 onChange={e => setFile(e.target.files[0] || null)}
-                className={`w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
+                className={`w-full text-sm text-[#54627A] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
                   file
-                    ? 'file:bg-green-100 file:text-green-800 hover:file:bg-green-200'
-                    : 'file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200'
+                    ? 'file:bg-[#E2F4EC] file:text-[#0E8E68] hover:file:bg-[#CDEBDC]'
+                    : 'file:bg-[#FAEDD2] file:text-[#946410] hover:file:bg-[#F7E4B8]'
                 }`}
               />
-              {file && <p className="text-xs text-slate-500 mt-1">{file.name}</p>}
+              {file && <p className="text-xs text-[#54627A] mt-1">{file.name}</p>}
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {success && <p className="text-sm text-green-600">{success}</p>}
+            {error && <p className="text-sm text-[#C0492F]">{error}</p>}
+            {success && <p className="text-sm text-[#0E8E68]">{success}</p>}
             <button
               type="submit"
               disabled={uploading}
-              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
+              className="bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
             >
               {uploading ? 'Uploading…' : 'Upload Document'}
             </button>
           </form>
         </div>
 
-        <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-blue-600">
+        <div className="bg-white rounded-xl border-2 border-[#C7DBF5] shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-[#001842]">
             <h2 className="font-semibold text-white">Documents Available to Unit-Owners</h2>
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 border-b border-[#E8ECF2]">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Address</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Building #</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Uploaded</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Document Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Expires</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Link</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Type</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Address</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Building #</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Uploaded</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Document Date</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Expires</th>
+                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Link</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8ECF2]">
               {docs.map(d => {
                 const exp = docExpiration(d)
                 const days = daysUntil(exp)
                 const rowColor = days !== null && days < 0
-                  ? 'bg-red-50 hover:bg-red-100'
+                  ? 'bg-[#F9E1DA] hover:bg-[#F4D0C4]'
                   : days !== null && days <= 30
-                  ? 'bg-amber-50 hover:bg-amber-100'
+                  ? 'bg-[#FAEDD2] hover:bg-[#F7E4B8]'
                   : 'hover:bg-slate-50'
                 return (
                 <tr key={d.id} className={rowColor}>
-                  <td className="px-4 py-3 text-slate-600">{d.doc_type || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{d.metadata?.building || 'ALL'}</td>
-                  <td className="px-4 py-3 text-slate-500">{new Date(d.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-slate-500">{(() => {
+                  <td className="px-4 py-3 text-[#54627A]">{d.doc_type || '—'}</td>
+                  <td className="px-4 py-3 text-[#54627A]">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
+                  <td className="px-4 py-3 text-[#54627A]">{d.metadata?.building || 'ALL'}</td>
+                  <td className="px-4 py-3 text-[#54627A]">{new Date(d.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-[#54627A]">{(() => {
                     const date = d.metadata?.inspection_date || d.metadata?.eoi_date || d.metadata?.date_signed
                     return fmtDate(date)
                   })()}</td>
-                  <td className={`px-4 py-3 ${days !== null && days < 0 ? 'text-red-700 font-semibold' : days !== null && days <= 30 ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>
+                  <td className={`px-4 py-3 ${days !== null && days < 0 ? 'text-[#C0492F] font-semibold' : days !== null && days <= 30 ? 'text-[#946410] font-semibold' : 'text-[#54627A]'}`}>
                     {fmtDate(exp)}
                     {days !== null && days < 0 && <span className="ml-1.5 text-xs">(expired)</span>}
                   </td>
                   <td className="px-4 py-3">
                     <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                      className="inline-block text-xs font-semibold text-blue-700 border border-blue-200 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg">
+                      className="inline-block text-xs font-semibold text-[#014AC5] border border-[#C7DBF5] bg-white hover:bg-[#E7EEFA] px-3 py-1.5 rounded-lg">
                       View
                     </a>
                   </td>
@@ -534,7 +534,7 @@ export default function AdminDocuments() {
                     <button
                       onClick={() => handleDelete(d.id)}
                       disabled={deletingId === d.id}
-                      className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline disabled:opacity-50"
+                      className="text-xs font-medium text-[#C0492F] hover:text-[#a83d26] hover:underline disabled:opacity-50"
                     >
                       {deletingId === d.id ? 'Deleting…' : 'Delete'}
                     </button>
@@ -543,7 +543,7 @@ export default function AdminDocuments() {
               )})}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 italic">No documents yet</td>
+                  <td colSpan={8} className="px-4 py-6 text-center text-[#8493A8] italic">No documents yet</td>
                 </tr>
               )}
             </tbody>

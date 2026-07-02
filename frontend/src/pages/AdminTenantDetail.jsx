@@ -262,7 +262,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
 // ─── Section header ──────────────────────────────────────────────────────────
 
 function SectionLabel({ children }) {
-  return <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">{children}</p>
+  return <p className="text-[11px] font-semibold text-[#8493A8] uppercase tracking-widest mb-3">{children}</p>
 }
 
 // ─── Currency input ──────────────────────────────────────────────────────────
@@ -275,10 +275,10 @@ function CurrencyInput({ label, value, onChange, placeholder, failed, highlighte
     : raw
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${failed ? 'text-red-700' : highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${failed ? 'text-[#C0492F]' : highlighted ? 'text-[#946410]' : 'text-[#54627A]'}`}>
         {label}
-        {failed && <span className="ml-1.5 text-red-600 font-semibold">— fails requirement</span>}
-        {highlighted && !failed && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
+        {failed && <span className="ml-1.5 text-[#C0492F] font-semibold">— fails requirement</span>}
+        {highlighted && !failed && <span className="ml-1.5 text-[#946410] font-semibold">— updated</span>}
       </label>
       <input
         type="text"
@@ -292,9 +292,9 @@ function CurrencyInput({ label, value, onChange, placeholder, failed, highlighte
         }}
         placeholder={placeholder ? '$' + Number(placeholder).toLocaleString('en-US', { maximumFractionDigits: 0 }) : ''}
         className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-          failed ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
-          : highlighted ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
-          : 'border border-slate-200 bg-white focus:ring-blue-500'
+          failed ? 'border border-[#E0876B] bg-[#F9E1DA] focus:ring-[#C0492F] text-[#C0492F]'
+          : highlighted ? 'border border-[#DDAF5E] bg-[#FAEDD2] focus:ring-[#946410]'
+          : 'border border-[#E8ECF2] bg-white focus:ring-[#014AC5]'
         }`}
       />
     </div>
@@ -309,15 +309,15 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
   const isRed = danger || failed
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${isRed ? 'text-red-700' : highlighted ? 'text-amber-700' : showMissing ? 'text-red-500' : 'text-slate-500'}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${isRed ? 'text-[#C0492F]' : highlighted ? 'text-[#946410]' : showMissing ? 'text-[#C0492F]' : 'text-[#54627A]'}`}>
         {label}
-        {highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
-        {showMissing && <span className="ml-1.5 text-red-400 font-semibold">— required</span>}
-        {danger && <span className="ml-1.5 text-red-600 font-semibold">— expired</span>}
-        {failed && !danger && <span className="ml-1.5 text-red-600 font-semibold">— fails requirement</span>}
+        {highlighted && <span className="ml-1.5 text-[#946410] font-semibold">— updated</span>}
+        {showMissing && <span className="ml-1.5 text-[#C0492F] font-semibold">— required</span>}
+        {danger && <span className="ml-1.5 text-[#C0492F] font-semibold">— expired</span>}
+        {failed && !danger && <span className="ml-1.5 text-[#C0492F] font-semibold">— fails requirement</span>}
       </label>
       {readOnly
-        ? <p className="text-sm text-slate-700 py-2">{value || '—'}</p>
+        ? <p className="text-sm text-[#0B1B33] py-2">{value || '—'}</p>
         : <input
             type={type}
             value={value ?? ''}
@@ -326,12 +326,12 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
             maxLength={maxLength}
             className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
               isRed
-                ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
+                ? 'border border-[#E0876B] bg-[#F9E1DA] focus:ring-[#C0492F] text-[#C0492F]'
                 : highlighted
-                ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
+                ? 'border border-[#DDAF5E] bg-[#FAEDD2] focus:ring-[#946410]'
                 : showMissing
-                ? 'border border-red-300 bg-red-50 focus:ring-red-400'
-                : 'border border-slate-200 bg-white focus:ring-blue-500'
+                ? 'border border-[#F0C4B4] bg-[#F9E1DA] focus:ring-[#C0492F]'
+                : 'border border-[#E8ECF2] bg-white focus:ring-[#014AC5]'
             }`}
           />
       }
@@ -342,19 +342,19 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder, maxLen
 function FieldSelect({ label, value, onChange, options, highlighted, danger, className = '' }) {
   return (
     <div className={className}>
-      <label className={`block text-xs font-medium mb-1.5 ${danger ? 'text-red-700' : highlighted ? 'text-amber-700' : 'text-slate-500'}`}>
-        {label}{highlighted && <span className="ml-1.5 text-amber-600 font-semibold">— updated</span>}
-        {danger && <span className="ml-1.5 text-red-600 font-semibold">— required by association</span>}
+      <label className={`block text-xs font-medium mb-1.5 ${danger ? 'text-[#C0492F]' : highlighted ? 'text-[#946410]' : 'text-[#54627A]'}`}>
+        {label}{highlighted && <span className="ml-1.5 text-[#946410] font-semibold">— updated</span>}
+        {danger && <span className="ml-1.5 text-[#C0492F] font-semibold">— required by association</span>}
       </label>
       <select
         value={value ?? ''}
         onChange={e => onChange(e.target.value)}
         className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 appearance-none ${
           danger
-            ? 'border border-red-400 bg-red-50 focus:ring-red-400 text-red-800'
+            ? 'border border-[#E0876B] bg-[#F9E1DA] focus:ring-[#C0492F] text-[#C0492F]'
             : highlighted
-            ? 'border border-amber-400 bg-amber-50 focus:ring-amber-400'
-            : 'border border-slate-200 bg-white focus:ring-blue-500'
+            ? 'border border-[#DDAF5E] bg-[#FAEDD2] focus:ring-[#946410]'
+            : 'border border-[#E8ECF2] bg-white focus:ring-[#014AC5]'
         }`}
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -416,46 +416,46 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
 
   // Left border accent color based on status / completeness
   // NOTE: full class strings required so Tailwind does not purge them
-  let accentColor = 'border-2 border-slate-200'
-  if (form.status === 'lapsed') accentColor = 'border-2 border-red-500'
-  else if (form.status === 'non_compliant') accentColor = 'border-2 border-orange-400'
-  else if (form.status === 'active' && !hasMissing) accentColor = 'border-2 border-green-400'
-  else if (form.status === 'expiring' || form.status === 'pending_review' || hasMissing) accentColor = 'border-2 border-amber-400'
+  let accentColor = 'border-2 border-[#E8ECF2]'
+  if (form.status === 'lapsed') accentColor = 'border-2 border-[#C0492F]'
+  else if (form.status === 'non_compliant') accentColor = 'border-2 border-[#DDAF5E]'
+  else if (form.status === 'active' && !hasMissing) accentColor = 'border-2 border-[#8FCFB2]'
+  else if (form.status === 'expiring' || form.status === 'pending_review' || hasMissing) accentColor = 'border-2 border-[#DDAF5E]'
 
   const isLapsed = form.status === 'lapsed'
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${accentColor}`}>
+    <div className={`bg-white rounded-xl border border-[#E8ECF2] overflow-hidden ${accentColor}`}>
       {/* Card header */}
-      <div className={`flex items-center justify-between gap-3 px-5 py-3 border-b ${isLapsed ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+      <div className={`flex items-center justify-between gap-3 px-5 py-3 border-b ${isLapsed ? 'bg-[#F9E1DA] border-[#F0C4B4]' : 'bg-slate-50 border-[#E8ECF2]'}`}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <select
             value={form.coverage_type || 'unknown'}
             onChange={e => onChange('coverage_type', e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-[#E8ECF2] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
           >
             {COVERAGE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {/* Expiry chip */}
           {isExpiringSoon && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1 whitespace-nowrap">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#FAEDD2] text-[#946410] flex items-center gap-1 whitespace-nowrap">
               ⚠ Expires soon
             </span>
           )}
           {days !== null && days < 0 && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700 whitespace-nowrap">Expired</span>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F9E1DA] text-[#C0492F] whitespace-nowrap">Expired</span>
           )}
           {form.status === 'pending_review' && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">Pending review</span>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#E7EEFA] text-[#014AC5] whitespace-nowrap">Pending review</span>
           )}
           {hasMissing && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-600 whitespace-nowrap">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F9E1DA] text-[#C0492F] whitespace-nowrap">
               ⚠ {missingFields.length} field{missingFields.length !== 1 ? 's' : ''} missing
             </span>
           )}
         </div>
         <button type="button" onClick={() => onDelete(policyId)} disabled={deleting}
-          className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 disabled:opacity-50 flex-shrink-0">
+          className="p-1.5 rounded-lg border border-[#E8ECF2] text-[#8493A8] hover:text-[#C0492F] hover:border-[#F0C4B4] disabled:opacity-50 flex-shrink-0">
           {deleting
             ? <span className="text-xs">…</span>
             : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -469,18 +469,18 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
         <div>
           <SectionLabel>Policy document</SectionLabel>
           {form.document_url ? (
-            <div className="border border-slate-200 rounded-xl bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="border border-[#E8ECF2] rounded-xl bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <svg className="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-6 h-6 text-[#5C8FDB] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <div className="min-w-0">
                   <a href={form.document_url} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline font-medium block truncate">
+                    className="text-sm text-[#014AC5] hover:underline font-medium block truncate">
                     {fileName}
                   </a>
                   {form.uploaded_at && (
-                    <p className="text-xs text-slate-400">Uploaded {fmtDate(String(form.uploaded_at).slice(0, 10))}</p>
+                    <p className="text-xs text-[#8493A8]">Uploaded {fmtDate(String(form.uploaded_at).slice(0, 10))}</p>
                   )}
                 </div>
               </div>
@@ -489,45 +489,45 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
                   type="button"
                   disabled={runningAiId === policyId || isDraft}
                   onClick={() => onRunAi(policyId)}
-                  className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40"
+                  className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-[#E8ECF2] text-[#0B1B33] bg-white hover:bg-slate-50 disabled:opacity-40"
                 >
                   <span>✦</span>
                   {runningAiId === policyId ? 'Extracting…' : 'Re-extract'}
                 </button>
                 <button type="button" onClick={() => fileInputRef.current?.click()}
-                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 bg-white hover:bg-slate-50">
+                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-[#E8ECF2] text-[#54627A] bg-white hover:bg-slate-50">
                   Replace
                 </button>
               </div>
             </div>
           ) : (
             <div
-              className="border-2 border-dashed border-amber-300 rounded-xl bg-amber-50 px-5 py-7 flex flex-col items-center gap-1 cursor-pointer hover:bg-amber-100 transition-colors"
+              className="border-2 border-dashed border-[#EAC98A] rounded-xl bg-[#FAEDD2] px-5 py-7 flex flex-col items-center gap-1 cursor-pointer hover:bg-[#F7E4B8] transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               {uploading
-                ? <p className="text-sm text-amber-700">Uploading…</p>
+                ? <p className="text-sm text-[#946410]">Uploading…</p>
                 : <>
-                    <svg className="w-7 h-7 text-amber-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-7 h-7 text-[#C99A48] mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    <p className="text-sm text-amber-700 font-semibold">Upload dec page — AI fills the fields below</p>
-                    <p className="text-xs text-amber-500">PDF, JPG, PNG</p>
+                    <p className="text-sm text-[#946410] font-semibold">Upload dec page — AI fills the fields below</p>
+                    <p className="text-xs text-[#B08236]">PDF, JPG, PNG</p>
                   </>
               }
             </div>
           )}
           <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
-          {uploadErr && <p className="text-xs text-red-600 mt-1">{uploadErr}</p>}
-          {isDraft && form.document_url && <p className="text-xs text-slate-400 mt-1.5">Save the policy first, then extract</p>}
+          {uploadErr && <p className="text-xs text-[#C0492F] mt-1">{uploadErr}</p>}
+          {isDraft && form.document_url && <p className="text-xs text-[#8493A8] mt-1.5">Save the policy first, then extract</p>}
         </div>
 
         {showFields && (<>
         {/* AI review findings for this policy */}
         {validationFlags.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1.5">✦ AI review found issues</p>
-            <ul className="space-y-1 text-sm text-red-700">
+          <div className="bg-[#F9E1DA] border border-[#F0C4B4] rounded-lg px-4 py-3">
+            <p className="text-xs font-semibold text-[#C0492F] uppercase tracking-wide mb-1.5">✦ AI review found issues</p>
+            <ul className="space-y-1 text-sm text-[#C0492F]">
               {validationFlags.map((flag, i) => (
                 <li key={i} className="flex gap-2"><span className="flex-shrink-0">→</span><span>{flag}</span></li>
               ))}
@@ -537,7 +537,7 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
 
         {/* AI extraction banner */}
         {aiCount > 0 && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800">
+          <div className="flex items-center gap-2 bg-[#FAEDD2] border border-[#F0DDAE] rounded-lg px-4 py-2.5 text-sm text-[#946410]">
             <span>✦</span>
             <span>{aiCount} field{aiCount !== 1 ? 's were' : ' was'} updated by AI extraction — highlighted in amber</span>
           </div>
@@ -551,12 +551,12 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
             <FieldInput label="Additional insured" value={form.additional_insured} onChange={f('additional_insured')} placeholder="e.g. association" highlighted={hi('additional_insured')} />
             <div className="flex flex-col gap-1.5">
               <FieldInput label="Additional interests" value={form.additional_interests} onChange={f('additional_interests')} placeholder="Mortgagee, lender, etc." highlighted={hi('additional_interests')} />
-              <label className={`flex items-center gap-2 text-sm mt-1 cursor-pointer ${failed('association_listed') ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
+              <label className={`flex items-center gap-2 text-sm mt-1 cursor-pointer ${failed('association_listed') ? 'text-[#C0492F] font-medium' : 'text-[#54627A]'}`}>
                 <input
                   type="checkbox"
                   checked={!!form.association_listed}
                   onChange={e => onChange('association_listed', e.target.checked)}
-                  className={`rounded text-blue-600 focus:ring-blue-500 ${failed('association_listed') ? 'border-red-400' : 'border-slate-300'}`}
+                  className={`rounded text-[#014AC5] focus:ring-[#014AC5] ${failed('association_listed') ? 'border-[#E0876B]' : 'border-[#DCE3EC]'}`}
                 />
                 Association listed{failed('association_listed') && ' — fails requirement'}
               </label>
@@ -814,12 +814,12 @@ export default function AdminTenantDetail() {
     return days >= 0 && days <= 30
   })
   const statusStyles = {
-    active:         { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
-    expiring:       { card: 'bg-green-50 border-green-200',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-green-800', bullet: { pass: 'text-green-600', fail: 'text-red-600', warning: 'text-amber-700' } },
-    non_compliant:  { card: 'bg-orange-50 border-orange-200', icon: '✗', label: 'Active · Non-Compliant', text: 'text-orange-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    pending_review: { card: 'bg-blue-50 border-blue-200',     icon: '●', label: 'Pending Review', text: 'text-blue-800', bullet: { pass: 'text-green-700', fail: 'text-red-600', warning: 'text-amber-700' } },
-    lapsed:         { card: 'bg-red-50 border-red-200',       icon: '✗', label: 'Expired', text: 'text-red-800', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
-    missing:        { card: 'bg-slate-50 border-slate-200',   icon: '—', label: 'No Policy Received', text: 'text-slate-600', bullet: { pass: 'text-green-700', fail: 'text-red-700', warning: 'text-amber-700' } },
+    active:         { card: 'bg-[#E2F4EC] border-[#BFE3D2]',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-[#0E8E68]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
+    expiring:       { card: 'bg-[#E2F4EC] border-[#BFE3D2]',   icon: '✓', label: 'Active · Meets Requirements', text: 'text-[#0E8E68]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
+    non_compliant:  { card: 'bg-[#FAEDD2] border-[#F0DDAE]', icon: '✗', label: 'Active · Non-Compliant', text: 'text-[#946410]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
+    pending_review: { card: 'bg-[#E7EEFA] border-[#C7DBF5]',     icon: '●', label: 'Pending Review', text: 'text-[#014AC5]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
+    lapsed:         { card: 'bg-[#F9E1DA] border-[#F0C4B4]',       icon: '✗', label: 'Expired', text: 'text-[#C0492F]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
+    missing:        { card: 'bg-slate-50 border-[#E8ECF2]',   icon: '—', label: 'No Policy Received', text: 'text-[#54627A]', bullet: { pass: 'text-[#0E8E68]', fail: 'text-[#C0492F]', warning: 'text-[#946410]' } },
   }
   const ss = statusStyles[overallStatus] || statusStyles.missing
 
@@ -1121,7 +1121,7 @@ export default function AdminTenantDetail() {
         isMobile && !helperExpanded ? (
           <button
             onClick={() => setHelperExpanded(true)}
-            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}
+            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}
           >
             {nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}
             {!nextSteps[0]?.success && (
@@ -1129,8 +1129,8 @@ export default function AdminTenantDetail() {
             )}
           </button>
         ) : (
-          <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-green-200' : 'border-blue-200'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
-            <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-green-600' : 'bg-blue-600'}`}>
+          <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-[#BFE3D2]' : 'border-[#C7DBF5]'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
+            <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}>
               <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Compliant' : 'Next Steps'}</span>
               {isMobile && (
                 <button onClick={() => setHelperExpanded(false)} aria-label="Collapse" className="text-white/90 hover:text-white text-xl leading-none">×</button>
@@ -1138,10 +1138,10 @@ export default function AdminTenantDetail() {
             </div>
             <ul className="p-4 space-y-3">
               {nextSteps.map((s, i) => (
-                <li key={i} className={`flex items-start gap-3 text-sm ${s.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                <li key={i} className={`flex items-start gap-3 text-sm ${s.done ? 'text-[#8493A8] line-through' : 'text-[#0B1B33]'}`}>
                   <span className="text-base leading-snug">{s.icon}</span>
                   <span>
-                    {!s.done && !s.success && <span className="font-semibold text-blue-700">{s.wait ? 'Wait: ' : 'Next: '}</span>}
+                    {!s.done && !s.success && <span className="font-semibold text-[#014AC5]">{s.wait ? 'Wait: ' : 'Next: '}</span>}
                     {s.text}
                   </span>
                 </li>
@@ -1156,32 +1156,32 @@ export default function AdminTenantDetail() {
         <div className="flex items-start justify-between pb-5">
           <div className="flex items-start gap-4">
             <button type="button" onClick={() => navigate('/admin/dashboard')}
-              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 mt-0.5">
+              className="flex items-center gap-1.5 text-sm font-medium text-[#54627A] border border-[#E8ECF2] bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 mt-0.5">
               ← Dashboard
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">
+              <h1 className="text-xl font-bold text-[#0B1B33]">
                 {headerName}{headerUnit ? ` — ${headerUnit}` : ''}
               </h1>
-              {formattedAddress && <p className="text-sm text-slate-500 mt-0.5">{formattedAddress}</p>}
+              {formattedAddress && <p className="text-sm text-[#54627A] mt-0.5">{formattedAddress}</p>}
             </div>
           </div>
           {QUOTE_FORM_URL && (
             <a
               href={tenant?.is_renter ? HO4_QUOTE_URL : QUOTE_FORM_URL}
               target="_blank" rel="noopener noreferrer"
-              className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap mt-0.5">
+              className="bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap mt-0.5">
               Get a New {tenant?.is_renter ? 'HO-4' : 'HO-6'} Quote →
             </a>
           )}
         </div>
 
-        {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+        {error && <p className="text-[#C0492F] text-sm mb-4">{error}</p>}
 
         {!tenant && !error && (
           <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-slate-200 h-28 animate-pulse" />
-            <div className="bg-white rounded-xl border border-slate-200 h-52 animate-pulse" />
+            <div className="bg-white rounded-xl border border-[#E8ECF2] h-28 animate-pulse" />
+            <div className="bg-white rounded-xl border border-[#E8ECF2] h-52 animate-pulse" />
           </div>
         )}
 
@@ -1192,24 +1192,24 @@ export default function AdminTenantDetail() {
             <div className={`rounded-xl border p-5 ${ss.card}`}>
               <p className={`font-bold text-base mb-3 flex items-center gap-2 flex-wrap ${ss.text}`}>
                 <span>{ss.icon}</span> {ss.label}
-                {isExpiringSoon && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">Expiring Soon</span>}
-                {approval && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">Manually approved</span>}
+                {isExpiringSoon && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#FAEDD2] text-[#946410] border border-[#F0DDAE]">Expiring Soon</span>}
+                {approval && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E2F4EC] text-[#0E8E68] border border-[#0E8E68]/30">Manually approved</span>}
               </p>
 
               {/* Manual approval / override (PM/Admin) */}
               {approval ? (
-                <div className="mb-3 bg-white/70 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-slate-600">
-                  <span className="font-semibold text-emerald-700">✓ Approved</span> by {approval.by}
+                <div className="mb-3 bg-white/70 border border-[#BFE3D2] rounded-lg px-3 py-2 text-xs text-[#54627A]">
+                  <span className="font-semibold text-[#0E8E68]">✓ Approved</span> by {approval.by}
                   {approval.at && <> on {new Date(approval.at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</>}
-                  {approval.reason && <div className="mt-1 text-slate-500">Reason: {approval.reason}</div>}
+                  {approval.reason && <div className="mt-1 text-[#54627A]">Reason: {approval.reason}</div>}
                   <button type="button" onClick={() => submitApproval(false)} disabled={savingApproval}
-                    className="mt-2 text-xs font-semibold text-red-600 hover:underline disabled:opacity-60">
+                    className="mt-2 text-xs font-semibold text-[#C0492F] hover:underline disabled:opacity-60">
                     {savingApproval ? 'Working…' : 'Withdraw approval'}
                   </button>
                 </div>
               ) : overallStatus === 'non_compliant' && approveTargetId && (
                 <button type="button" onClick={() => { setApproveReason(''); setApproveOpen(true) }}
-                  className="mb-3 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg">
+                  className="mb-3 text-xs font-semibold text-white bg-[#0E8E68] hover:bg-[#0C7859] px-3 py-1.5 rounded-lg">
                   Approve / override compliance
                 </button>
               )}
@@ -1230,8 +1230,8 @@ export default function AdminTenantDetail() {
                       <ul className="space-y-1.5">{baseChecks.map(renderItem)}</ul>
                     )}
                     {rentedChecks.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-300/60">
-                        <p className="text-sm font-semibold text-slate-700 mb-1.5">
+                      <div className="mt-3 pt-3 border-t border-[#DCE3EC]">
+                        <p className="text-sm font-semibold text-[#0B1B33] mb-1.5">
                           This unit is flagged as RENTED — these are additional requirements:
                         </p>
                         <ul className="space-y-1.5">{rentedChecks.map(renderItem)}</ul>
@@ -1245,7 +1245,7 @@ export default function AdminTenantDetail() {
             {/* ── Unit & Owner ──────────────────────────────────────────────── */}
             <div>
               <SectionLabel>Association Requirements</SectionLabel>
-              <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-5">
+              <div className="bg-white rounded-xl border border-[#E8ECF2] p-5 space-y-5">
 
                 {/* Association name — owner details and address are managed on the association page */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1253,7 +1253,7 @@ export default function AdminTenantDetail() {
                 </div>
 
                 {/* Coverage minimums — renters (HO-4) only care about liability */}
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-4 border-t border-[#E8ECF2]">
                   {tenant.is_renter ? (
                     <CurrencyInput label="Min HO-4 Liability ($)" value={reqForm.ho4_liability_min}
                       onChange={v => setReqForm(r => ({ ...r, ho4_liability_min: v }))} placeholder="100000" />
@@ -1320,10 +1320,10 @@ export default function AdminTenantDetail() {
                 <button type="button" id="add-policy-btn" onClick={handleAddPolicy}
                   className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors ${
                     needsWindPolicy || needsHo6Policy
-                      ? 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                      ? 'border-2 border-dashed border-[#E0876B] bg-[#F9E1DA] text-[#C0492F] hover:bg-[#F4D0C4]'
                       : (currentPolicies.length === 0 && drafts.length === 0) || hasLapsedPolicy
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                      : 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                      ? 'bg-[#001842] text-white hover:bg-[#0A2A63] shadow-sm'
+                      : 'border-2 border-dashed border-[#DCE3EC] bg-white text-[#54627A] hover:bg-slate-50'
                   }`}>
                   {tenant.is_renter ? '+ HO-4 policy' : needsWindPolicy ? '+ Add wind policy' : needsHo6Policy ? '+ Add HO-6 policy' : hasLapsedPolicy ? '+ Add renewal policy' : '+ HO-6 policy'}
                 </button>
@@ -1335,15 +1335,15 @@ export default function AdminTenantDetail() {
                     <button type="button" onClick={() => leaseInputRef.current?.click()} disabled={leaseUploading}
                       className={`flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors disabled:opacity-60 ${
                         tenant.has_lease
-                          ? 'border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-                          : 'border-2 border-dashed border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                          ? 'border-2 border-dashed border-[#DCE3EC] bg-white text-[#54627A] hover:bg-slate-50'
+                          : 'border-2 border-dashed border-[#E0876B] bg-[#F9E1DA] text-[#C0492F] hover:bg-[#F4D0C4]'
                       }`}>
                       {leaseUploading ? 'Uploading…' : tenant.has_lease ? '↻ Replace lease' : '+ Add lease'}
                     </button>
                     {tenant.has_lease && (
-                      <p className="text-xs text-slate-400 mt-1 text-center">Lease on file — we read it to fill in the renter's details.</p>
+                      <p className="text-xs text-[#8493A8] mt-1 text-center">Lease on file — we read it to fill in the renter's details.</p>
                     )}
-                    {leaseErr && <p className="text-xs text-red-600 mt-1 text-center">{leaseErr}</p>}
+                    {leaseErr && <p className="text-xs text-[#C0492F] mt-1 text-center">{leaseErr}</p>}
 
                     {tenant.has_lease && tenant.lease_summary && (() => {
                       const ls = tenant.lease_summary
@@ -1359,22 +1359,22 @@ export default function AdminTenantDetail() {
                         ['Expiration Date', ls.lease_end],
                       ].filter(([, v]) => v)
                       return (
-                        <div className="mt-3 bg-white rounded-xl border border-slate-200 overflow-hidden">
-                          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Lease Summary</p>
+                        <div className="mt-3 bg-white rounded-xl border border-[#E8ECF2] overflow-hidden">
+                          <div className="px-5 py-3 border-b border-[#E8ECF2] flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold text-[#8493A8] uppercase tracking-widest">Lease Summary</p>
                             {tenant.lease_document_url && (
                               <a href={tenant.lease_document_url} target="_blank" rel="noopener noreferrer"
-                                className="text-xs font-medium text-blue-600 hover:underline whitespace-nowrap">
+                                className="text-xs font-medium text-[#014AC5] hover:underline whitespace-nowrap">
                                 View lease ↗
                               </a>
                             )}
                           </div>
                           <table className="w-full text-sm">
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-[#E8ECF2]">
                               {rows.map(([label, value]) => (
                                 <tr key={label}>
-                                  <td className="px-5 py-2.5 text-slate-500 whitespace-nowrap align-top w-1/3">{label}</td>
-                                  <td className="px-5 py-2.5 text-slate-800 font-medium">{value}</td>
+                                  <td className="px-5 py-2.5 text-[#54627A] whitespace-nowrap align-top w-1/3">{label}</td>
+                                  <td className="px-5 py-2.5 text-[#0B1B33] font-medium">{value}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1388,19 +1388,19 @@ export default function AdminTenantDetail() {
                       <div className="mt-3">
                         <input ref={ho4InputRef} type="file" accept=".pdf,image/*" onChange={handleHo4File} className="hidden" />
                         <button type="button" onClick={() => ho4InputRef.current?.click()} disabled={ho4Uploading}
-                          className="flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors border-2 border-dashed border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-60">
+                          className="flex items-center gap-2 text-sm font-semibold rounded-xl px-5 py-3 w-full justify-center transition-colors border-2 border-dashed border-[#DCE3EC] bg-white text-[#54627A] hover:bg-slate-50 disabled:opacity-60">
                           {ho4Uploading ? 'Uploading…' : "+ Add HO-4 policy (renter)"}
                         </button>
                         {ho4Msg && (
-                          <p className="text-xs text-green-700 mt-1 text-center">
+                          <p className="text-xs text-[#0E8E68] mt-1 text-center">
                             {ho4Msg}{' '}
                             {ho4TenantId && (
                               <button type="button" onClick={() => navigate(`/admin/tenant/${ho4TenantId}`)}
-                                className="text-blue-600 hover:underline">View renter →</button>
+                                className="text-[#014AC5] hover:underline">View renter →</button>
                             )}
                           </p>
                         )}
-                        {ho4Err && <p className="text-xs text-red-600 mt-1 text-center">{ho4Err}</p>}
+                        {ho4Err && <p className="text-xs text-[#C0492F] mt-1 text-center">{ho4Err}</p>}
                       </div>
                     )}
                   </div>
@@ -1408,32 +1408,32 @@ export default function AdminTenantDetail() {
 
                 {/* History */}
                 {historyPolicies.length > 0 && (
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-slate-100">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Policy history</p>
+                  <div className="bg-white rounded-xl border border-[#E8ECF2] overflow-hidden">
+                    <div className="px-5 py-3 border-b border-[#E8ECF2]">
+                      <p className="text-xs font-semibold text-[#8493A8] uppercase tracking-widest">Policy history</p>
                     </div>
-                    <ul className="divide-y divide-slate-100">
+                    <ul className="divide-y divide-[#E8ECF2]">
                       {historyPolicies.map(p => (
                         <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
                           <div>
-                            <span className="font-medium text-slate-700">
+                            <span className="font-medium text-[#0B1B33]">
                               {COVERAGE_TYPE_OPTIONS.find(o => o.value === p.coverage_type)?.label || 'Policy'}
                             </span>
                             {(p.insurer || p.policy_number) && (
-                              <span className="text-slate-400 ml-2 text-xs">{[p.insurer, p.policy_number].filter(Boolean).join(' · ')}</span>
+                              <span className="text-[#8493A8] ml-2 text-xs">{[p.insurer, p.policy_number].filter(Boolean).join(' · ')}</span>
                             )}
                             {p.expiration_date && (
-                              <span className="text-slate-400 ml-2 text-xs">exp {fmtDate(String(p.expiration_date).slice(0, 10))}</span>
+                              <span className="text-[#8493A8] ml-2 text-xs">exp {fmtDate(String(p.expiration_date).slice(0, 10))}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{p.superseded_by ? 'Superseded' : 'Expired'}</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E8ECF2] text-[#54627A]">{p.superseded_by ? 'Superseded' : 'Expired'}</span>
                             {p.document_url && (
                               <a href={p.document_url} target="_blank" rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline text-xs">View</a>
+                                className="text-[#014AC5] hover:underline text-xs">View</a>
                             )}
                             <button type="button" onClick={() => handleDeletePolicy(p.id)} disabled={deletingId === p.id}
-                              className="text-red-500 hover:underline text-xs disabled:opacity-50">
+                              className="text-[#C0492F] hover:underline text-xs disabled:opacity-50">
                               {deletingId === p.id ? '…' : 'Delete'}
                             </button>
                           </div>
@@ -1446,17 +1446,17 @@ export default function AdminTenantDetail() {
             </div>
 
             {/* ── Footer — sticky so Save is always reachable on long pages ── */}
-            <div className="sticky bottom-0 z-40 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-t border-slate-200 flex items-center justify-between gap-4">
+            <div className="sticky bottom-0 z-40 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-t border-[#E8ECF2] flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  className="flex items-center gap-2 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                   </svg>
                   {saving ? 'Saving…' : 'Save changes'}
                 </button>
                 <button type="button" onClick={handleSendReminder} disabled={notifying}
-                  className="flex items-center gap-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  className="flex items-center gap-2 border border-[#DCE3EC] text-[#0B1B33] hover:bg-slate-50 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -1465,12 +1465,12 @@ export default function AdminTenantDetail() {
               </div>
               <div className="text-right">
                 {saveMsg && (
-                  <p className={`text-sm font-medium ${saveMsg.startsWith('Save failed') ? 'text-red-600' : 'text-green-600'}`}>
+                  <p className={`text-sm font-medium ${saveMsg.startsWith('Save failed') ? 'text-[#C0492F]' : 'text-[#0E8E68]'}`}>
                     {saveMsg}
                   </p>
                 )}
                 {!saveMsg && lastUpdated && (
-                  <p className="text-xs text-slate-400">Last updated {fmtDateTime(lastUpdated)}</p>
+                  <p className="text-xs text-[#8493A8]">Last updated {fmtDateTime(lastUpdated)}</p>
                 )}
               </div>
             </div>
@@ -1479,13 +1479,13 @@ export default function AdminTenantDetail() {
             {tenant.activity_log?.length > 0 && (
               <div>
                 <SectionLabel>Activity log</SectionLabel>
-                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                <div className="bg-white rounded-xl border border-[#E8ECF2] divide-y divide-[#E8ECF2]">
                   {tenant.activity_log.map(entry => (
                     <div key={entry.id} className="flex gap-3 px-5 py-3">
-                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                      <div className="mt-2 w-1.5 h-1.5 rounded-full bg-[#DCE3EC] flex-shrink-0" />
                       <div>
-                        <p className="text-sm text-slate-700">{entry.description}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-sm text-[#0B1B33]">{entry.description}</p>
+                        <p className="text-xs text-[#8493A8] mt-0.5">
                           {fmtDateTime(entry.timestamp)}
                           {entry.actor && ` · by ${entry.actor}`}
                         </p>
@@ -1502,22 +1502,22 @@ export default function AdminTenantDetail() {
         {approveOpen && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-slate-800 mb-1">Manually Approve / override compliance</h2>
-              <p className="text-xs text-slate-500 mb-4">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Manually Approve / override compliance</h2>
+              <p className="text-xs text-[#54627A] mb-4">
                 This marks the unit compliant despite the failing checks. Enter the reason,
                 and you can withdraw approval anytime.
               </p>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Reason</label>
+              <label className="block text-xs font-medium text-[#54627A] mb-1">Reason</label>
               <textarea value={approveReason} onChange={e => setApproveReason(e.target.value)} rows={3}
                 placeholder="e.g. Owner provided a binder confirming coverage; updated dec page to follow."
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
               <div className="flex gap-2 mt-3">
                 <button type="button" onClick={() => submitApproval(true, approveReason)} disabled={savingApproval || !approveReason.trim()}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                  className="flex-1 bg-[#0E8E68] hover:bg-[#0C7859] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
                   {savingApproval ? 'Approving…' : 'Approve'}
                 </button>
                 <button type="button" onClick={() => setApproveOpen(false)}
-                  className="flex-1 border border-slate-300 text-slate-600 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                  className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                   Cancel
                 </button>
               </div>
