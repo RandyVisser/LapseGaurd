@@ -1081,26 +1081,26 @@ export default function AdminDashboard() {
         {summary && (() => { const pctOf = v => (summary.total_units > 0 ? Math.round(((v ?? 0) / summary.total_units) * 100) : 0); return (
               <div className="flex flex-col gap-2 mb-4">
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Compliant" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-[#0E8E68]" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
-                  <StatCard compact label="Needs Attention" value={summary.non_compliant ?? 0} pct={pctOf(summary.non_compliant)} color="text-[#946410]" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
-                  <StatCard compact label="Expired" value={summary.lapsed} pct={pctOf(summary.lapsed)} color="text-[#C0492F]" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
-                  <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} pct={pctOf(summary.pending_review)} color="text-[#014AC5]" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
-                  <StatCard compact label="Missing Policy" value={summary.missing} pct={pctOf(summary.missing)} color="text-[#54627A]" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
-                  <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-[#014AC5]" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
+                  <StatCard compact label="Compliant" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
+                  <StatCard compact label="Needs Attention" value={summary.non_compliant ?? 0} pct={pctOf(summary.non_compliant)} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
+                  <StatCard compact label="Expired" value={summary.lapsed} pct={pctOf(summary.lapsed)} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
+                  <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} pct={pctOf(summary.pending_review)} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
+                  <StatCard compact label="Missing Policy" value={summary.missing} pct={pctOf(summary.missing)} color="text-slate-500" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
+                  <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-indigo-600" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Total Units" value={summary.total_units} color="text-[#0B1B33]" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-[#0E8E68]" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-[#0E8E68]" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
+                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
+                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
+                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
                   {RENTALS_ENABLED && (
-                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-[#014AC5]" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
+                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
                   )}
-                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-[#54627A]" active={activeFilter === 'staff'} onClick={() => {
+                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
                     if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
                     else setActiveFilter('staff')
                   }} />
-                  <StatCard compact label="Board Members" value={summary.board_members} color="text-[#54627A]" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-[#54627A]" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
+                  <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
+                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
                 </div>
               </div>
             ) })()}

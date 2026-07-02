@@ -52,6 +52,7 @@ export default function AdminSetup() {
   if (error && !invite) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 max-w-sm w-full text-center">
+        <img src="/assets/logo-full.svg" alt="condo.insure" className="h-9 mx-auto mb-6" />
         <h1 className="text-lg font-bold text-slate-800 mb-2">Invalid setup link</h1>
         <p className="text-sm text-slate-500 mb-4">{error}</p>
         <Link to="/login" className="text-blue-600 hover:underline text-sm">Go to sign in →</Link>
@@ -62,6 +63,7 @@ export default function AdminSetup() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
+        <img src="/assets/logo-full.svg" alt="condo.insure" className="h-10 mb-6" />
         <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your admin account</h1>
         <p className="text-sm text-slate-500 mb-1">
           You're the admin for <strong>{invite?.hoa_name}</strong>

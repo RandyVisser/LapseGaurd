@@ -1153,7 +1153,7 @@ export default function AdminTenantDetail() {
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-1">
 
         {/* ── Top nav ──────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between pb-5">
+        <div className="flex items-start justify-between flex-wrap gap-3 pb-5">
           <div className="flex items-start gap-4">
             <button type="button" onClick={() => navigate('/admin/dashboard')}
               className="flex items-center gap-1.5 text-sm font-medium text-[#54627A] border border-[#E8ECF2] bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 mt-0.5">

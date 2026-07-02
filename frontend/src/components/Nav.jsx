@@ -32,7 +32,8 @@ export default function Nav({ role, title }) {
   return (
     <nav className="bg-[#001842] text-white px-4 sm:px-6 py-3 relative">
       <div className="flex items-center justify-between">
-        <span className="font-bold text-lg tracking-tight" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+        <span className="flex items-center gap-2 font-bold text-lg tracking-tight" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+          <img src="/assets/logo-mark.svg" alt="" className="h-6 w-6 flex-shrink-0" style={{ filter: 'brightness(0) invert(1)' }} />
           condo.insure
         </span>
         {title && <span className="hidden md:block font-bold text-xl text-white absolute left-1/2 -translate-x-1/2" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>{title}</span>}

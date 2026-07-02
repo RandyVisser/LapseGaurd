@@ -333,7 +333,7 @@ export default function TenantDashboard() {
           </div>
         )
       )}
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 pt-8 pb-24">
 
         {/* Unit context */}
         <header className="mb-5">
