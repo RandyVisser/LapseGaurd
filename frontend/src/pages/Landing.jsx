@@ -171,7 +171,7 @@ export default function Landing() {
         <div className="wrap">
           <div>
             <span className="eyebrow">Insurance compliance for condos &amp; HOAs</span>
-            <h1 className="display">Every unit covered,<br /><span className="pop">without the paperwork chase.</span></h1>
+            <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
             <p className="lede">condo.insure tracks each owner’s policy, reads their declaration page, and sends the reminders for you — so your board always knows who’s covered.</p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
