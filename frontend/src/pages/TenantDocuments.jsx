@@ -126,7 +126,7 @@ export default function TenantDocuments() {
         )}
 
         {docs !== null && (
-          <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-x-auto">
             {docs.length === 0 ? (
               <div className="px-6 py-14 text-center">
                 <p className="text-3xl mb-2">🗂</p>
