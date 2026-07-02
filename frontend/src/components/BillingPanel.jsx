@@ -12,9 +12,9 @@ const dollars = c => `$${(c / 100).toFixed(2)}`
 
 function Stat({ label, value }) {
   return (
-    <div className="border border-slate-200 rounded-lg px-3 py-2">
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="font-semibold text-slate-800">{value}</p>
+    <div className="border border-[#E8ECF2] rounded-lg px-3 py-2">
+      <p className="text-xs text-[#8493A8]">{label}</p>
+      <p className="font-semibold text-[#0B1B33]">{value}</p>
     </div>
   )
 }
@@ -44,12 +44,12 @@ export default function BillingPanel({ hoaId }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mt-6">
-      <p className="font-semibold text-slate-700">Billing</p>
-      <p className="text-xs text-slate-500 mt-1 mb-3">Your condo.insure subscription — billed per unit, monthly.</p>
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mt-6">
+      <p className="font-semibold text-[#0B1B33]">Billing</p>
+      <p className="text-xs text-[#54627A] mt-1 mb-3">Your condo.insure subscription — billed per unit, monthly.</p>
+      {error && <p className="text-sm text-[#C0492F] mb-3">{error}</p>}
       {!data ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-[#8493A8]">Loading…</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -57,18 +57,18 @@ export default function BillingPanel({ hoaId }) {
             <Stat label="Rate" value={`${dollars(data.unit_rate_cents)}/unit`} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
-          <p className="text-sm text-slate-600 mb-4">
-            Status: <span className="font-medium text-slate-800">{STATUS_LABEL[data.status] || data.status}</span>
+          <p className="text-sm text-[#54627A] mb-4">
+            Status: <span className="font-medium text-[#0B1B33]">{STATUS_LABEL[data.status] || data.status}</span>
           </p>
           <div className="flex gap-2">
             {data.has_subscription ? (
               <button type="button" onClick={() => go('portal')} disabled={busy}
-                className="bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
+                className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
                 {busy ? 'Opening…' : 'Manage billing'}
               </button>
             ) : (
               <button type="button" onClick={() => go('checkout')} disabled={busy}
-                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
+                className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2 px-4 rounded-lg text-sm disabled:opacity-50">
                 {busy ? 'Loading…' : 'Subscribe'}
               </button>
             )}
