@@ -19,7 +19,7 @@ from routes.hoa import _assert_hoa_access
 from routes.onboarding import sync_admin_email_change
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-APP_URL = os.environ.get("APP_URL", "https://condo.insure")
+APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 POLICY_BUCKET = "policy-documents"
 
 router = APIRouter()

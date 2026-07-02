@@ -91,8 +91,8 @@ Backend (Railway):
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY` — Claude Haiku dec page parsing
 - `RESEND_API_KEY` / `FROM_EMAIL=alerts@condo.insure`
-- `APP_URL=https://condo.insure`
-- `ALLOWED_ORIGINS=https://condo.insure`
+- `APP_URL=https://www.condo.insure` — use the `www` host; the bare domain 301-redirects to it, so bare links in emails add a redirect hop
+- `ALLOWED_ORIGINS=https://www.condo.insure`
 - `INTERNAL_API_KEY` — cron endpoint auth
 - `QUOTE_FORM_URL` — Typeform quote link (optional; buttons hidden when unset)
 - `SENTRY_DSN` — backend error tracking (optional)

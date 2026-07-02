@@ -2,10 +2,12 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import FeedbackWidget from './components/FeedbackWidget'
+// Landing is eager: "/" is the most common entry point and the chunk is tiny,
+// so skipping the lazy round trip paints the marketing page a hop sooner
+import Landing from './pages/Landing'
 
 // Route-level code splitting — keeps the tenant bundle from carrying the
 // whole admin dashboard (and vice versa)
-const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
 const Pricing = lazy(() => import('./pages/Pricing'))
