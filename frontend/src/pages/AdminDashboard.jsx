@@ -13,16 +13,20 @@ const API = import.meta.env.VITE_API_URL || '/api'
 // Subrental flagging — dark until the full rental flow is built + tested.
 const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 
+const DISPLAY = '"Bricolage Grotesque", sans-serif'
+const MONO = '"JetBrains Mono", monospace'
+
 function SortTh({ label, col, sortCol, sortDir, onSort }) {
   const active = sortCol === col
   return (
     <th
       onClick={() => onSort(col)}
-      className="text-left px-4 py-3 font-semibold text-[#54627A] cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
+      className="text-left px-4 py-3 text-[11px] font-bold uppercase text-[#8493A8] cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
+      style={{ fontFamily: MONO, letterSpacing: '.06em' }}
     >
       <span className="flex items-center gap-1">
         {label}
-        <span className="text-[#8493A8] text-xs">
+        <span className="text-[#8493A8] text-[10px]">
           {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
         </span>
       </span>
@@ -30,31 +34,169 @@ function SortTh({ label, col, sortCol, sortDir, onSort }) {
   )
 }
 
-function StatCard({ label, value, sublabel, color, active, onClick, compact, pct }) {
-  if (compact) {
-    return (
-      <button
-        onClick={onClick}
-        className={`bg-white rounded-lg border shadow-sm px-3 py-2.5 sm:px-5 sm:py-3.5 flex flex-col text-left transition-all sm:min-w-[154px] ${color} ${active ? 'border-[#014AC5] ring-1 ring-[#014AC5]/20' : 'border-[#E8ECF2] hover:border-[#DCE3EC]'}`}
-      >
-        <span className="text-2xl sm:text-3xl font-bold leading-tight">
-          {value ?? '—'}
-          {pct != null && <span className="text-sm sm:text-base font-semibold text-[#8493A8] ml-1.5">{pct}%</span>}
-        </span>
-        <span className="text-xs sm:text-sm text-[#54627A] leading-tight sm:whitespace-nowrap">{label}</span>
-      </button>
-    )
-  }
+// Navy hero panel — compliance gauge + clickable stat chips + trend sparkline.
+// Chips map straight onto the table's activeFilter values, so this replaces
+// the old informational stat cards; problem counts live in ActionStrip below.
+function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, trendOpen, onToggleTrend, rentalsEnabled, onStaffClick }) {
+  const total = summary.total_units ?? 0
+  const compliantTotal = (summary.compliant ?? 0) + (summary.manually_approved ?? 0)
+  const pct = total > 0 ? Math.round((compliantTotal / total) * 100) : 0
+  const CIRC = 2 * Math.PI * 56
+
+  const chips = [
+    { filter: 'all', value: total, label: 'Total units' },
+    { filter: 'active', value: summary.compliant ?? 0, label: 'AI approved' },
+    { filter: 'manual', value: summary.manually_approved ?? 0, label: 'Manual approval' },
+    { filter: 'board', value: summary.board_members ?? 0, label: 'Board members' },
+    { filter: 'staff', value: (summary.admins ?? 0) + (summary.property_managers ?? 0), label: 'Dashboard users', onClick: onStaffClick },
+    ...(rentalsEnabled ? [{ filter: 'rented', value: summary.rented_units ?? 0, label: 'Rented units' }] : []),
+  ]
+
+  const sparkPoints = trendData.length >= 2 ? (() => {
+    const vals = trendData.map(d => d.compliant ?? 0)
+    const min = Math.min(...vals)
+    const range = (Math.max(...vals) - min) || 1
+    return vals.map((v, i) => `${(i / (vals.length - 1)) * 130},${30 - ((v - min) / range) * 26}`).join(' ')
+  })() : null
+  const deltaPts = sparkPoints && total > 0
+    ? Math.round((((trendData[trendData.length - 1].compliant ?? 0) - (trendData[0].compliant ?? 0)) / total) * 100)
+    : null
+
   return (
-    <button
-      onClick={onClick}
-      className={`bg-white rounded-xl border-2 shadow-sm p-5 flex flex-col gap-1 text-left w-full transition-all ${color} ${active ? 'border-[#014AC5] ring-2 ring-[#014AC5]/20' : 'border-[#E8ECF2] hover:border-[#DCE3EC]'}`}
+    <div
+      className="relative overflow-hidden rounded-2xl text-white px-6 py-6 sm:px-8 sm:py-7 mb-4"
+      style={{ background: 'linear-gradient(150deg,#001842 0%,#06245C 65%,#014AC5 160%)' }}
     >
-      <span className="text-3xl font-bold">{value ?? '—'}</span>
-      <span className="text-sm text-[#54627A]">{label}</span>
-      {sublabel && <span className="text-xs text-[#8493A8]">{sublabel}</span>}
-    </button>
+      <div aria-hidden className="absolute inset-0" style={{
+        backgroundImage: 'linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px)',
+        backgroundSize: '30px 30px',
+        WebkitMaskImage: 'radial-gradient(75% 100% at 85% 20%,#000,transparent 70%)',
+        maskImage: 'radial-gradient(75% 100% at 85% 20%,#000,transparent 70%)',
+      }} />
+      <div className="relative grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] gap-5 lg:gap-9 items-center">
+        <button onClick={() => setActiveFilter('approved')} className="flex items-center gap-5 text-left" title="Show all compliant units">
+          <div className="relative w-[132px] h-[132px] flex-shrink-0">
+            <svg width="132" height="132" viewBox="0 0 132 132" className="-rotate-90">
+              <circle cx="66" cy="66" r="56" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="11" />
+              <circle cx="66" cy="66" r="56" fill="none" stroke="#6FE3B6" strokeWidth="11" strokeLinecap="round"
+                strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct / 100)} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-[34px] font-extrabold leading-none tracking-tight" style={{ fontFamily: DISPLAY }}>{pct}%</span>
+              <span className="text-[9.5px] uppercase text-[#B9C6E6] mt-1" style={{ fontFamily: MONO, letterSpacing: '.12em' }}>Covered</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-lg font-extrabold tracking-tight mb-0.5" style={{ fontFamily: DISPLAY }}>
+              {compliantTotal} of {total} units compliant
+            </p>
+            <p className="text-[13px] text-[#C7D3EE]">Every owner's HO-6 meets your board's requirements</p>
+          </div>
+        </button>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-2 self-center">
+          {chips.map(c => (
+            <button
+              key={c.filter}
+              onClick={c.onClick || (() => setActiveFilter(c.filter))}
+              className={`flex flex-col gap-0.5 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+                activeFilter === c.filter ? 'bg-white/10 border-white/20' : 'border-transparent hover:bg-white/[.06]'
+              }`}
+            >
+              <span className="text-[17px] font-semibold leading-tight" style={{ fontFamily: MONO }}>{c.value}</span>
+              <span className={`text-[10.5px] uppercase ${activeFilter === c.filter ? 'text-white' : 'text-[#9FB0D6]'}`} style={{ letterSpacing: '.03em' }}>
+                {c.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {sparkPoints && (
+          <button onClick={onToggleTrend} className="text-left lg:text-right flex-shrink-0" title={trendOpen ? 'Hide the 6-month trend' : 'Show the 6-month trend'}>
+            {deltaPts != null && (
+              <span
+                className={`flex items-center gap-1.5 lg:justify-end text-[13px] font-semibold mb-1.5 ${deltaPts >= 0 ? 'text-[#6FE3B6]' : 'text-[#F0C4B4]'}`}
+                style={{ fontFamily: MONO }}
+              >
+                {deltaPts >= 0 ? '▲' : '▼'} {deltaPts >= 0 ? '+' : ''}{deltaPts} pts over 6 months
+              </span>
+            )}
+            <svg className="w-[130px] h-[34px]" viewBox="0 0 130 34" fill="none">
+              <polyline points={sparkPoints} stroke="#6FE3B6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="block text-[10px] text-[#9FB0D6] mt-1" style={{ fontFamily: MONO, letterSpacing: '.08em' }}>
+              {trendOpen ? 'HIDE TREND ▴' : 'VIEW TREND ▾'}
+            </span>
+          </button>
+        )}
+      </div>
+    </div>
   )
+}
+
+// Amber "needs attention" strip — one pill per non-zero problem count.
+// Clicking a pill filters the table; clicking it again clears the filter.
+function ActionStrip({ summary, activeFilter, setActiveFilter }) {
+  const pills = [
+    { filter: 'lapsed', value: summary.lapsed, label: 'Expired', countCls: 'text-[#C0492F]' },
+    { filter: 'non_compliant', value: summary.non_compliant, label: 'Needs attention', countCls: 'text-[#C0492F]' },
+    { filter: 'pending_review', value: summary.pending_review, label: 'Pending review', countCls: 'text-[#014AC5]' },
+    { filter: 'missing', value: summary.missing, label: 'Missing policy', countCls: 'text-[#54627A]' },
+    { filter: 'invite_sent', value: summary.invite_sent, label: 'Awaiting upload', countCls: 'text-[#54627A]' },
+    { filter: 'not_invited', value: summary.not_invited, label: 'Not invited', countCls: 'text-[#54627A]' },
+  ].filter(p => (p.value ?? 0) > 0)
+  if (pills.length === 0) return null
+  return (
+    <div className="bg-[#FAEDD2] border border-[#F0DDAE] rounded-xl px-4 py-3 sm:px-5 flex items-center gap-2.5 flex-wrap mb-4">
+      <span className="text-[10.5px] font-bold uppercase text-[#946410] flex-shrink-0" style={{ fontFamily: MONO, letterSpacing: '.1em' }}>
+        Needs attention
+      </span>
+      {pills.map(p => (
+        <button
+          key={p.filter}
+          onClick={() => setActiveFilter(activeFilter === p.filter ? 'all' : p.filter)}
+          className={`inline-flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-[#0B1B33] border ${
+            activeFilter === p.filter ? 'border-[#946410] ring-1 ring-[#946410]/30' : 'border-[#F0DDAE] hover:border-[#946410]/50'
+          }`}
+        >
+          <b className={p.countCls} style={{ fontFamily: MONO }}>{p.value}</b> {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const AVATAR_COLORS = ['#0E8E68', '#014AC5', '#946410', '#C0492F', '#54627A', '#06245C']
+
+function avatarColor(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
+
+function OwnerName({ name }) {
+  if (!name) return <span className="italic text-[#8493A8]">No unit-owner</span>
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <span
+        className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+        style={{ fontFamily: MONO, background: avatarColor(name) }}
+      >
+        {initials}
+      </span>
+      <span className="font-medium text-[#0B1B33]">{name}</span>
+    </span>
+  )
+}
+
+// Colored left-edge accent on a table row, keyed to policy status
+function statusAccent(u) {
+  if (u.manually_approved || u.status === 'active' || u.status === 'expiring') return 'bg-[#0E8E68]'
+  if (u.status === 'non_compliant') return 'bg-[#946410]'
+  if (u.status === 'lapsed') return 'bg-[#C0492F]'
+  if (u.status === 'pending_review') return 'bg-[#014AC5]'
+  return 'bg-[#DCE3EC]'
 }
 
 function displayEmail(email) {
@@ -119,7 +261,7 @@ const COLUMNS = [
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => (
       <span className="flex items-center gap-1.5">
         {u.is_renter && <span className="text-[#8493A8]">↳</span>}
-        <span>{u.unit_number}</span>
+        <span className="font-semibold text-[#0B1B33]" style={{ fontFamily: MONO }}>{u.unit_number}</span>
         {RENTALS_ENABLED && u.is_rental && !u.is_renter && (
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E7EEFA] text-[#014AC5] border border-[#C7DBF5]">Rental</span>
         )}
@@ -128,7 +270,7 @@ const COLUMNS = [
         )}
       </span>
     ) },
-  { key: 'owner_primary',          label: 'Primary Name',          render: u => u.owner_primary || u.tenant_name || <span className="italic text-[#8493A8]">No unit-owner</span> },
+  { key: 'owner_primary',          label: 'Primary Name',          render: u => <OwnerName name={u.owner_primary || u.tenant_name} /> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
@@ -951,18 +1093,23 @@ export default function AdminDashboard() {
     return filtered
   })()
 
+  const selectedHoa = availableHoas.find(h => h.id === hoaId)
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#F7F9FC]">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
-      <main className="max-w-full mx-auto px-4 pt-3 pb-8">
-        {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
-        <div className="mb-4">
+      <main className="max-w-full mx-auto px-4 pt-4 pb-8">
+        <div className="mb-5">
           <div>
-            <h2 className="text-xl font-bold text-[#0B1B33]" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+            <h2 className="text-[26px] leading-tight font-extrabold tracking-tight text-[#0B1B33]" style={{ fontFamily: DISPLAY }}>
               {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
             </h2>
-            {selectedHoa?.corp_name && hoaId !== ALL_HOAS && (
-              <p className="text-xs text-[#8493A8] mt-0.5">SunBiz: {selectedHoa.corp_name}</p>
+            {(selectedHoa?.corp_name || summary) && hoaId !== ALL_HOAS && (
+              <p className="text-[13px] text-[#54627A] mt-0.5">
+                {selectedHoa?.corp_name ? <>SunBiz: {selectedHoa.corp_name}</> : null}
+                {selectedHoa?.corp_name && summary ? <span className="text-[#8493A8]"> · </span> : null}
+                {summary ? <>{summary.total_units} units</> : null}
+              </p>
             )}
             {selectedHoa?.sunbiz_doc_number && hoaId !== ALL_HOAS && (
               <p className="text-xs text-[#8493A8] mt-0.5">SunBiz Doc #: {selectedHoa.sunbiz_doc_number}</p>
@@ -1007,62 +1154,7 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
-          {!isMobile && (
-            <div className="flex flex-col items-start gap-1.5 mt-3">
-              <div className="flex gap-2 flex-nowrap overflow-x-auto max-w-full pb-1">
-                <RequirementsPopover hoa={hoaId !== ALL_HOAS ? selectedHoa : null} />
-                <button
-                  onClick={handleExport}
-                  disabled={exporting || !hoaId || hoaId === '__all__'}
-                  className={TOOLBAR_BTN}
-                >
-                  {exporting ? 'Exporting…' : 'Export CSV'}
-                </button>
-                <button
-                  onClick={() => setImportOpen(true)}
-                  disabled={!hoaId || hoaId === '__all__'}
-                  className={TOOLBAR_BTN}
-                >
-                  Import units
-                </button>
-                <button
-                  onClick={() => setAddEmailsOpen(true)}
-                  disabled={!hoaId || hoaId === '__all__'}
-                  className={TOOLBAR_BTN}
-                >
-                  Add emails
-                </button>
-                {(role === 'super_user' || role === 'property_manager') && (
-                  <button
-                    onClick={openInviteContact}
-                    disabled={invitingAdmin || !hoaId || hoaId === '__all__'}
-                    className={TOOLBAR_BTN}
-                  >
-                    {invitingAdmin ? 'Inviting…' : 'Invite to dashboard'}
-                  </button>
-                )}
-                <button
-                  onClick={handleInviteAll}
-                  disabled={invitingAll || !hoaId || hoaId === '__all__'}
-                  className={TOOLBAR_BTN}
-                  title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
-                >
-                  {invitingAll ? 'Inviting…' : 'Invite owners to their unit page'}
-                </button>
-                <button
-                  onClick={handleSendBoardReport}
-                  disabled={sendingReport || !hoaId || hoaId === '__all__'}
-                  className={TOOLBAR_BTN}
-                >
-                  {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
-                </button>
-              </div>
-              {inviteAllMsg && <p className="text-xs text-[#0E8E68]">{inviteAllMsg}</p>}
-              {bulkSuccess && <p className="text-xs text-[#0E8E68]">{bulkSuccess}</p>}
-            </div>
-          )}
         </div>
-        ) })()}
 
         {hoaId !== ALL_HOAS && (
           <GettingStartedPanel
@@ -1078,46 +1170,86 @@ export default function AdminDashboard() {
           />
         )}
 
-        {summary && (() => { const pctOf = v => (summary.total_units > 0 ? Math.round(((v ?? 0) / summary.total_units) * 100) : 0); return (
-              <div className="flex flex-col gap-2 mb-4">
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Compliant" value={`${summary.total_units > 0 ? Math.round((((summary.compliant ?? 0) + (summary.manually_approved ?? 0)) / summary.total_units) * 100) : 0}%`} color="text-green-700" active={activeFilter === 'approved'} onClick={() => setActiveFilter('approved')} />
-                  <StatCard compact label="Needs Attention" value={summary.non_compliant ?? 0} pct={pctOf(summary.non_compliant)} color="text-orange-600" active={activeFilter === 'non_compliant'} onClick={() => setActiveFilter('non_compliant')} />
-                  <StatCard compact label="Expired" value={summary.lapsed} pct={pctOf(summary.lapsed)} color="text-red-700" active={activeFilter === 'lapsed'} onClick={() => setActiveFilter('lapsed')} />
-                  <StatCard compact label="Pending Review" value={summary.pending_review ?? 0} pct={pctOf(summary.pending_review)} color="text-blue-600" active={activeFilter === 'pending_review'} onClick={() => setActiveFilter('pending_review')} />
-                  <StatCard compact label="Missing Policy" value={summary.missing} pct={pctOf(summary.missing)} color="text-slate-500" active={activeFilter === 'missing'} onClick={() => setActiveFilter('missing')} />
-                  <StatCard compact label="Awaiting Upload" value={summary.invite_sent ?? 0} pct={pctOf(summary.invite_sent)} color="text-indigo-600" active={activeFilter === 'invite_sent'} onClick={() => setActiveFilter('invite_sent')} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <StatCard compact label="Total Units" value={summary.total_units} color="text-slate-800" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} />
-                  <StatCard compact label="AI Approved" value={summary.compliant} pct={pctOf(summary.compliant)} color="text-green-700" active={activeFilter === 'active'} onClick={() => setActiveFilter('active')} />
-                  <StatCard compact label="Manual Approval" value={summary.manually_approved ?? 0} pct={pctOf(summary.manually_approved)} color="text-emerald-700" active={activeFilter === 'manual'} onClick={() => setActiveFilter('manual')} />
-                  {RENTALS_ENABLED && (
-                    <StatCard compact label="Rented Units" value={summary.rented_units ?? 0} pct={pctOf(summary.rented_units)} color="text-indigo-700" active={activeFilter === 'rented'} onClick={() => setActiveFilter('rented')} />
-                  )}
-                  <StatCard compact label="Dashboard Users" value={(summary.admins ?? 0) + (summary.property_managers ?? 0)} color="text-purple-700" active={activeFilter === 'staff'} onClick={() => {
-                    if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
-                    else setActiveFilter('staff')
-                  }} />
-                  <StatCard compact label="Board Members" value={summary.board_members} color="text-green-700" active={activeFilter === 'board'} onClick={() => setActiveFilter('board')} />
-                  <StatCard compact label="Not Invited" value={summary.not_invited ?? 0} pct={pctOf(summary.not_invited)} color="text-rose-600" active={activeFilter === 'not_invited'} onClick={() => setActiveFilter('not_invited')} />
-                </div>
-              </div>
-            ) })()}
+        {summary && (
+          <ComplianceHero
+            summary={summary}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+            trendData={trendData}
+            trendOpen={trendOpen}
+            onToggleTrend={() => setTrendOpen(o => !o)}
+            rentalsEnabled={RENTALS_ENABLED}
+            onStaffClick={() => {
+              if (((summary.admins ?? 0) + (summary.property_managers ?? 0)) === 0 && hoaId !== ALL_HOAS) openInviteContact()
+              else setActiveFilter('staff')
+            }}
+          />
+        )}
 
-        {!isMobile && trendData.length > 0 && (
-          <div className="mb-4">
+        {summary && <ActionStrip summary={summary} activeFilter={activeFilter} setActiveFilter={setActiveFilter} />}
+
+        {trendOpen && trendData.length > 0 && <TrendChart data={trendData} />}
+
+        {!isMobile && (
+          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+            <div className="flex items-center flex-wrap gap-y-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setImportOpen(true)}
+                  disabled={!hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  Import units
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting || !hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  {exporting ? 'Exporting…' : 'Export CSV'}
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 border-l border-[#DCE3EC] pl-3 ml-3">
+                <button
+                  onClick={() => setAddEmailsOpen(true)}
+                  disabled={!hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  Add emails
+                </button>
+                <button
+                  onClick={handleSendBoardReport}
+                  disabled={sendingReport || !hoaId || hoaId === '__all__'}
+                  className={TOOLBAR_BTN}
+                >
+                  {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
+                </button>
+                {(role === 'super_user' || role === 'property_manager') && (
+                  <button
+                    onClick={openInviteContact}
+                    disabled={invitingAdmin || !hoaId || hoaId === '__all__'}
+                    className={TOOLBAR_BTN}
+                  >
+                    {invitingAdmin ? 'Inviting…' : 'Invite to dashboard'}
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center border-l border-[#DCE3EC] pl-3 ml-3">
+                <RequirementsPopover hoa={hoaId !== ALL_HOAS ? selectedHoa : null} />
+              </div>
+            </div>
             <button
-              onClick={() => setTrendOpen(o => !o)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#8493A8] uppercase tracking-wide hover:text-[#54627A] mb-1"
+              onClick={handleInviteAll}
+              disabled={invitingAll || !hoaId || hoaId === '__all__'}
+              className="text-sm bg-[#001842] hover:bg-[#06245C] text-white font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+              title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
             >
-              Compliance trend
-              <svg className={`w-3.5 h-3.5 transition-transform ${trendOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              {invitingAll ? 'Inviting…' : 'Invite owners to their unit page'}
             </button>
-            {trendOpen && <TrendChart data={trendData} />}
           </div>
+        )}
+        {(inviteAllMsg || bulkSuccess) && (
+          <p className="text-xs text-[#0E8E68] -mt-3 mb-4">{inviteAllMsg || bulkSuccess}</p>
         )}
 
         {error && <p className="text-[#C0492F] mb-4">{error}</p>}
@@ -1728,7 +1860,7 @@ export default function AdminDashboard() {
         <>
         <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-auto max-h-[70vh]">
           <table className="w-full text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 border-b border-[#E8ECF2] sticky top-0 z-10">
+            <thead className="bg-[#FAFBFD] border-b border-[#E8ECF2] sticky top-0 z-10">
               <tr>
                 {(() => {
                   const filteredForHeader = units.filter(u => u.tenant_id && u.assoc_title !== 'Property Manager')
@@ -1747,7 +1879,7 @@ export default function AdminDashboard() {
                 {activeColumns.map(c => (
                   <SortTh key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
                 ))}
-                <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Action</th>
+                <th className="text-left px-4 py-3 text-[11px] font-bold uppercase text-[#8493A8]" style={{ fontFamily: MONO, letterSpacing: '.06em' }}>Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF2]">
@@ -1761,9 +1893,10 @@ export default function AdminDashboard() {
                 return (
                 <tr
                   key={u.unit_id}
-                  className={`hover:bg-slate-50 ${(!isContact && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-[#E7EEFA]' : ''}`}
+                  className={`hover:bg-[#EFF4FC] ${(!isContact && (u.tenant_id || u.status === 'missing')) ? 'cursor-pointer' : ''} ${isSelected ? 'bg-[#E7EEFA]' : ''}`}
                 >
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <td className="px-4 py-3 relative" onClick={e => e.stopPropagation()}>
+                    {!isContact && <span aria-hidden className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r ${statusAccent(u)}`} />}
                     {tenantIdStr && !isContact ? (
                       <input
                         type="checkbox"
