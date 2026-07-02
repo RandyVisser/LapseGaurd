@@ -59,6 +59,9 @@ html{scroll-behavior:smooth}
 .lp .brand{display:inline-flex; align-items:center; gap:11px; font-family:"Hanken Grotesk",sans-serif; font-weight:700; font-size:20px; letter-spacing:-.02em}
 .lp .brand img{height:30px; width:auto}
 .lp .brand .w-condo{color:var(--navy)} .lp .brand .w-ins{color:var(--blue)}
+/* nav logo 25% larger than the shared lockup */
+.lp .nav .brand{gap:14px; font-size:25px}
+.lp .nav .brand img{height:37.5px}
 
 /* nav */
 .lp .nav{position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:blur(14px); border-bottom:1px solid var(--line)}
