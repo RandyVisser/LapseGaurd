@@ -44,7 +44,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12">
         <div className="w-full max-w-sm mx-auto">
           <Link to="/" className="text-sm text-[#54627A] hover:text-[#001842] mb-7 inline-block">&larr; Back</Link>
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mb-9" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[72px] mb-9" />
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Sign in to condo.insure
           </h1>
