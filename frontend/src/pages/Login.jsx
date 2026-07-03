@@ -126,7 +126,7 @@ export default function Login() {
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Instantly see which units are compliant&mdash;and which need follow-up.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>AI extracts coverage details from each declaration page automatically.</span></li>
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners email their policy in — no login needed</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners simply email their declaration page&mdash;no account required.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Automated renewal reminders on autopilot</span></li>
           </ul>
           <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
