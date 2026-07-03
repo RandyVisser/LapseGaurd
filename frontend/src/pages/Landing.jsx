@@ -384,7 +384,7 @@ export default function Landing() {
             <div className="tier">
               <div className="band">10,000+ units</div>
               <div className="tprice">$0.25<span className="u">/unit/mo</span></div>
-              <div className="tnote">Management companies</div>
+              <div className="tnote">Large Management Companies</div>
             </div>
           </div>
 
