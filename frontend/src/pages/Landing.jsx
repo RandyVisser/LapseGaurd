@@ -172,7 +172,7 @@ export default function Landing() {
           <div>
             <span className="eyebrow">Every owner’s insurance. One dashboard.</span>
             <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
-            <p className="lede">Track every owner’s insurance in one dashboard. AI reads declaration pages, updates compliance automatically, and reminds owners before policies expire.</p>
+            <p className="lede">Track every owner’s insurance in one dashboard. AI reads declaration pages, updates compliance automatically, and reminds owners before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
