@@ -48,7 +48,7 @@ export default function Login() {
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Welcome back
           </h1>
-          <p className="text-sm text-[#54627A] mb-6">Sign in to your association dashboard.</p>
+          <p className="text-sm text-[#54627A] mb-6">Sign in to your dashboard.</p>
 
           {welcome === '1' && (
             <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
