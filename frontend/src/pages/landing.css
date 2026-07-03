@@ -60,8 +60,8 @@ html{scroll-behavior:smooth}
 .lp .brand img{height:30px; width:auto}
 .lp .brand .w-condo{color:var(--navy)} .lp .brand .w-ins{color:var(--blue)}
 /* nav logo enlarged relative to the shared lockup */
-.lp .nav .brand{gap:17.5px; font-size:31.25px}
-.lp .nav .brand img{height:46.875px}
+.lp .nav .brand{gap:26.25px; font-size:46.875px}
+.lp .nav .brand img{height:70.3125px}
 
 /* nav */
 .lp .nav{position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:blur(14px); border-bottom:1px solid var(--line)}
