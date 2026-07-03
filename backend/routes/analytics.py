@@ -105,6 +105,16 @@ async def funnel(
     )
     counts = {r["name"]: r["n"] for r in rows}
 
+    # Owner invites come from the source of truth (unit_invites), not a beacon —
+    # they're sent server-side, so there's no client to fire an event. coalesce
+    # covers rows created before last_sent_at existed. Internal emails excluded.
+    owners_invited = await conn.fetchval(
+        """SELECT count(*) FROM unit_invites
+           WHERE coalesce(last_sent_at, created_at) > now() - make_interval(days => $1)
+             AND lower(email) <> ALL($2::text[])""",
+        days, _INTERNAL_EMAILS,
+    ) or 0
+
     # Invited Admin/PM activations come from the source of truth (admin_invites),
     # not the funnel beacons — invited staff never hit the public signup page.
     # Internal/founder accounts are excluded from the count.
@@ -115,7 +125,8 @@ async def funnel(
         days, _INTERNAL_EMAILS,
     ) or 0
 
-    extra = [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
+    extra = [{"name": "owners_invited", "label": "Owners invited", "count": owners_invited}]
+    extra += [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
     extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
     return {
         "days": days,
