@@ -128,6 +128,7 @@ export default function Login() {
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>AI extracts coverage details from each declaration page automatically.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners simply email their declaration page&mdash;no account required.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Automatic renewal reminders keep policies up to date.</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Private &amp; secure. Each association only sees its own data.</span></li>
           </ul>
           <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
             Insurance compliance for condo &amp; HOA boards. Built for Florida.
