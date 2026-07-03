@@ -172,7 +172,7 @@ export default function Landing() {
           <div>
             <span className="eyebrow">Insurance compliance for condos</span>
             <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
-            <p className="lede">condo.insure tracks each owner’s policy, reads their declaration page, and sends the reminders for you — so your board always knows who’s covered.</p>
+            <p className="lede"><strong>condo.insure</strong> tracks each owner’s policy, AI reads their dec page and the dashboard automatically gets updated, and sends the reminders for you — so your board always knows who’s covered.</p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
@@ -216,7 +216,7 @@ export default function Landing() {
         <div className="wrap">
           <div className="tabs-head reveal">
             <span className="eyebrow">One place for everything</span>
-            <h2 className="display">Everything your board needs to stay covered</h2>
+            <h2 className="display">Everything your board needs to manage HO-6 compliance.</h2>
           </div>
 
           <div className="tablist" role="tablist" aria-label="Product features">
@@ -333,7 +333,7 @@ export default function Landing() {
       <section className="stakes">
         <div className="wrap reveal">
           <span className="eyebrow">Why it matters</span>
-          <h2 className="display">When one unit lapses, the bill <span className="u">doesn’t stop at their door.</span></h2>
+          <h2 className="display">One lapsed unit can become <span className="u">everyone’s problem.</span></h2>
           <div className="stakes-grid">
             <div className="stake"><div className="k">Shared exposure</div><p>A claim on an <b>uninsured unit</b> can fall back to the master policy — and every owner’s premium.</p></div>
             <div className="stake"><div className="k">Silent renewals</div><p>Policies expire on their <b>own schedule</b>. Nobody tells the board until there’s a claim.</p></div>
@@ -347,15 +347,15 @@ export default function Landing() {
         <div className="wrap">
           <div className="how-head reveal">
             <span className="eyebrow">How it works</span>
-            <h2 className="display">From a guess to a board, in five steps.</h2>
-            <p>You bring the association. We build the unit list from public records, then keep every policy current for you.</p>
+            <h2 className="display">From a guess to a dashboard, in five steps.</h2>
+            <p>You bring the association. We build your unit list from public records, then automatically track every owner’s coverage.</p>
           </div>
           <div className="steps">
-            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Add your name and address. That’s the whole form.</p><div className="meta">~60 seconds</div></div></div>
+            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Just your name and association address. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
             <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it’s ready.</p><div className="meta">done before you log in</div></div></div>
             <div className="step reveal"><div className="idx">03</div><div><h3>Review owners, send invites</h3><p>Check the list, fill any missing emails, and send each owner a link tied to their unit.</p><div className="meta">one click per owner</div></div></div>
-            <div className="step reveal"><div className="idx">04</div><div><h3>Owners upload their dec page</h3><p>Each owner adds their declaration page. We read it and check it against your HO-6 requirements.</p><div className="meta">AI-reviewed on upload</div></div></div>
-            <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>Active, expiring, lapsed, or missing — at a glance. Automated reminders go out at 30, 7, and 1 day, and the moment a policy lapses.</p><div className="meta">reminders on autopilot</div></div></div>
+            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners simply upload or email their declaration page. We read it, verify coverage, and update their compliance status automatically.</p><div className="meta">AI-reviewed on upload</div></div></div>
+            <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>See every unit’s status at a glance. Automated reminders go out 30, 7, and 1 day before renewal—and instantly if a policy lapses.</p><div className="meta">reminders on autopilot</div></div></div>
           </div>
         </div>
       </section>
@@ -365,8 +365,8 @@ export default function Landing() {
         <div className="wrap">
           <div className="sec-head center reveal">
             <span className="eyebrow" style={{ justifyContent: 'center' }}>Pricing</span>
-            <h2 className="display">Priced by the unit. Cheaper at scale.</h2>
-            <p>Units are billed by band, so the per-unit rate drops as you grow — with a $50/month minimum. Every feature included at every size.</p>
+            <h2 className="display">Priced by the unit. Built to grow.</h2>
+            <p>Simple per-unit pricing with volume discounts as your portfolio grows. Every feature is included, regardless of size.</p>
           </div>
 
           <div className="tiers reveal">
@@ -390,18 +390,18 @@ export default function Landing() {
 
           <div className="price-foot reveal">
             <div className="pf-left">
-              <div className="price-incl-h">Everything included, at every tier</div>
+              <div className="price-incl-h">Every feature. Every plan.</div>
               <ul className="price-list price-list-2col">
                 <li>Real-time compliance board</li>
                 <li>AI declaration-page review</li>
-                <li>Email-in — owners need no login</li>
+                <li>Owners can email in declaration pages (no login required).</li>
                 <li>Automated renewal reminders</li>
                 <li>Shared document center</li>
-                <li>Unlimited owners &amp; admins</li>
+                <li>Unlimited owners and administrators.</li>
               </ul>
             </div>
             <div className="pf-right">
-              <div className="price-eg">A 120-unit association = <b>$120 / month</b></div>
+              <div className="price-eg">A 120-unit association pays <b>$120/month</b>.</div>
               <Link className="btn btn-primary btn-block" to="/signup">Start free</Link>
               <div className="price-mini">$50/mo minimum · no setup fee · cancel anytime</div>
             </div>
@@ -419,27 +419,27 @@ export default function Landing() {
           <div className="faq-list reveal">
             <details className="faq-item" open>
               <summary>Do unit owners need to create an account?</summary>
-              <p>No. Owners can forward their insurer’s email or use a one-time link to send their declaration page — no account, no password. We match it to their unit automatically.</p>
+              <p>No. Owners simply forward their insurer’s email or use a secure one-time link to submit their declaration page. No account or password is required—we automatically match it to the correct unit.</p>
             </details>
             <details className="faq-item">
               <summary>What if we don’t have emails for every owner?</summary>
-              <p>That’s normal. We assemble your owner list from public property records during setup, and you fill in emails as you collect them. You can invite owners one at a time as you go.</p>
+              <p>That’s normal. We build your owner list from public property records during setup. You can add email addresses over time and invite owners whenever you’re ready.</p>
             </details>
             <details className="faq-item">
               <summary>How long does setup take?</summary>
-              <p>Minutes to start. You add your association; we pre-build the unit list from public property records and invite you in to review — no spreadsheet to upload.</p>
+              <p>Just a few minutes. Enter your association’s name and address, and we’ll build your owner list from public property records. You’ll be invited to review it—no spreadsheets or manual imports required.</p>
             </details>
             <details className="faq-item">
               <summary>Is our association’s data secure?</summary>
-              <p>Yes. Documents are stored privately and access is scoped to your association. Owners only ever see their own unit and the shared building documents.</p>
+              <p>Yes. Access is limited to your association, and every owner can only view their own unit plus shared building documents. Your association’s records are never visible to other communities.</p>
             </details>
             <details className="faq-item">
               <summary>What does it cost?</summary>
-              <p>$1 per unit, per month for most associations (with a $50/month minimum), dropping to $0.50 and then $0.25 per unit at large-portfolio scale. Billed to the association — no setup fee, and you can start free.</p>
+              <p>Most associations pay $1 per unit, per month, with a $50/month minimum. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free.</p>
             </details>
             <details className="faq-item">
               <summary>What insurance does it track?</summary>
-              <p>Unit-owner HO-6 policies, checked against your association’s requirements — Coverage A, loss assessment, wind/hurricane, and more, pulled straight from the declaration page.</p>
+              <p>Unit-owner HO-6 policies. We read each declaration page and verify the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
             </details>
           </div>
         </div>
@@ -448,7 +448,7 @@ export default function Landing() {
       {/* CTA */}
       <section className="cta">
         <div className="wrap reveal">
-          <h2 className="display">Put your whole building on one board.</h2>
+          <h2 className="display">Put your whole association on one dashboard.</h2>
           <p>Set up your association in minutes. No credit card required.</p>
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Start free</Link>
