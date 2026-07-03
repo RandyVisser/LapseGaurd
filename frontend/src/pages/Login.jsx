@@ -46,7 +46,7 @@ export default function Login() {
           <Link to="/" className="text-sm text-[#54627A] hover:text-[#001842] mb-7 inline-block">&larr; Back</Link>
           <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mb-9" />
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-            Welcome back
+            Sign in to condo.insure
           </h1>
           <p className="text-sm text-[#54627A] mb-6">Sign in to manage unit-owner insurance compliance.</p>
 
