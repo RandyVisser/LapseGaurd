@@ -170,7 +170,7 @@ export default function Landing() {
       <section className="hero">
         <div className="wrap">
           <div>
-            <span className="eyebrow">HO-6 Compliance for Condo Associations</span>
+            <span className="eyebrow">Every owner’s insurance. One dashboard.</span>
             <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
             <p className="lede">Track every owner’s insurance in one dashboard. AI reads declaration pages, updates compliance automatically, and reminds owners before policies expire.</p>
             <div className="hero-cta">
