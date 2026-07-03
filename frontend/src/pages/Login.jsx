@@ -124,7 +124,7 @@ export default function Login() {
             Track every owner&rsquo;s insurance in one dashboard.
           </h2>
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>See every unit&rsquo;s insurance status at a glance</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Instantly see which units are compliant&mdash;and which need follow-up.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>AI reads each declaration page for you</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners email their policy in — no login needed</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Automated renewal reminders on autopilot</span></li>
