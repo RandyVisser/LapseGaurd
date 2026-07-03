@@ -121,7 +121,7 @@ export default function Login() {
             condo.insure
           </span>
           <h2 className="mt-4 text-[34px] leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-            Your whole building, covered — on one board.
+            Track every owner&rsquo;s insurance in one dashboard.
           </h2>
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>See every unit&rsquo;s insurance status at a glance</span></li>
