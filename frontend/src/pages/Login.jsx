@@ -131,7 +131,7 @@ export default function Login() {
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Private &amp; secure. Each association only sees its own data.</span></li>
           </ul>
           <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
-            The easiest way for Florida condo boards to manage insurance compliance. Built for Florida.
+            The easiest way for condo boards to manage insurance compliance. Built for Florida.
           </p>
         </div>
       </aside>
