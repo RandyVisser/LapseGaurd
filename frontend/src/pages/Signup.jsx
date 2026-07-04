@@ -23,7 +23,7 @@ export default function Signup() {
   const [form, setForm] = useState({
     association_name: '', address: '', unit_count: '', has_owner_emails: '',
     admin_name: '', email: '',
-    ho6_coverage_a_min: '', ho6_coverage_e_min: '', ho6_wind_required: true, ho6_additional_interest_required: false,
+    ho6_coverage_a_min: 50000, ho6_coverage_e_min: 300000, ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
     certify_authorized: false,
     agree_tos: false,
@@ -166,84 +166,10 @@ export default function Signup() {
             ].map(renderField)}
 
             <div className="pt-2 border-t border-slate-200">
-              <p className="text-sm font-semibold text-[#0B1B33] mb-1">HO-6 Policy Requirements</p>
-              <p className="text-xs text-slate-500 mb-3">
-                Set the minimum coverage your association requires unit-owners to carry.
-                Leave blank if you don&rsquo;t want to enforce a minimum.
+              <p className="text-sm text-slate-600">
+                We&rsquo;ll pre-configure your association using standard Florida condo requirements.
+                You can customize your requirements later.
               </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={LABEL}>Coverage A (Dwelling) min</label>
-                  <input
-                    type="number" min="0" step="1000"
-                    value={form.ho6_coverage_a_min}
-                    onChange={set('ho6_coverage_a_min')}
-                    placeholder="50000"
-                    className={INPUT}
-                  />
-                </div>
-                <div>
-                  <label className={LABEL}>Coverage E (Liability) min</label>
-                  <input
-                    type="number" min="0" step="1000"
-                    value={form.ho6_coverage_e_min}
-                    onChange={set('ho6_coverage_e_min')}
-                    placeholder="300000"
-                    className={INPUT}
-                  />
-                </div>
-              </div>
-
-              <label className="flex items-center gap-2 mt-3 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.ho6_policy_in_force_required}
-                  onChange={e => setForm(f => ({ ...f, ho6_policy_in_force_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5]"
-                />
-                Require an in-force policy on file
-              </label>
-
-              <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.ho6_named_insured_match_required}
-                  onChange={e => setForm(f => ({ ...f, ho6_named_insured_match_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5]"
-                />
-                Require named insured to match unit-owner
-              </label>
-
-              <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.ho6_property_address_match_required}
-                  onChange={e => setForm(f => ({ ...f, ho6_property_address_match_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5]"
-                />
-                Require property address to match unit
-              </label>
-
-              <label className="flex items-center gap-2 mt-3 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.ho6_wind_required}
-                  onChange={e => setForm(f => ({ ...f, ho6_wind_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5]"
-                />
-                Require wind coverage (HO6 with wind, or HO6 + separate wind-only policy)
-              </label>
-
-              <label className="flex items-center gap-2 mt-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.ho6_additional_interest_required}
-                  onChange={e => setForm(f => ({ ...f, ho6_additional_interest_required: e.target.checked }))}
-                  className="rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5]"
-                />
-                Require association to be listed as Additional Interest on the policy
-              </label>
             </div>
 
             <label className="flex items-start gap-2 text-sm text-slate-600 pt-2 border-t border-slate-200">
