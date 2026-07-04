@@ -167,8 +167,8 @@ export default function Signup() {
 
             <div className="pt-2 border-t border-slate-200">
               <p className="text-sm text-slate-600">
-                We&rsquo;ll pre-configure your association using standard Florida condo requirements.
-                You can customize your requirements later.
+                We&rsquo;ll pre-configure your association using standard Florida condo insurance requirements.
+                You can review and customize them at any time.
               </p>
             </div>
 
