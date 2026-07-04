@@ -26,6 +26,7 @@ export default function Signup() {
     ho6_coverage_a_min: 50000, ho6_coverage_e_min: 300000, ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
     certify_authorized: false,
+    certify_records_access: false,
     agree_tos: false,
   })
   const [loading, setLoading] = useState(false)
@@ -180,7 +181,18 @@ export default function Signup() {
                 onChange={e => setForm(f => ({ ...f, certify_authorized: e.target.checked }))}
                 className="mt-0.5 rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5] flex-shrink-0"
               />
-              <span>I certify that I am authorized by the Association to enroll this Association in condo.insure and to provide access to Association insurance compliance records.</span>
+              <span>I certify that I&rsquo;m authorized to enroll this association in condo.insure.</span>
+            </label>
+
+            <label className="flex items-start gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                required
+                checked={form.certify_records_access}
+                onChange={e => setForm(f => ({ ...f, certify_records_access: e.target.checked }))}
+                className="mt-0.5 rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5] flex-shrink-0"
+              />
+              <span>I understand this grants access to the association&rsquo;s insurance compliance records.</span>
             </label>
 
             <label className="flex items-start gap-2 text-sm text-slate-600">
