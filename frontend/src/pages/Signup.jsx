@@ -134,7 +134,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className={LABEL}>Do you have email addresses for your unit-owners?</label>
+              <label className={LABEL}>Do you already have email addresses for your owners?</label>
               <div className="flex gap-3 mt-1">
                 {['Yes', 'No'].map(opt => {
                   const val = opt.toLowerCase()
