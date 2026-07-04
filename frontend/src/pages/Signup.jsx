@@ -212,6 +212,10 @@ export default function Signup() {
               className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
               {loading ? 'Submitting…' : 'Get Started'}
             </button>
+
+            <p className="text-center text-xs text-slate-500">
+              No credit card required. We&rsquo;ll email you when your association is ready.
+            </p>
           </form>
 
           <p className="text-center text-sm text-[#54627A] mt-6">
