@@ -369,6 +369,16 @@ export default function Landing() {
             <p>Simple per-unit pricing with volume discounts as your portfolio grows. Every feature is included, regardless of size.</p>
           </div>
 
+          <div className="reveal" style={{ textAlign: 'center', marginBottom: 24 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: '#E4F5EE', color: '#0E8E68', border: '1px solid #B7E3D0',
+              borderRadius: 999, padding: '8px 18px', fontWeight: 700, fontSize: 15,
+            }}>
+              <span aria-hidden="true">✓</span> 90 days free — no credit card required
+            </span>
+          </div>
+
           <div className="tiers reveal">
             <div className="tier feat">
               <div className="tag">Most associations</div>
