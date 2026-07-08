@@ -1,15 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track } from '../analytics'
 import './landing.css'
 
-// Same Google Calendar booking link the main landing page uses.
+// Same Google Calendar booking link + 2-minute tour video the main landing uses.
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
+const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
 
 // Personalized postcard landing page for the Vista Royale board.
 // Reachable at /vista_royale — pitches condo.insure adoption with
 // "Start free" + "Book a demo" CTAs.
 export default function VistaRoyale() {
+  const [tourOpen, setTourOpen] = useState(false)
   useEffect(() => track('vista_royale_view'), [])
 
   // Reveal-on-scroll for .reveal sections (same effect as the main landing page).
@@ -58,6 +60,9 @@ export default function VistaRoyale() {
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
+              <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)}>
+                <span className="play" aria-hidden="true"></span>Watch the 2-min tour
+              </button>
             </div>
             <p style={{ marginTop: 14, fontSize: 14, color: 'var(--muted)' }}>
               90 days free &middot; no credit card required &middot; built for Florida condos.
@@ -113,6 +118,9 @@ export default function VistaRoyale() {
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Start free</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
+            <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)}>
+              <span className="play" aria-hidden="true"></span>Watch the 2-min tour
+            </button>
           </div>
         </div>
       </section>
@@ -124,6 +132,25 @@ export default function VistaRoyale() {
           <Link to="/terms" style={{ color: 'var(--muted)' }}>Terms</Link>
         </p>
       </footer>
+
+      {/* 2-minute tour modal */}
+      {tourOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setTourOpen(false)}>
+          <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setTourOpen(false)}
+              className="absolute -top-9 right-0 text-white/80 hover:text-white text-2xl leading-none" aria-label="Close">✕</button>
+            <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl" style={{ paddingBottom: '56.25%' }}>
+              <video
+                src={TOUR_VIDEO_URL}
+                title="condo.insure — 2-minute tour"
+                className="absolute inset-0 w-full h-full"
+                controls
+                autoPlay
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
