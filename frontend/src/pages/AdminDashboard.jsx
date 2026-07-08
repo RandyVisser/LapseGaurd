@@ -267,7 +267,7 @@ const COLUMNS = [
   { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', width: '1%', render: u => (
       <span className="flex items-center gap-1.5">
         {u.is_renter && <span className="text-[#8493A8]">↳</span>}
-        <span className="font-semibold text-[#0B1B33]" style={{ fontFamily: MONO }}>{u.unit_number}</span>
+        <span className="font-semibold text-[#0B1B33] whitespace-nowrap" style={{ fontFamily: MONO }} title={u.unit_number}>{truncName(u.unit_number, 15)}</span>
         {RENTALS_ENABLED && u.is_rental && !u.is_renter && (
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E7EEFA] text-[#014AC5] border border-[#C7DBF5]">Rental</span>
         )}
