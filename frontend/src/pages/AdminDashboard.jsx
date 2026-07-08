@@ -270,12 +270,12 @@ const COLUMNS = [
         )}
       </span>
     ) },
+  { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-[#8493A8]">—</span> },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => <OwnerName name={u.owner_primary || u.tenant_name} /> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
   { key: 'purchase_date',          label: 'Purchase Date',         group: 'Owner details', render: u => u.purchase_date || '—' },
-  { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-[#8493A8]">—</span> },
   { key: 'city',                   label: 'City',                  group: 'Address', render: u => u.city || '—' },
   { key: 'state',                  label: 'St',                    group: 'Address', render: u => u.state || '—' },
   { key: 'zip',                    label: 'Zip',                   group: 'Address', render: u => u.zip || '—' },
