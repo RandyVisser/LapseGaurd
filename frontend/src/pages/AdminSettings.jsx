@@ -309,6 +309,8 @@ export default function AdminSettings() {
           </div>
         )}
 
+        {BILLING_ENABLED && !loading && form && <BillingPanel hoaId={hoaId} />}
+
         {!loading && form && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 space-y-4">
@@ -776,8 +778,6 @@ export default function AdminSettings() {
             </div>
           </div>
         )}
-
-        {BILLING_ENABLED && !loading && form && <BillingPanel hoaId={hoaId} />}
 
         {/* Deleting an association is staff-only — a churned customer's data is
             retained (not destroyed) so they can be reactivated if they return. */}

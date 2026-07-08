@@ -44,7 +44,7 @@ export default function BillingPanel({ hoaId }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mt-6">
+    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6">
       <p className="font-semibold text-[#0B1B33]">Billing</p>
       <p className="text-xs text-[#54627A] mt-1 mb-3">Your condo.insure subscription — billed per unit, monthly.</p>
       {error && <p className="text-sm text-[#C0492F] mb-3">{error}</p>}
@@ -58,8 +58,16 @@ export default function BillingPanel({ hoaId }) {
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
           <p className="text-sm text-[#54627A] mb-1">
-            Status: <span className="font-medium text-[#0B1B33]">{STATUS_LABEL[data.status] || data.status}</span>
+            Status: <span className="font-medium text-[#0B1B33]">
+              {data.cancel_at && data.status !== 'canceled' ? 'Canceled' : (STATUS_LABEL[data.status] || data.status)}
+            </span>
           </p>
+          {data.cancel_at && data.status !== 'canceled' && (
+            <p className="text-sm text-[#C0492F] font-medium mb-4">
+              Subscription canceled — access ends {new Date(data.cancel_at).toLocaleDateString()}.
+              Use “Manage billing” to resume it.
+            </p>
+          )}
           {!data.has_subscription && data.trial_ends_at && (
             <p className={`text-sm mb-4 ${data.trial_active ? 'text-[#54627A]' : 'text-[#C0492F] font-medium'}`}>
               {data.trial_active

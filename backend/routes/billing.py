@@ -62,7 +62,7 @@ async def _authz_hoa(conn: asyncpg.Connection, user: AuthUser, hoa_id: str):
     super_user: any; property_manager: their assigned HOAs; hoa_admin: own."""
     hoa = await conn.fetchrow(
         """SELECT id, name, admin_email, stripe_customer_id, stripe_subscription_id,
-                  stripe_price_id, billing_status, trial_ends_at
+                  stripe_price_id, billing_status, trial_ends_at, billing_cancel_at
            FROM hoas WHERE id = $1""",
         hoa_id,
     )
@@ -136,6 +136,7 @@ async def get_billing(
         "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
         "trial_days_left": trial_days_left,
         "trial_active": trial_active,
+        "cancel_at": hoa["billing_cancel_at"].isoformat() if hoa["billing_cancel_at"] else None,
     }
 
 
@@ -225,13 +226,22 @@ async def stripe_webhook(
 
     if etype in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"):
         status = "canceled" if etype.endswith("deleted") else obj.get("status")
+        # Portal cancels default to "at period end": status stays active/trialing
+        # but cancel_at(_period_end) is set. Track the date so the UI can say so.
+        cancel_at = None
+        if not etype.endswith("deleted") and obj.get("cancel_at_period_end"):
+            ts = obj.get("cancel_at") or obj.get("current_period_end")
+            if ts:
+                cancel_at = datetime.fromtimestamp(ts, tz=timezone.utc)
         await conn.execute(
-            "UPDATE hoas SET billing_status = $1, stripe_subscription_id = $2 WHERE stripe_customer_id = $3",
-            status, obj.get("id"), customer_id,
+            "UPDATE hoas SET billing_status = $1, stripe_subscription_id = $2, billing_cancel_at = $3 "
+            "WHERE stripe_customer_id = $4",
+            status, obj.get("id"), cancel_at, customer_id,
         )
     elif etype == "checkout.session.completed":
         await conn.execute(
-            "UPDATE hoas SET billing_status = 'active', stripe_subscription_id = $1 WHERE stripe_customer_id = $2",
+            "UPDATE hoas SET billing_status = 'active', stripe_subscription_id = $1, billing_cancel_at = NULL "
+            "WHERE stripe_customer_id = $2",
             obj.get("subscription"), customer_id,
         )
     elif etype == "invoice.payment_failed":
