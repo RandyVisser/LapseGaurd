@@ -21,10 +21,10 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
-# Resend's default rate limit is 2 requests/second account-wide; every caller
+# Our Resend account is limited to 10 requests/second account-wide; every caller
 # (bulk invites, notify-bulk, the alerts cron) shares this process-wide pacer so
 # concurrent sends queue instead of blowing the limit and failing with 429s.
-RESEND_SEND_INTERVAL = float(os.environ.get("RESEND_SEND_INTERVAL", "0.55"))
+RESEND_SEND_INTERVAL = float(os.environ.get("RESEND_SEND_INTERVAL", "0.11"))
 _send_lock = asyncio.Lock()
 _last_send_at = 0.0
 
