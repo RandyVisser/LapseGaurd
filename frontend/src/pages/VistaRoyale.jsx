@@ -32,6 +32,9 @@ export default function VistaRoyale() {
             <span><span className="w-condo">condo</span><span className="w-ins">.insure</span></span>
           </Link>
           <nav className="nav-links">
+            <a className="txt nav-section-link" href="/#features">Product</a>
+            <a className="txt nav-section-link" href="/#how">How it works</a>
+            <a className="txt nav-section-link" href="/#pricing">Pricing</a>
             <Link className="txt" to="/login">Sign in</Link>
             <Link className="btn btn-primary" to="/signup">Start free</Link>
           </nav>

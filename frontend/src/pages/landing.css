@@ -395,6 +395,7 @@ html{scroll-behavior:smooth}
 @media(max-width:560px){
   .lp{font-size:16px}
   .lp .nav-links a.txt[href^="#"]{display:none}
+  .lp .nav-links .nav-section-link{display:none}  /* Vista Royale nav: hide section links on mobile */
   /* keep the enlarged desktop logo from crowding Sign in / Start free on mobile */
   .lp .nav .brand{gap:9px; font-size:20px}
   .lp .nav .brand img{height:30px}
