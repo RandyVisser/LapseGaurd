@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
+import TrialBanner from '../components/TrialBanner'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 // Subrental flagging — dark until the full rental flow is built + tested.
@@ -1147,6 +1148,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#F7F9FC]">
       <Nav role="hoa_admin" title="Compliance Dashboard" />
       <main className="max-w-full mx-auto px-4 pt-4 pb-8">
+        <TrialBanner hoaId={hoaId} />
         <div className="mb-5">
           <div>
             <h2 className="text-[26px] leading-tight font-extrabold tracking-tight text-[#0B1B33]" style={{ fontFamily: DISPLAY }}>

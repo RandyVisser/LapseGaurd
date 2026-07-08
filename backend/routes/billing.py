@@ -23,6 +23,7 @@ different Stripe Price — set hoas.stripe_price_id to override the env default.
 """
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -61,7 +62,7 @@ async def _authz_hoa(conn: asyncpg.Connection, user: AuthUser, hoa_id: str):
     super_user: any; property_manager: their assigned HOAs; hoa_admin: own."""
     hoa = await conn.fetchrow(
         """SELECT id, name, admin_email, stripe_customer_id, stripe_subscription_id,
-                  stripe_price_id, billing_status
+                  stripe_price_id, billing_status, trial_ends_at
            FROM hoas WHERE id = $1""",
         hoa_id,
     )
@@ -101,14 +102,22 @@ async def get_billing(
     hoa = await _authz_hoa(conn, user, hoa_id)
     units = await _billable_units(conn, hoa_id)
     rate = DEFAULT_UNIT_RATE_CENTS
+    trial_ends_at = hoa["trial_ends_at"]
+    trial_days_left = None
+    if trial_ends_at:
+        trial_days_left = max((trial_ends_at - datetime.now(timezone.utc)).days, 0)
+    trial_active = bool(trial_days_left)  # None (no trial set) and 0 (expired) both mean not active
     return {
         "enabled": BILLING_ENABLED,
         "status": hoa["billing_status"] or "none",
-        "in_good_standing": (hoa["billing_status"] or "none") in _GOOD_STANDING,
+        "in_good_standing": (hoa["billing_status"] or "none") in _GOOD_STANDING or trial_active,
         "units": units,
         "unit_rate_cents": rate,
         "monthly_cents": units * rate,
         "has_subscription": bool(hoa["stripe_subscription_id"]),
+        "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+        "trial_days_left": trial_days_left,
+        "trial_active": trial_active,
     }
 
 
@@ -138,6 +147,14 @@ async def create_checkout(
             "UPDATE hoas SET stripe_customer_id = $1 WHERE id = $2", customer_id, hoa_id,
         )
 
+    # Subscribing mid-trial shouldn't cut the free 90 days short: carry the
+    # remaining trial into Stripe so the first charge lands when it would have
+    # anyway. (Stripe requires trial_end >= 48h out, hence the 2-day floor.)
+    subscription_data = {}
+    trial_ends_at = hoa["trial_ends_at"]
+    if trial_ends_at and trial_ends_at > datetime.now(timezone.utc) + timedelta(days=2):
+        subscription_data["trial_end"] = int(trial_ends_at.timestamp())
+
     session = stripe.checkout.Session.create(
         mode="subscription",
         customer=customer_id,
@@ -146,6 +163,7 @@ async def create_checkout(
         cancel_url=f"{APP_URL}/admin/settings?billing=cancel",
         metadata={"hoa_id": hoa_id},
         allow_promotion_codes=True,
+        **({"subscription_data": subscription_data} if subscription_data else {}),
     )
     return {"url": session.url}
 
@@ -214,6 +232,8 @@ async def assert_billing_ok(conn: asyncpg.Connection, hoa_id: str) -> None:
     # Intentionally permissive until we choose to enforce. To turn on the
     # paywall, replace the early return below with the 402 raise.
     return
-    # status = await conn.fetchval("SELECT billing_status FROM hoas WHERE id = $1", hoa_id)
-    # if (status or "none") not in _GOOD_STANDING:
+    # row = await conn.fetchrow(
+    #     "SELECT billing_status, trial_ends_at FROM hoas WHERE id = $1", hoa_id)
+    # in_trial = row["trial_ends_at"] and row["trial_ends_at"] > datetime.now(timezone.utc)
+    # if (row["billing_status"] or "none") not in _GOOD_STANDING and not in_trial:
     #     raise HTTPException(status_code=402, detail="This association's subscription is inactive.")

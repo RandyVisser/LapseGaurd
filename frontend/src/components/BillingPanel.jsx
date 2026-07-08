@@ -57,9 +57,19 @@ export default function BillingPanel({ hoaId }) {
             <Stat label="Rate" value={`${dollars(data.unit_rate_cents)}/unit`} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
-          <p className="text-sm text-[#54627A] mb-4">
+          <p className="text-sm text-[#54627A] mb-1">
             Status: <span className="font-medium text-[#0B1B33]">{STATUS_LABEL[data.status] || data.status}</span>
           </p>
+          {!data.has_subscription && data.trial_ends_at && (
+            <p className={`text-sm mb-4 ${data.trial_active ? 'text-[#54627A]' : 'text-[#C0492F] font-medium'}`}>
+              {data.trial_active
+                ? <>Free trial — {data.trial_days_left} day{data.trial_days_left !== 1 ? 's' : ''} left
+                    (ends {new Date(data.trial_ends_at).toLocaleDateString()}). Subscribe now and billing
+                    starts when the trial ends.</>
+                : 'Your free trial has ended — subscribe to keep compliance tracking running.'}
+            </p>
+          )}
+          {(data.has_subscription || !data.trial_ends_at) && <div className="mb-3" />}
           <div className="flex gap-2">
             {data.has_subscription ? (
               <button type="button" onClick={() => go('portal')} disabled={busy}
