@@ -68,7 +68,7 @@ async def _compliance_status_by_tenant(
     HO6-with-wind vs (HO6-wind-excluded + standalone wind) coverage combo.
     Returns (statuses, expiration_dates, manually_approved) keyed by tenant_id."""
     if not tenant_ids:
-        return {}, {}
+        return {}, {}, {}
     rows = await conn.fetch(
         """SELECT id, tenant_id, status, coverage_type, expiration_date, uploaded_at,
                   extracted_data, review_overrides
