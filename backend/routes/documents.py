@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel, EmailStr
 from typing import List
 import asyncpg
 
@@ -14,7 +15,12 @@ from models.db import get_conn
 from auth.jwt import AuthUser, get_current_user, require_hoa_admin
 from routes.hoa import _assert_hoa_access
 from services.storage import signed_url, object_path, fetch_bytes
+from services.email import send_email, document_share_html
 from services.pdf_fill import is_fillable, fill_form
+
+# Emailed document links live longer than an open-page signed URL — the
+# recipient may not open the email for days.
+EMAIL_LINK_EXPIRY = 60 * 60 * 24 * 7  # 7 days
 
 HOA_BUCKET = "hoa-documents"
 
@@ -205,6 +211,45 @@ async def upload_hoa_document(
     )
 
     return await _doc_out(row)
+
+
+class DocumentEmailBody(BaseModel):
+    email: EmailStr
+    note: str | None = None
+
+
+@router.post("/hoa/{hoa_id}/documents/{doc_id}/email")
+async def email_hoa_document(
+    hoa_id: str,
+    doc_id: str,
+    body: DocumentEmailBody,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Email a shared HOA document to a chosen recipient as a link. The link is a
+    fresh 7-day signed URL so it stays valid until the recipient opens it."""
+    await _assert_hoa_access(user, hoa_id, conn)
+
+    doc = await conn.fetchrow(
+        "SELECT id, hoa_id, name, file_url, doc_type FROM documents WHERE id = $1 AND hoa_id = $2",
+        doc_id, hoa_id,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    hoa = await conn.fetchrow("SELECT name FROM hoas WHERE id = $1", hoa_id)
+    link = await signed_url(doc["file_url"], HOA_BUCKET, expires_in=EMAIL_LINK_EXPIRY)
+    if not link:
+        raise HTTPException(status_code=502, detail="Could not prepare the document link.")
+
+    subject, html = document_share_html(
+        doc["name"], doc["doc_type"], (hoa["name"] if hoa else ""), link, body.note,
+    )
+    # reply_to the admin so the recipient can respond to a real person.
+    ok = await send_email(body.email, subject, html, reply_to=user.email)
+    if not ok:
+        raise HTTPException(status_code=502, detail="Could not send the email. Please try again.")
+    return {"sent": True}
 
 
 @router.delete("/hoa/{hoa_id}/documents/{doc_id}")

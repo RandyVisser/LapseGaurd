@@ -86,6 +86,31 @@ export default function AdminDocuments() {
   const [deletingId, setDeletingId] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  // Email-a-document dialog
+  const [emailDoc, setEmailDoc] = useState(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailNote, setEmailNote] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailErr, setEmailErr] = useState('')
+  const [emailSent, setEmailSent] = useState('')
+
+  async function handleEmailDocument(e) {
+    e.preventDefault()
+    setEmailSending(true); setEmailErr('')
+    try {
+      await apiPost(`/hoa/${hoaId}/documents/${emailDoc.id}/email`, {
+        email: emailTo.trim(),
+        note: emailNote.trim() || undefined,
+      })
+      setEmailSent(`Sent to ${emailTo.trim()}.`)
+      setEmailDoc(null)
+      setTimeout(() => setEmailSent(''), 5000)
+    } catch (err) {
+      setEmailErr(err.message)
+    } finally {
+      setEmailSending(false)
+    }
+  }
 
   async function load() {
     if (!hoaId || hoaId === '__all__') { setDocs([]); return }
@@ -525,10 +550,17 @@ export default function AdminDocuments() {
                     {days !== null && days < 0 && <span className="ml-1.5 text-xs">(expired)</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                      className="inline-block text-xs font-semibold text-[#014AC5] border border-[#C7DBF5] bg-white hover:bg-[#E7EEFA] px-3 py-1.5 rounded-lg">
-                      View
-                    </a>
+                    <span className="inline-flex items-center gap-2">
+                      <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                        className="inline-block text-xs font-semibold text-[#014AC5] border border-[#C7DBF5] bg-white hover:bg-[#E7EEFA] px-3 py-1.5 rounded-lg">
+                        View
+                      </a>
+                      <button
+                        onClick={() => { setEmailDoc(d); setEmailTo(''); setEmailNote(''); setEmailErr('') }}
+                        className="inline-block text-xs font-semibold text-[#014AC5] border border-[#C7DBF5] bg-white hover:bg-[#E7EEFA] px-3 py-1.5 rounded-lg">
+                        Email
+                      </button>
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -549,7 +581,56 @@ export default function AdminDocuments() {
             </tbody>
           </table>
         </div>
+
+        {emailSent && (
+          <p className="mt-3 text-sm text-[#0E8E68]">✓ {emailSent}</p>
+        )}
       </main>
+
+      {/* Email-a-document dialog */}
+      {emailDoc && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => !emailSending && setEmailDoc(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h2 className="font-semibold text-[#0B1B33] mb-1">Email document</h2>
+            <p className="text-xs text-[#54627A] mb-4">
+              Send <strong>{emailDoc.name}</strong> as a secure link (valid 7 days). Replies go to your email.
+            </p>
+            <form onSubmit={handleEmailDocument} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-[#54627A] mb-1">Recipient email</label>
+                <input
+                  type="email" required autoFocus
+                  value={emailTo}
+                  onChange={e => setEmailTo(e.target.value)}
+                  placeholder="name@email.com"
+                  className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#54627A] mb-1">Note <span className="font-normal text-[#8493A8]">(optional)</span></label>
+                <textarea
+                  value={emailNote}
+                  onChange={e => setEmailNote(e.target.value)}
+                  rows={3}
+                  placeholder="Add a short message…"
+                  className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
+                />
+              </div>
+              {emailErr && <p className="text-sm text-[#C0492F]">{emailErr}</p>}
+              <div className="flex gap-2">
+                <button type="submit" disabled={emailSending}
+                  className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                  {emailSending ? 'Sending…' : 'Send'}
+                </button>
+                <button type="button" onClick={() => setEmailDoc(null)} disabled={emailSending}
+                  className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50 disabled:opacity-60">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
