@@ -14,6 +14,33 @@ export default function VistaRoyale() {
   const [tourOpen, setTourOpen] = useState(false)
   useEffect(() => track('vista_royale_view'), [])
 
+  // Postalytics page-click tracking. Reads the _bn_d token Postalytics appends
+  // to the personalized postcard URL (or a cookie), exposes it as a global, then
+  // loads the Postalytics embed. No-op when the token isn't present (e.g. direct
+  // visits). Scoped to this postcard page only.
+  useEffect(() => {
+    if (window._bn_d_loaded) return
+    const rc = new RegExp('_bn_d=([^;]+)')
+    const rq = new RegExp('_bn_d=([^&#]*)', 'i')
+    const aq = rq.exec(window.location.href)
+    let a = null
+    if (aq != null) a = aq
+    else {
+      const ac = rc.exec(document.cookie)
+      if (ac != null) a = ac
+    }
+    if (a != null) {
+      window._bn_d = a[1]
+      window._bn_d_loaded = true
+      const pl = document.createElement('script')
+      pl.type = 'text/javascript'
+      pl.async = true
+      pl.src = ('https:' === document.location.protocol ? 'https://app' : 'http://app') + '.postaladmin.com/plDataEmbed.js'
+      const s = document.getElementsByTagName('script')[0]
+      s.parentNode.insertBefore(pl, s)
+    }
+  }, [])
+
   // Reveal-on-scroll for .reveal sections (same effect as the main landing page).
   useEffect(() => {
     const els = [...document.querySelectorAll('.lp .reveal')]
