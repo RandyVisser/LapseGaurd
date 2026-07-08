@@ -174,6 +174,12 @@ function avatarColor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
+// Hard-truncate a name to `max` characters for the dashboard table. The full
+// name stays available in the hover tooltip and on the unit-owner / Edit views.
+function truncName(s, max = 35) {
+  return s && s.length > max ? s.slice(0, max).trimEnd() + '…' : s
+}
+
 function OwnerName({ name }) {
   if (!name) return <span className="italic text-[#8493A8]">No unit-owner</span>
   const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
@@ -185,7 +191,7 @@ function OwnerName({ name }) {
       >
         {initials}
       </span>
-      <span className="font-medium text-[#0B1B33] truncate min-w-0 max-w-[35ch]" title={name}>{name}</span>
+      <span className="font-medium text-[#0B1B33] whitespace-nowrap" title={name}>{truncName(name)}</span>
     </span>
   )
 }
@@ -273,7 +279,7 @@ const COLUMNS = [
   { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-[#8493A8]">—</span> },
   { key: 'owner_primary',          label: 'Primary Name',          render: u => <OwnerName name={u.owner_primary || u.tenant_name} /> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
-  { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary ? <span className="inline-block max-w-[35ch] truncate align-bottom" title={u.owner_secondary}>{u.owner_secondary}</span> : '—' },
+  { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary ? <span className="whitespace-nowrap" title={u.owner_secondary}>{truncName(u.owner_secondary)}</span> : '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
   { key: 'purchase_date',          label: 'Purchase Date',         group: 'Owner details', render: u => u.purchase_date || '—' },
   { key: 'city',                   label: 'City',                  group: 'Address', render: u => u.city || '—' },
