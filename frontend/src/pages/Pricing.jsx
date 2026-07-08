@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { track } from '../analytics'
+import { monthlyCost, fmtUSD } from '../pricing'
 
 function NavBar() {
   const navigate = useNavigate()
@@ -34,6 +35,7 @@ function Check({ children }) {
 
 export default function Pricing() {
   const navigate = useNavigate()
+  const [calcUnits, setCalcUnits] = useState('')
   useEffect(() => track('pricing_view'), [])
 
   return (
@@ -110,6 +112,29 @@ export default function Pricing() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Estimate your cost */}
+        <div className="max-w-md mx-auto mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">Estimate your monthly cost</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <input
+              type="number" min="1" inputMode="numeric"
+              value={calcUnits}
+              onChange={e => setCalcUnits(e.target.value)}
+              placeholder="120"
+              aria-label="Number of units"
+              className="w-28 px-3 py-2.5 border border-slate-300 rounded-lg text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-slate-500">units</span>
+            <span aria-hidden="true" className="text-slate-400">→</span>
+            <span className="text-3xl font-bold text-blue-800">
+              {calcUnits && parseInt(calcUnits, 10) > 0
+                ? <>{fmtUSD(monthlyCost(parseInt(calcUnits, 10)))}<span className="text-base font-semibold text-slate-500">/mo</span></>
+                : <span className="text-slate-400 text-lg">—</span>}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-3">First 750 units $1.00, then $0.50 to 10,000, then $0.25 · $50/mo minimum</p>
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">Billed monthly. Cancel anytime. No long-term contract.</p>

@@ -1,29 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track } from '../analytics'
+import { monthlyCost, fmtUSD } from '../pricing'
 import './landing.css'
 
 const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
-
-// Graduated per-unit pricing: first 750 units @ $1.00, next up to 10,000 @ $0.50,
-// beyond @ $0.25, with a $50/mo minimum. Returns dollars/month (may have cents).
-function monthlyCost(units) {
-  if (!units || units <= 0) return 0
-  let cost
-  if (units <= 750) cost = units * 1.0
-  else if (units <= 10000) cost = 750 + (units - 750) * 0.5
-  else cost = 750 + 9250 * 0.5 + (units - 10000) * 0.25
-  return Math.max(cost, 50)
-}
-
-// $1,234 or $1,234.50 — drop cents when whole.
-function fmtUSD(n) {
-  return '$' + n.toLocaleString('en-US', {
-    minimumFractionDigits: n % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  })
-}
 
 export default function Landing() {
   const rootRef = useRef(null)
