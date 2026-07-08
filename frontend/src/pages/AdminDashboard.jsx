@@ -16,13 +16,13 @@ const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const MONO = '"JetBrains Mono", monospace'
 
-function SortTh({ label, col, sortCol, sortDir, onSort }) {
+function SortTh({ label, col, sortCol, sortDir, onSort, thStyle }) {
   const active = sortCol === col
   return (
     <th
       onClick={() => onSort(col)}
       className="text-left px-4 py-3 text-[11px] font-bold uppercase text-[#8493A8] cursor-pointer select-none hover:bg-slate-100 whitespace-nowrap"
-      style={{ fontFamily: MONO, letterSpacing: '.06em' }}
+      style={{ fontFamily: MONO, letterSpacing: '.06em', ...thStyle }}
     >
       <span className="flex items-center gap-1">
         {label}
@@ -258,7 +258,7 @@ const COLUMNS = [
   { key: 'status',                 label: 'Status',                render: u => <StatusBadge status={u.status} expirationDate={u.expiration_date} manuallyApproved={u.manually_approved} /> },
   { key: 'account_status',         label: 'Owner',                 render: u => <OwnerStatusBadge status={u.account_status} bounced={u.email_bounced} /> },
   { key: 'assoc_title',            label: 'Board',                 render: u => <TitlePill title={u.assoc_title} /> },
-  { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', render: u => (
+  { key: 'unit_number',            label: 'Unit',                  className: 'font-medium', width: '1%', render: u => (
       <span className="flex items-center gap-1.5">
         {u.is_renter && <span className="text-[#8493A8]">↳</span>}
         <span className="font-semibold text-[#0B1B33]" style={{ fontFamily: MONO }}>{u.unit_number}</span>
@@ -1956,7 +1956,7 @@ export default function AdminDashboard() {
                   )
                 })()}
                 {activeColumns.map(c => (
-                  <SortTh key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                  <SortTh key={c.key} label={c.label} col={c.key} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} thStyle={c.width ? { width: c.width } : undefined} />
                 ))}
                 <th className="text-left px-4 py-3 text-[11px] font-bold uppercase text-[#8493A8]" style={{ fontFamily: MONO, letterSpacing: '.06em' }}>Action</th>
               </tr>
@@ -1986,7 +1986,7 @@ export default function AdminDashboard() {
                     ) : null}
                   </td>
                   {activeColumns.map(c => (
-                    <td key={c.key} className={`px-4 py-3 ${c.className || 'text-[#54627A]'} ${isPm && role === 'super_user' ? 'cursor-pointer' : ''}`} onClick={() => { if (!isContact) openUnit(u); else if (isPm && role === 'super_user') openPmLicense(u) }}>
+                    <td key={c.key} style={c.width ? { width: c.width } : undefined} className={`px-4 py-3 ${c.width ? 'whitespace-nowrap' : ''} ${c.className || 'text-[#54627A]'} ${isPm && role === 'super_user' ? 'cursor-pointer' : ''}`} onClick={() => { if (!isContact) openUnit(u); else if (isPm && role === 'super_user') openPmLicense(u) }}>
                       {isContact && (c.key === 'status' || c.key === 'unit_number') ? null : c.render(u)}
                     </td>
                   ))}
