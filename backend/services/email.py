@@ -949,21 +949,22 @@ def document_share_html(
     note: str | None = None,
 ) -> tuple[str, str]:
     """Email sharing a shared HOA document via a link (admin → chosen recipient)."""
-    subject = f"{hoa_name}: {doc_name}" if hoa_name else doc_name
+    name_e = _html.escape(doc_name or "document")
+    hoa_e = _html.escape(hoa_name) if hoa_name else ""
+    subject = f"{hoa_name}: {doc_name}" if hoa_name else (doc_name or "Shared document")
     note_html = ""
     if note and note.strip():
-        safe = (note.strip().replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\n", "<br>"))
+        safe = _html.escape(note.strip()).replace("\n", "<br>")
         note_html = (f'<p style="color:#374151;background:#f3f4f6;border-radius:8px;'
                      f'padding:12px 16px">{safe}</p>')
-    type_html = f" &middot; {doc_type}" if doc_type else ""
-    from_line = f"<strong>{hoa_name}</strong> has" if hoa_name else "Your association has"
+    type_html = f" &middot; {_html.escape(doc_type)}" if doc_type else ""
+    from_line = f"<strong>{hoa_e}</strong> has" if hoa_e else "Your association has"
     html = f"""
     <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Hello,</p>
       <p style="color:#374151">{from_line} shared a document with you via condo.insure:</p>
-      <p style="color:#374151"><strong>{doc_name}</strong>{type_html}</p>
+      <p style="color:#374151"><strong>{name_e}</strong>{type_html}</p>
       {note_html}
       {_btn(file_url, "View the document")}
       <p style="color:#9ca3af;font-size:12px">This secure link opens the document directly and expires in 7 days.</p>
