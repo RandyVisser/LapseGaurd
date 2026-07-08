@@ -395,6 +395,9 @@ html{scroll-behavior:smooth}
 @media(max-width:560px){
   .lp{font-size:16px}
   .lp .nav-links a.txt[href^="#"]{display:none}
+  /* keep the enlarged desktop logo from crowding Sign in / Start free on mobile */
+  .lp .nav .brand{gap:9px; font-size:20px}
+  .lp .nav .brand img{height:30px}
   .lp .summary{grid-template-columns:1fr 1fr 1fr}
   .lp .dec{grid-template-columns:1fr}
   .lp .docs-grid, .lp .docs-grid.g3{grid-template-columns:1fr}
