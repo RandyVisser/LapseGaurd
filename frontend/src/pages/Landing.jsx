@@ -12,6 +12,26 @@ export default function Landing() {
   const [tourOpen, setTourOpen] = useState(false)
   const [calcUnits, setCalcUnits] = useState('')
 
+  // Deep-link scroll: when arriving at /#features, /#how, /#pricing (e.g. from
+  // the Vista Royale page or the /pricing redirect), the browser can't scroll to
+  // the section because React hasn't rendered it yet at load time. Do it here,
+  // once the DOM is committed, with a second pass after fonts/layout settle.
+  useEffect(() => {
+    const id = window.location.hash.slice(1)
+    if (!id) return
+    const go = () => {
+      const el = document.getElementById(id)
+      if (!el) return
+      const prev = document.documentElement.style.scrollBehavior
+      document.documentElement.style.scrollBehavior = 'auto'
+      el.scrollIntoView()
+      document.documentElement.style.scrollBehavior = prev
+    }
+    const raf = requestAnimationFrame(go)
+    const t = setTimeout(go, 250)
+    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
+  }, [])
+
   useEffect(() => {
     track('landing_view')
     const root = rootRef.current
