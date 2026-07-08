@@ -1366,11 +1366,14 @@ async def import_units_csv(
     headers = {h.strip() for h in (reader.fieldnames or [])}
     propradar_format = "Radar ID" in headers
 
-    # Existing non-PM unit numbers, so a re-import doesn't create duplicates
-    # (there's no DB unique constraint — PM units intentionally share 'PM')
+    # Existing non-PM units, keyed on (street address, unit number) so a re-import
+    # doesn't create duplicates. The same unit number legitimately recurs across
+    # different buildings/addresses in one association, so unit number alone is
+    # not unique. (There's no DB unique constraint — PM units share 'PM'.)
     existing = {
-        r["unit_number"] for r in await conn.fetch(
-            "SELECT unit_number FROM units WHERE hoa_id = $1 "
+        (_norm_addr(r["street_address"]), _norm_unit(r["unit_number"]))
+        for r in await conn.fetch(
+            "SELECT unit_number, street_address FROM units WHERE hoa_id = $1 "
             "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
     }
     seen: set = set()
@@ -1386,10 +1389,11 @@ async def import_units_csv(
                     continue
                 street, unit_number = _parse_csv_address(v("Address") or "")
                 unit_number = unit_number or v("Address")
-                if unit_number in existing or unit_number in seen:
+                key = (_norm_addr(street), _norm_unit(unit_number))
+                if key in existing or key in seen:
                     skipped += 1
                     continue
-                seen.add(unit_number)
+                seen.add(key)
                 pd_iso = flexible_date(v("Purchase Date"))
                 await conn.execute(
                     """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
@@ -1407,17 +1411,19 @@ async def import_units_csv(
                 if not unit_number:
                     skipped += 1
                     continue
-                if unit_number in existing or unit_number in seen:
+                street = v("street_address") or v("Street Address")
+                key = (_norm_addr(street), _norm_unit(unit_number))
+                if key in existing or key in seen:
                     skipped += 1
                     continue
-                seen.add(unit_number)
+                seen.add(key)
                 pd_iso = flexible_date(v("purchase_date") or v("Purchase Date"))
                 await conn.execute(
                     """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
                            owner_primary, email_primary, owner_secondary, email_secondary, purchase_date)
                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
                     hoa_id, unit_number,
-                    v("street_address") or v("Street Address"),
+                    street,
                     v("city") or v("City"),
                     v("state") or v("State"),
                     v("zip") or v("Zip") or v("ZIP"),
@@ -1473,8 +1479,9 @@ async def import_units_commit(
     per-unit report of what was skipped and why."""
     await _assert_hoa_access(user, hoa_id, conn)
     existing = {
-        r["unit_number"] for r in await conn.fetch(
-            "SELECT unit_number FROM units WHERE hoa_id = $1 "
+        (_norm_addr(r["street_address"]), _norm_unit(r["unit_number"]))
+        for r in await conn.fetch(
+            "SELECT unit_number, street_address FROM units WHERE hoa_id = $1 "
             "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
     }
     inserted = skipped = 0
@@ -1486,11 +1493,14 @@ async def import_units_commit(
         if not unit:
             skipped += 1
             continue
-        if unit in existing or unit in seen:
+        # Dedup on (street address, unit number) — the same unit number recurs
+        # across different buildings, so unit number alone is not unique.
+        key = (_norm_addr(norm.get("street_address")), _norm_unit(unit))
+        if key in existing or key in seen:
             skipped += 1
             errors.append({"unit": unit, "reason": "already on file — skipped"})
             continue
-        seen.add(unit)
+        seen.add(key)
         try:
             await conn.execute(
                 """INSERT INTO units (hoa_id, unit_number, street_address, city, state, zip,
@@ -1517,6 +1527,12 @@ def _norm_unit(s: str | None) -> str:
     s = (s or "").strip().upper()
     s = re.sub(r"^(APT|UNIT|STE|SUITE|#)\.?\s*", "", s)
     return s.replace("#", "").strip()
+
+
+def _norm_addr(s: str | None) -> str:
+    """Normalize a street address for dedup matching: trim, uppercase, and
+    collapse internal whitespace so '123 Ocean Dr' and '123  OCEAN  DR ' match."""
+    return re.sub(r"\s+", " ", (s or "").strip().upper())
 
 
 @router.post("/hoa/{hoa_id}/units/emails/commit")
