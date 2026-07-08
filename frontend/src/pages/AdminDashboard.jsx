@@ -178,14 +178,14 @@ function OwnerName({ name }) {
   if (!name) return <span className="italic text-[#8493A8]">No unit-owner</span>
   const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
   return (
-    <span className="inline-flex items-center gap-2.5">
+    <span className="flex items-center gap-2.5 w-full min-w-0">
       <span
         className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
         style={{ fontFamily: MONO, background: avatarColor(name) }}
       >
         {initials}
       </span>
-      <span className="font-medium text-[#0B1B33]">{name}</span>
+      <span className="font-medium text-[#0B1B33] truncate min-w-0" title={name}>{name}</span>
     </span>
   )
 }
@@ -271,7 +271,7 @@ const COLUMNS = [
       </span>
     ) },
   { key: 'street_address',         label: 'Street Address',        render: u => u.street_address || <span className="italic text-[#8493A8]">—</span> },
-  { key: 'owner_primary',          label: 'Primary Name',          render: u => <OwnerName name={u.owner_primary || u.tenant_name} /> },
+  { key: 'owner_primary',          label: 'Primary Name',          width: '11rem', render: u => <OwnerName name={u.owner_primary || u.tenant_name} /> },
   { key: 'email_primary',          label: 'Email (Primary)',       render: u => displayEmail(u.email_primary) || '—' },
   { key: 'owner_secondary',        label: 'Secondary Name',        group: 'Owner details', render: u => u.owner_secondary || '—' },
   { key: 'email_secondary',        label: 'Email (Secondary)',     group: 'Owner details', render: u => displayEmail(u.email_secondary) || '—' },
