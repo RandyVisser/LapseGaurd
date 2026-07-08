@@ -54,6 +54,13 @@ export function AuthProvider({ children }) {
     }
   }, [session?.user?.id, role])
 
+  // Re-fetch the HOA switcher list (e.g. after a super user adds a new one).
+  async function refreshHoas() {
+    const list = await apiGet('/hoas')
+    setAvailableHoas(list)
+    return list
+  }
+
   // All units this owner holds (multi-unit / multi-association); falls back
   // to the legacy single unit for older backend responses
   const tenantUnits = tenantProfile?.units
@@ -77,6 +84,7 @@ export function AuthProvider({ children }) {
       role,
       hoaId: effectiveHoaId,
       availableHoas,
+      refreshHoas,
       selectedHoaId,
       setSelectedHoaId,
       unitId: activeUnit?.unit_id || null,

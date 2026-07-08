@@ -561,7 +561,7 @@ function ColumnsPicker({ visible, setVisible }) {
 }
 
 export default function AdminDashboard() {
-  const { hoaId, role, availableHoas, selectedHoaId, setSelectedHoaId } = useAuth()
+  const { hoaId, role, availableHoas, refreshHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
@@ -613,6 +613,11 @@ export default function AdminDashboard() {
   const [sortDir, setSortDir] = useState('asc')
   const [importOpen, setImportOpen] = useState(false)
   const [addEmailsOpen, setAddEmailsOpen] = useState(false)
+  // Super-user only: create a new association directly from the dashboard.
+  const [addHoaOpen, setAddHoaOpen] = useState(false)
+  const [addHoaForm, setAddHoaForm] = useState({ association_name: '', address: '', admin_email: '' })
+  const [addingHoa, setAddingHoa] = useState(false)
+  const [addHoaError, setAddHoaError] = useState('')
   const [invitingAll, setInvitingAll] = useState(false)
   const [invitingAdmin, setInvitingAdmin] = useState(false)
   const [inviteAdminOpen, setInviteAdminOpen] = useState(false)
@@ -939,6 +944,26 @@ export default function AdminDashboard() {
     finally { setInvitingAll(false) }
   }
 
+  async function handleCreateAssociation(e) {
+    e.preventDefault()
+    setAddingHoa(true); setAddHoaError('')
+    try {
+      const { hoa_id } = await apiPost('/admin/association', {
+        association_name: addHoaForm.association_name.trim(),
+        address: addHoaForm.address.trim(),
+        admin_email: addHoaForm.admin_email.trim() || undefined,
+      })
+      await refreshHoas()
+      setSelectedHoaId(hoa_id)  // jump straight into the new association
+      setAddHoaOpen(false)
+      setAddHoaForm({ association_name: '', address: '', admin_email: '' })
+    } catch (err) {
+      setAddHoaError(err.message)
+    } finally {
+      setAddingHoa(false)
+    }
+  }
+
   function openInviteContact() {
     if (!hoaId || hoaId === ALL_HOAS) return
     const h = availableHoas.find(x => x.id === hoaId)
@@ -1151,6 +1176,14 @@ export default function AdminDashboard() {
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
+                {role === 'super_user' && (
+                  <button
+                    type="button"
+                    onClick={() => { setAddHoaError(''); setAddHoaOpen(true) }}
+                    className="flex-shrink-0 whitespace-nowrap border border-[#DCE3EC] text-[#014AC5] hover:bg-[#E7EEFA] rounded-lg px-3 py-1.5 text-sm font-semibold">
+                    + Add Association
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1380,6 +1413,52 @@ export default function AdminDashboard() {
                     {invitingAdmin ? 'Sending…' : 'Send invite'}
                   </button>
                   <button type="button" onClick={() => setInviteAdminOpen(false)}
+                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Super-user: add a new association */}
+        {addHoaOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-semibold text-[#0B1B33] mb-1">Add association</h2>
+              <p className="text-xs text-[#54627A] mb-4">
+                Creates the association with standard Florida condo requirements. No login is created — invite the admin afterward from the association's page.
+              </p>
+              <form onSubmit={handleCreateAssociation} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Association name</label>
+                  <input required value={addHoaForm.association_name}
+                    onChange={e => setAddHoaForm(f => ({ ...f, association_name: e.target.value }))}
+                    placeholder="Sunset Bay Condominium Association"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Address</label>
+                  <input required value={addHoaForm.address}
+                    onChange={e => setAddHoaForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="123 Ocean Dr, Miami, FL 33139"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#54627A] mb-1">Admin email <span className="text-[#8493A8] font-normal">(optional)</span></label>
+                  <input type="email" value={addHoaForm.admin_email}
+                    onChange={e => setAddHoaForm(f => ({ ...f, admin_email: e.target.value }))}
+                    placeholder="manager@association.org"
+                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+                </div>
+                {addHoaError && <p className="text-sm text-[#C0492F]">{addHoaError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={addingHoa}
+                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
+                    {addingHoa ? 'Creating…' : 'Create association'}
+                  </button>
+                  <button type="button" onClick={() => setAddHoaOpen(false)}
                     className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
                     Cancel
                   </button>
