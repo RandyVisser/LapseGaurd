@@ -57,8 +57,10 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             {/* /pricing was retired in favor of the landing pricing section */}
             <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
-            {/* Postcard campaign landing page for the Vista Royale board */}
+            {/* Postcard campaign landing page for the Vista Royale board.
+                Accept both underscore and hyphen spellings of the URL. */}
             <Route path="/vista_royale" element={<VistaRoyale />} />
+            <Route path="/vista-royale" element={<VistaRoyale />} />
             <Route path="/join/:token" element={<Join />} />
             <Route path="/admin-setup/:token" element={<AdminSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
