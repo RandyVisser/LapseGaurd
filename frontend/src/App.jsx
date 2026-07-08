@@ -10,6 +10,7 @@ import Landing from './pages/Landing'
 // whole admin dashboard (and vice versa)
 const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
+const VistaRoyale = lazy(() => import('./pages/VistaRoyale'))
 const Join = lazy(() => import('./pages/Join'))
 const AdminSetup = lazy(() => import('./pages/AdminSetup'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -56,6 +57,8 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             {/* /pricing was retired in favor of the landing pricing section */}
             <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
+            {/* Postcard campaign landing page for the Vista Royale board */}
+            <Route path="/vista_royale" element={<VistaRoyale />} />
             <Route path="/join/:token" element={<Join />} />
             <Route path="/admin-setup/:token" element={<AdminSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
