@@ -615,6 +615,7 @@ export default function AdminDashboard() {
   const [inviteSuccess, setInviteSuccess] = useState(null)
   const [activeFilter, setActiveFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [addressFilter, setAddressFilter] = useState('')
   const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [importOpen, setImportOpen] = useState(false)
@@ -1076,12 +1077,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!hoaId) return
     setSelectedTenantIds(new Set())
+    setAddressFilter('')
     refreshDashboard()
   }, [hoaId, availableHoas])
+
+  // Distinct building addresses for the filter dropdown (natural order, e.g. "12 Bay Dr" after "2 Bay Dr")
+  const buildingAddresses = [...new Set(units.map(u => u.street_address).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
 
   // Filter + sort shared by the desktop table and the mobile card list
   const filteredUnits = (() => {
     const filtered = units.filter(u => {
+      if (addressFilter && u.street_address !== addressFilter) return false
       if (activeFilter === 'all') {
         if (['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false
       } else {
@@ -1107,7 +1114,8 @@ export default function AdminDashboard() {
           (u.unit_number || '').toLowerCase().includes(q) ||
           (u.owner_primary || '').toLowerCase().includes(q) ||
           (u.owner_secondary || '').toLowerCase().includes(q) ||
-          (u.tenant_name || '').toLowerCase().includes(q)
+          (u.tenant_name || '').toLowerCase().includes(q) ||
+          (u.street_address || '').toLowerCase().includes(q)
         )
       }
       return true
@@ -1118,8 +1126,9 @@ export default function AdminDashboard() {
     if (sortCol) {
       filtered.sort((a, b) => sortDir === 'asc' ? cmp(a, b, sortCol) : cmp(b, a, sortCol))
     } else {
-      // default: natural order by unit number
-      filtered.sort((a, b) => cmp(a, b, 'unit_number'))
+      // default: group by building address, then natural order by unit number,
+      // so multi-building HOAs don't interleave every building's "unit 101"
+      filtered.sort((a, b) => cmp(a, b, 'street_address') || cmp(a, b, 'unit_number'))
     }
     return filtered
   })()
@@ -1806,16 +1815,31 @@ export default function AdminDashboard() {
 
         {/* List toolbar — search + view controls, right above what they act on */}
         <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="flex items-center flex-1 max-w-xs">
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or unit…"
-              className="w-full border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="ml-2 text-sm text-[#8493A8] hover:text-[#54627A]">✕</button>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center flex-1 max-w-xs">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name, unit, or address…"
+                className="w-full border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="ml-2 text-sm text-[#8493A8] hover:text-[#54627A]">✕</button>
+              )}
+            </div>
+            {buildingAddresses.length > 1 && (
+              <select
+                value={addressFilter}
+                onChange={e => setAddressFilter(e.target.value)}
+                className={`border rounded-lg px-2 py-1.5 text-sm max-w-[24ch] truncate focus:outline-none focus:ring-2 focus:ring-[#014AC5] ${
+                  addressFilter ? 'border-[#7CA9E8] bg-[#E7EEFA] text-[#014AC5] font-medium' : 'border-[#DCE3EC] bg-white text-[#0B1B33]'
+                }`}
+                title="Filter by building address"
+              >
+                <option value="">All buildings</option>
+                {buildingAddresses.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
             )}
           </div>
           {isMobile && (
@@ -1872,6 +1896,9 @@ export default function AdminDashboard() {
                         <p className="font-semibold text-[#0B1B33]">Unit {u.unit_number}</p>
                         {u.assoc_title && <TitlePill title={u.assoc_title} />}
                       </div>
+                      {u.street_address && buildingAddresses.length > 1 && (
+                        <p className="text-xs text-[#8493A8] truncate">{u.street_address}</p>
+                      )}
                       <p className="text-sm text-[#54627A] truncate">
                         {u.owner_primary || u.tenant_name || <span className="italic text-[#8493A8]">No unit-owner</span>}
                       </p>
