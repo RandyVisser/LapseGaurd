@@ -10,7 +10,6 @@ import Landing from './pages/Landing'
 // whole admin dashboard (and vice versa)
 const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
-const Pricing = lazy(() => import('./pages/Pricing'))
 const Join = lazy(() => import('./pages/Join'))
 const AdminSetup = lazy(() => import('./pages/AdminSetup'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -55,7 +54,8 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/pricing" element={<Pricing />} />
+            {/* /pricing was retired in favor of the landing pricing section */}
+            <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
             <Route path="/join/:token" element={<Join />} />
             <Route path="/admin-setup/:token" element={<AdminSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
