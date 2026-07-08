@@ -939,10 +939,18 @@ export default function AdminDashboard() {
     setInvitingAll(true); setInviteAllMsg('')
     try {
       const r = await apiPost(`/hoa/${hoaId}/invite-all`, {})
-      const parts = [`${r.sent} invite${r.sent !== 1 ? 's' : ''} sent`]
+      // Sends run in a rate-limited background job (large HOAs take minutes) —
+      // poll for progress until it reports done.
+      let status = { sent: 0, failed: 0, done: !r.queued }
+      while (!status.done) {
+        setInviteAllMsg(`Sending invites… ${status.sent + status.failed} of ${r.queued}`)
+        await new Promise(res => setTimeout(res, 2500))
+        status = await apiGet(`/hoa/${hoaId}/invite-all/status`)
+      }
+      const parts = [`${status.sent} invite${status.sent !== 1 ? 's' : ''} sent`]
       if (r.already_active) parts.push(`${r.already_active} already active`)
       if (r.bounced) parts.push(`${r.bounced} skipped (bad address)`)
-      if (r.failed) parts.push(`${r.failed} failed`)
+      if (status.failed) parts.push(`${status.failed} failed`)
       setInviteAllMsg(parts.join(' · '))
       const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
       setSummary(s); setUnits(u)

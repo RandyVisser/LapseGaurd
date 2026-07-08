@@ -742,23 +742,37 @@ async def delete_tenant(
     return {"deleted": True}
 
 
+# One bulk-invite job per HOA at a time. Sends are paced to Resend's rate limit
+# (~2/s), so a large association takes many minutes — the endpoint queues a
+# background job and the dashboard polls /invite-all/status for progress.
+_invite_all_jobs: dict[str, dict] = {}
+
+
 @router.post("/hoa/{hoa_id}/invite-all")
 async def invite_all_owners(
     hoa_id: str,
+    background_tasks: BackgroundTasks,
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Invite every owner with an email on file who hasn't created an account
     yet. Skips owners who already have an account and addresses we know have
-    bounced. Emails are sent concurrently; returns a tally."""
+    bounced. Emails are sent by a rate-limited background job; poll
+    /hoa/{hoa_id}/invite-all/status for progress."""
     from routes.hoa import _assert_hoa_access
     await _assert_hoa_access(user, hoa_id, conn)
+
+    job = _invite_all_jobs.get(hoa_id)
+    if job and not job["done"]:
+        raise HTTPException(status_code=409, detail="An invite run is already in progress for this association")
 
     units = await conn.fetch(
         """SELECT u.id AS unit_id, u.unit_number, u.assoc_title,
                   trim(u.email_primary) AS email_primary, trim(u.email_secondary) AS email_secondary,
                   u.owner_primary, u.owner_secondary, u.street_address, u.city, u.state, u.zip,
-                  h.name AS hoa_name
+                  h.name AS hoa_name,
+                  EXISTS(SELECT 1 FROM tenants t
+                         WHERE t.unit_id = u.id AND t.supabase_user_id IS NOT NULL) AS has_account
            FROM units u JOIN hoas h ON h.id = u.hoa_id
            WHERE u.hoa_id = $1
              AND u.parent_unit_id IS NULL  -- never bulk-invite rental sub-units; renters are invited 1:1 by their owner
@@ -766,22 +780,18 @@ async def invite_all_owners(
         hoa_id,
     )
     if not units:
-        return {"sent": 0, "skipped": 0, "failed": 0, "bounced": 0, "already_active": 0, "total": 0}
+        return {"queued": 0, "bounced": 0, "already_active": 0, "total": 0}
 
     bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
     sender = await _resolve_sender(conn, hoa_id)
     sender_email = sender["email"] if sender else None
 
-    # Build the send list synchronously (DB), then fire emails concurrently.
+    # Build the send list synchronously (DB), then hand it to the background job.
     # Primary and secondary owners each get their own individually-addressed email.
     to_send = []  # (email, subject, html, token)
     seen_emails: set = set()
     total = already_active = bounced_n = 0
     for u in units:
-        has_account = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM tenants WHERE unit_id = $1 AND supabase_user_id IS NOT NULL)",
-            u["unit_id"],
-        )
         is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
         recipients = [(u["email_primary"], u["owner_primary"]), (u["email_secondary"], u["owner_secondary"])]
         for email, name in recipients:
@@ -792,7 +802,7 @@ async def invite_all_owners(
             if key in seen_emails:  # primary == secondary email — only once
                 continue
             seen_emails.add(key)
-            if has_account:
+            if u["has_account"]:
                 already_active += 1
                 continue
             if email.lower() in bounced:
@@ -818,17 +828,50 @@ async def invite_all_owners(
             )
             to_send.append((email, subject, html, invite["token"]))
 
-    results = await asyncio.gather(*(send_email(e, s, h, reply_to=sender_email) for e, s, h, _ in to_send))
-    sent_tokens = [to_send[i][3] for i, ok in enumerate(results) if ok]
-    failed = len(results) - len(sent_tokens)
-    if sent_tokens:
-        await conn.execute(
-            "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = ANY($1::uuid[])", sent_tokens,
-        )
-    return {
-        "sent": len(sent_tokens), "failed": failed, "bounced": bounced_n,
-        "already_active": already_active, "total": total,
+    job = {
+        "queued": len(to_send), "sent": 0, "failed": 0,
+        "bounced": bounced_n, "already_active": already_active, "total": total,
+        "done": len(to_send) == 0,
     }
+    _invite_all_jobs[hoa_id] = job
+
+    async def _send_all():
+        # Runs after the response, so the request's `conn` is gone — use a fresh one.
+        from models.db import get_pool
+        pool = await get_pool()
+        try:
+            for email, subject, html, token in to_send:
+                ok = await send_email(email, subject, html, reply_to=sender_email)
+                if ok:
+                    job["sent"] += 1
+                    async with pool.acquire() as bg_conn:
+                        await bg_conn.execute(
+                            "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = $1", token,
+                        )
+                else:
+                    job["failed"] += 1
+        finally:
+            job["done"] = True
+
+    if to_send:
+        background_tasks.add_task(_send_all)
+    return {"queued": len(to_send), "bounced": bounced_n, "already_active": already_active, "total": total}
+
+
+@router.get("/hoa/{hoa_id}/invite-all/status")
+async def invite_all_status(
+    hoa_id: str,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Progress of the current (or most recent) bulk-invite job for this HOA.
+    In-memory only — a deploy mid-run loses the tally, not the sent invites."""
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, hoa_id, conn)
+    job = _invite_all_jobs.get(hoa_id)
+    if not job:
+        return {"queued": 0, "sent": 0, "failed": 0, "bounced": 0, "already_active": 0, "total": 0, "done": True}
+    return job
 
 
 @router.get("/unit/{unit_id}/invite-preview")

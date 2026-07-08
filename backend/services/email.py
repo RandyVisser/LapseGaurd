@@ -1,5 +1,7 @@
+import asyncio
 import html as _html
 import os
+import time
 import httpx
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
@@ -19,6 +21,23 @@ APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
+# Resend's default rate limit is 2 requests/second account-wide; every caller
+# (bulk invites, notify-bulk, the alerts cron) shares this process-wide pacer so
+# concurrent sends queue instead of blowing the limit and failing with 429s.
+RESEND_SEND_INTERVAL = float(os.environ.get("RESEND_SEND_INTERVAL", "0.55"))
+_send_lock = asyncio.Lock()
+_last_send_at = 0.0
+
+
+async def _pace_sends():
+    global _last_send_at
+    async with _send_lock:
+        wait = _last_send_at + RESEND_SEND_INTERVAL - time.monotonic()
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_send_at = time.monotonic()
+
+
 async def send_email(to_email: str, subject: str, html: str, reply_to: str | None = None) -> bool:
     if not RESEND_API_KEY:
         print(f"[email] RESEND_API_KEY not set — skipping email to {to_email}")
@@ -28,13 +47,30 @@ async def send_email(to_email: str, subject: str, html: str, reply_to: str | Non
     payload = {"from": from_header, "to": [to_email], "subject": subject, "html": html}
     if reply_to:
         payload["reply_to"] = [reply_to]
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
-            json=payload,
-        )
-        return resp.status_code == 200
+    async with httpx.AsyncClient(timeout=30) as client:
+        for attempt in range(4):
+            await _pace_sends()
+            try:
+                resp = await client.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+                    json=payload,
+                )
+            except httpx.HTTPError as e:
+                print(f"[email] network error sending to {to_email} (attempt {attempt + 1}): {e}")
+                await asyncio.sleep(2 ** attempt)
+                continue
+            if resp.status_code == 200:
+                return True
+            if resp.status_code == 429:
+                retry_after = float(resp.headers.get("retry-after") or 2 ** attempt)
+                await asyncio.sleep(retry_after)
+                continue
+            # Non-retryable (bad address, payload error…) — log and give up.
+            print(f"[email] send to {to_email} failed: {resp.status_code} {resp.text[:200]}")
+            return False
+    print(f"[email] send to {to_email} gave up after retries")
+    return False
 
 
 def _btn(url: str, label: str) -> str:
