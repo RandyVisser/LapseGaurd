@@ -54,7 +54,7 @@ export default function BillingPanel({ hoaId }) {
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <Stat label="Units" value={data.units} />
-            <Stat label="Rate" value={`${dollars(data.unit_rate_cents)}/unit`} />
+            <Stat label="Effective rate" value={`${dollars(data.unit_rate_cents)}/unit`} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
           <p className="text-sm text-[#54627A] mb-1">

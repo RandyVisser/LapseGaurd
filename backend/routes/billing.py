@@ -92,6 +92,21 @@ async def _billable_units(conn: asyncpg.Connection, hoa_id: str) -> int:
     ) or 0
 
 
+def _graduated_monthly_cents(units: int) -> int:
+    """Mirror of the Stripe graduated price AND frontend/src/pricing.js — the
+    three must agree. First 750 @ $1.00, next to 10,000 @ $0.50, beyond @
+    $0.25, $50/mo minimum (modeled in Stripe as a $50 flat fee on units 1-50)."""
+    if units <= 0:
+        return 0
+    if units <= 750:
+        cost = units * 100
+    elif units <= 10000:
+        cost = 750 * 100 + (units - 750) * 50
+    else:
+        cost = 750 * 100 + 9250 * 50 + (units - 10000) * 25
+    return max(cost, 5000)
+
+
 # ── Read: always works, even while dormant ──────────────────────────────────
 @router.get("/hoa/{hoa_id}/billing")
 async def get_billing(
@@ -101,7 +116,10 @@ async def get_billing(
 ):
     hoa = await _authz_hoa(conn, user, hoa_id)
     units = await _billable_units(conn, hoa_id)
-    rate = DEFAULT_UNIT_RATE_CENTS
+    monthly = _graduated_monthly_cents(units)
+    # Effective blended rate for display; graduated tiers mean big portfolios
+    # pay less per unit than the headline $1.
+    rate = round(monthly / units) if units else DEFAULT_UNIT_RATE_CENTS
     trial_ends_at = hoa["trial_ends_at"]
     trial_days_left = None
     if trial_ends_at:
@@ -113,7 +131,7 @@ async def get_billing(
         "in_good_standing": (hoa["billing_status"] or "none") in _GOOD_STANDING or trial_active,
         "units": units,
         "unit_rate_cents": rate,
-        "monthly_cents": units * rate,
+        "monthly_cents": monthly,
         "has_subscription": bool(hoa["stripe_subscription_id"]),
         "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
         "trial_days_left": trial_days_left,
