@@ -1291,6 +1291,15 @@ export default function AdminDashboard() {
                     {invitingAdmin ? 'Inviting…' : 'Invite to dashboard'}
                   </button>
                 )}
+                {role === 'super_user' && (
+                  <button
+                    onClick={() => navigate('/admin/ho6-summary')}
+                    disabled={!hoaId || hoaId === '__all__'}
+                    className={TOOLBAR_BTN}
+                  >
+                    HO-6 Summary
+                  </button>
+                )}
               </div>
               <div className="flex items-center border-l border-[#DCE3EC] pl-3 ml-3">
                 <RequirementsPopover hoa={hoaId !== ALL_HOAS ? selectedHoa : null} />

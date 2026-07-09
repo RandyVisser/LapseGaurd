@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 import asyncpg
@@ -12,11 +12,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Up
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from auth.jwt import AuthUser, require_hoa_admin
+from auth.jwt import AuthUser, require_hoa_admin, require_super_user
 from models.db import get_conn
 from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
+from services.policy_parser import parse_dec_page
 from services.email import (
     board_report_html, send_email,
     invite_email_html, renewal_notice_html, renewal_reminder_html, expired_email_html,
@@ -597,6 +598,209 @@ async def compliance_summary(
         not_invited=not_invited,
         documents_count=documents_count,
     )
+
+
+# ── HO-6 dec-page summary (super-user only) ─────────────────────────────────────
+
+def _norm_carrier(name: str | None) -> str:
+    """Collapse whitespace + title-case a carrier name for grouping."""
+    n = re.sub(r"\s+", " ", (name or "").strip())
+    return n.title() if n else "Unknown carrier"
+
+
+def _num(v) -> float | None:
+    try:
+        f = float(v)
+        return f if f == f else None  # reject NaN
+    except (TypeError, ValueError):
+        return None
+
+
+# Which coverage types count as an HO-6 walls-in policy for the summary.
+_HO6_EXCLUDE_TYPES = ("ho4", "wind_only")
+# Summary fields the re-parse backfills into extracted_data.
+_HO6_SUMMARY_FIELDS = ("premium", "coverage_c", "wind_mitigation_credit", "water_damage_exclusion")
+
+
+def _ext_needs_reparse(ext: dict) -> bool:
+    """A dec page needs a summary re-parse when it has none of the four fields and
+    hasn't been re-parsed before (the stamp stops us retrying pages that truly lack
+    the data, which would otherwise loop forever)."""
+    return (not ext.get("ho6_reparsed_at")
+            and all(ext.get(f) is None for f in _HO6_SUMMARY_FIELDS))
+
+
+def _needs_ho6_reparse(p: dict) -> bool:
+    """Same check against a built summary-policy dict (has_doc + reparsed_at)."""
+    return (bool(p.get("has_doc"))
+            and not p.get("reparsed_at")
+            and p.get("premium") is None and p.get("cov_c") is None
+            and p.get("wind_mit") is None and p.get("water_excl") is None)
+
+
+async def _fetch_ho6_policies(conn, hoa_id: str):
+    return await conn.fetch(
+        """SELECT p.id, p.insurer, p.coverage_type, p.document_url, p.extracted_data,
+                  u.unit_number, u.owner_primary, t.name AS tenant_name
+           FROM policies p
+           JOIN tenants t ON t.id = p.tenant_id
+           JOIN units u ON u.id = t.unit_id
+           WHERE u.hoa_id = $1
+             AND p.superseded_by IS NULL
+             AND coalesce(p.coverage_type, '') <> ALL($2::text[])
+             AND p.extracted_data IS NOT NULL""",
+        hoa_id, list(_HO6_EXCLUDE_TYPES),
+    )
+
+
+def _parse_ext(raw):
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw) or {}
+        except (ValueError, TypeError):
+            return {}
+    return raw or {}
+
+
+@router.get("/hoa/{hoa_id}/ho6-summary")
+async def ho6_summary(
+    hoa_id: str,
+    user: AuthUser = Depends(require_super_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Aggregate HO-6 dec-page data for an association: top carriers by policy
+    count / premium-per-policy / rate, plus flag lists (no wind-mit credit, wind
+    exclusion, lowest Cov A, water-damage exclusion). Super-user only."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    rows = await _fetch_ho6_policies(conn, hoa_id)
+
+    policies = []
+    for r in rows:
+        ext = _parse_ext(r["extracted_data"])
+        cov_a = _num(ext.get("dwelling_coverage"))
+        cov_c = _num(ext.get("coverage_c"))
+        premium = _num(ext.get("premium"))
+        base = (cov_a or 0) + (cov_c or 0)
+        rate = (premium / base * 100) if (premium is not None and base > 0) else None
+        policies.append({
+            "unit_number": r["unit_number"],
+            "owner": r["owner_primary"] or r["tenant_name"] or "—",
+            "carrier": _norm_carrier(r["insurer"] or ext.get("insurer")),
+            "cov_a": cov_a, "cov_c": cov_c, "premium": premium, "rate": rate,
+            "coverage_type": r["coverage_type"],
+            "wind_mit": ext.get("wind_mitigation_credit"),
+            "water_excl": ext.get("water_damage_exclusion"),
+            "has_doc": r["document_url"] is not None,
+            "reparsed_at": ext.get("ho6_reparsed_at"),
+        })
+
+    from collections import defaultdict
+    agg: dict = defaultdict(lambda: {"count": 0, "premiums": [], "rates": []})
+    for p in policies:
+        a = agg[p["carrier"]]
+        a["count"] += 1
+        if p["premium"] is not None:
+            a["premiums"].append(p["premium"])
+        if p["rate"] is not None:
+            a["rates"].append(p["rate"])
+
+    def _avg(xs):
+        return sum(xs) / len(xs) if xs else None
+
+    top_by_count = sorted(
+        ({"carrier": k, "count": v["count"]} for k, v in agg.items()),
+        key=lambda x: -x["count"])[:3]
+    top_by_premium = sorted(
+        ({"carrier": k, "avg_premium": round(_avg(v["premiums"]), 2), "policies": len(v["premiums"])}
+         for k, v in agg.items() if v["premiums"]),
+        key=lambda x: -x["avg_premium"])[:3]
+    top_by_rate = sorted(
+        ({"carrier": k, "avg_rate": round(_avg(v["rates"]), 3), "policies": len(v["rates"])}
+         for k, v in agg.items() if v["rates"]),
+        key=lambda x: -x["avg_rate"])[:3]
+
+    def _brief(p):
+        return {"unit_number": p["unit_number"], "owner": p["owner"], "carrier": p["carrier"]}
+
+    no_wind_mit = [_brief(p) for p in policies if p["wind_mit"] is False]
+    wind_exclusion = [_brief(p) for p in policies if p["coverage_type"] == "ho6_wind_excluded"]
+    water_exclusion = [_brief(p) for p in policies if p["water_excl"] is True]
+    lowest_cov_a = sorted(
+        ({**_brief(p), "cov_a": p["cov_a"]} for p in policies if p["cov_a"] is not None),
+        key=lambda x: x["cov_a"])[:10]
+
+    # How many current policies still need a re-parse to populate the new fields:
+    # has a dec page, is missing all four fields, and hasn't been re-parsed before
+    # (the stamp keeps dec pages that genuinely lack the data from re-parsing forever).
+    needs_reparse = sum(1 for p in policies if _needs_ho6_reparse(p))
+
+    return {
+        "policy_count": len(policies),
+        "coverage": {
+            "with_premium": sum(1 for p in policies if p["premium"] is not None),
+            "with_rate": sum(1 for p in policies if p["rate"] is not None),
+            "with_wind_mit_data": sum(1 for p in policies if p["wind_mit"] is not None),
+            "with_water_excl_data": sum(1 for p in policies if p["water_excl"] is not None),
+            "needs_reparse": needs_reparse,
+        },
+        "top_carriers_by_count": top_by_count,
+        "top_carriers_by_premium": top_by_premium,
+        "top_carriers_by_rate": top_by_rate,
+        "no_wind_mitigation": no_wind_mit,
+        "wind_exclusion": wind_exclusion,
+        "lowest_cov_a": lowest_cov_a,
+        "water_damage_exclusion": water_exclusion,
+    }
+
+
+# Re-parse batch size — each policy is a full Claude dec-page parse (~seconds),
+# so keep a single request well under any proxy timeout; the client loops.
+_HO6_REPARSE_BATCH = 15
+
+
+@router.post("/hoa/{hoa_id}/ho6-reparse")
+async def ho6_reparse(
+    hoa_id: str,
+    user: AuthUser = Depends(require_super_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Re-run dec-page extraction on this association's current HO-6 policies that
+    are missing the summary fields, and merge those fields (premium, coverage_c,
+    wind_mitigation_credit, water_damage_exclusion) into extracted_data. Processes
+    one bounded batch and reports how many still need it, so the client can loop.
+    Compliance status/validation are left untouched. Super-user only."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    rows = await _fetch_ho6_policies(conn, hoa_id)
+
+    pending = [r for r in rows if r["document_url"] and _ext_needs_reparse(_parse_ext(r["extracted_data"]))]
+    batch = pending[:_HO6_REPARSE_BATCH]
+
+    stamp = datetime.now(timezone.utc).isoformat()
+    updated = failed = 0
+    for r in batch:
+        try:
+            fresh = await parse_dec_page(r["document_url"])
+            ext = _parse_ext(r["extracted_data"])
+            if fresh:
+                for f in _HO6_SUMMARY_FIELDS:
+                    if fresh.get(f) is not None:
+                        ext[f] = fresh[f]
+                updated += 1
+            else:
+                failed += 1
+            # Stamp regardless of outcome so a page that genuinely lacks the fields
+            # (or failed to parse) isn't retried on every loop.
+            ext["ho6_reparsed_at"] = stamp
+            await conn.execute(
+                "UPDATE policies SET extracted_data = $1 WHERE id = $2",
+                json.dumps(ext), r["id"],
+            )
+        except Exception as e:
+            logger.warning("HO-6 reparse failed for policy %s: %s", r["id"], e)
+            failed += 1
+
+    remaining = max(len(pending) - len(batch), 0)
+    return {"reparsed": updated, "failed": failed, "remaining": remaining, "batch": len(batch)}
 
 
 @router.get("/hoa/{hoa_id}/compliance/trend")
