@@ -164,6 +164,6 @@ cadence never double-sends.
 
 ## Test accounts
 
-HOA: "Test HOA" (id: 00000000-0000-0000-0000-000000000001)
-Admin logins: randy@lapsegaurd.com / troy@visser.com (password: password123)
-Tenant logins: any of the 15 seeded tenants in units 104–403 (password: password123)
+HOA: "Sandbox Condo" (id: 00000000-0000-0000-0000-000000000001) — the only HOA safe to test against; 3 Island and Vista Royale are real customers with real owner emails.
+Admin login: testadmin@condo.insure / sandbox-gecko-42 (hoa_admin scoped to Sandbox Condo)
+The former randy@lapsegaurd.com / troy@visser.com / seeded-tenant password123 logins had their passwords rotated and no longer work.
