@@ -465,6 +465,46 @@ def admin_notify_html(
     return subject, html
 
 
+def trial_ending_html(hoa_name: str, days_left: int, ends_at, settings_url: str) -> tuple[str, str]:
+    """Reminder to the association admin as the free trial runs out (14/3/1/0 days)."""
+    try:
+        date_str = ends_at.strftime("%B %-d, %Y")
+    except (AttributeError, ValueError):
+        date_str = str(ends_at)
+
+    if days_left <= 0:
+        subject = f"Your condo.insure free trial has ended ({hoa_name})"
+        lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ended on "
+                f"<strong>{date_str}</strong>.")
+    elif days_left == 1:
+        subject = f"Your condo.insure free trial ends tomorrow ({hoa_name})"
+        lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ends "
+                f"<strong>tomorrow</strong>, {date_str}.")
+    else:
+        subject = f"Your condo.insure free trial ends in {days_left} days ({hoa_name})"
+        lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ends in "
+                f"<strong>{days_left} days</strong>, on <strong>{date_str}</strong>.")
+
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Hi,</p>
+      <p style="color:#374151">{lead}</p>
+      <p style="color:#374151">
+        Subscribe from your settings page to keep compliance tracking, AI document
+        review, and automated owner reminders running without interruption. If you
+        subscribe before the trial ends, billing doesn't start until it does.
+      </p>
+      {_btn(settings_url, "Set Up Billing")}
+      <p style="color:#6b7280;font-size:13px">
+        Questions about pricing or your account? Just reply to this email.
+      </p>
+      {_footer()}
+    </div></body></html>"""
+
+    return subject, html
+
+
 def format_address(street, city, state, zip_) -> str:
     cs = " ".join(p for p in [(state or "").strip(), (zip_ or "").strip()] if p)
     return ", ".join(p for p in [(street or "").strip(), (city or "").strip(), cs] if p)

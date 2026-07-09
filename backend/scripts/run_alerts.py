@@ -14,7 +14,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, format_address
+from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, trial_ending_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -363,6 +363,34 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
     return count
 
 
+async def process_trial_reminders(conn) -> int:
+    """Email the association admin as their free trial runs out (14/3/1 days
+    before, plus the day it ends). Runs only when BILLING_ENABLED=true in the
+    cron service env. Fires on exact day marks, so the daily cadence sends each
+    reminder exactly once; associations with a subscription are skipped."""
+    if os.environ.get("BILLING_ENABLED", "").lower() != "true":
+        return 0
+    rows = await conn.fetch(
+        """SELECT id, name, admin_email, trial_ends_at,
+                  (trial_ends_at::date - CURRENT_DATE) AS days_left
+           FROM hoas
+           WHERE trial_ends_at IS NOT NULL
+             AND stripe_subscription_id IS NULL
+             AND coalesce(admin_email, '') <> ''
+             AND (trial_ends_at::date - CURRENT_DATE) IN (14, 3, 1, 0)"""
+    )
+    count = 0
+    for row in rows:
+        subject, html = trial_ending_html(
+            row["name"], int(row["days_left"]), row["trial_ends_at"],
+            f"{APP_URL}/admin/settings",
+        )
+        if await send_email(row["admin_email"], subject, html):
+            count += 1
+            print(f"[alerts] Sent trial reminder ({row['days_left']}d) to {row['admin_email']} for {row['name']}")
+    return count
+
+
 async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
     async with pool.acquire() as conn:
@@ -370,9 +398,11 @@ async def main():
         reminders = await process_invite_reminders(conn)
         noncompliant = await process_noncompliant_reminders(conn)
         lease = await process_lease_alerts(conn)
+        trials = await process_trial_reminders(conn)
     await pool.close()
     print(f"[alerts] Done. {count} alerts, {reminders} invite reminders, "
-          f"{noncompliant} non-compliant reminders, {lease} lease reminders sent.")
+          f"{noncompliant} non-compliant reminders, {lease} lease reminders, "
+          f"{trials} trial reminders sent.")
 
 
 if __name__ == "__main__":
