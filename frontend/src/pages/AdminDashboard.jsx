@@ -100,11 +100,11 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
             <button
               key={c.filter}
               onClick={c.onClick || (() => setActiveFilter(c.filter))}
-              className={`flex flex-col gap-0.5 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+              className={`flex flex-col gap-0.5 rounded-lg border px-3 py-3 text-left transition-colors ${
                 activeFilter === c.filter ? 'bg-white/10 border-white/20' : 'border-transparent hover:bg-white/[.06]'
               }`}
             >
-              <span className="text-[17px] font-semibold leading-tight" style={{ fontFamily: MONO }}>{c.value}</span>
+              <span className="text-[30px] font-semibold leading-none" style={{ fontFamily: MONO }}>{c.value}</span>
               <span className={`text-[10.5px] uppercase ${activeFilter === c.filter ? 'text-white' : 'text-[#9FB0D6]'}`} style={{ letterSpacing: '.03em' }}>
                 {c.label}
               </span>
