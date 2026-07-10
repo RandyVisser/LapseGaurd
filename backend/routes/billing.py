@@ -21,12 +21,13 @@ Model: one subscription per association, quantity = billable unit count
 (property-manager placeholder units excluded). Founding/pilot pricing is just a
 different Stripe Price — set hoas.stripe_price_id to override the env default.
 """
+import hmac
 import logging
 import os
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from auth.jwt import AuthUser, require_hoa_admin
 from models.db import get_conn
@@ -438,6 +439,149 @@ async def create_pm_portal(
         return_url=f"{APP_URL}/admin/settings",
     )
     return {"url": session.url}
+
+
+# ── Daily quantity sync: keep Stripe matching reality ────────────────────────
+# Checkout sets a subscription's quantity once; after that, unit counts change
+# and associations join or leave firms. This reconciler (run by the daily cron)
+# closes all of those gaps in one pass:
+#   - firm subscriptions: quantity = combined billable units of the firm's
+#     current portfolio; associations newly added to a subscribed firm get
+#     stamped (start showing paid, start being billed) and ones that left get
+#     detached (firm stops paying; they drop back to unsubscribed)
+#   - self-paying associations: quantity = today's billable unit count
+# Quantity changes use proration_behavior='none' — the new count just applies
+# from the next invoice, no surprise mid-cycle charges or credits.
+
+_UNITS_SUBQ = """(SELECT count(*) FROM units u
+                   WHERE u.hoa_id = h.id
+                     AND lower(coalesce(u.assoc_title, '')) <> 'property manager'
+                     AND u.parent_unit_id IS NULL)"""
+
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
+
+
+def _sync_quantity(s, sub, qty: int) -> bool:
+    """Set the subscription's (single) line item to qty if it differs."""
+    item = sub["items"]["data"][0]
+    if item["quantity"] == qty:
+        return False
+    s.Subscription.modify(
+        sub["id"],
+        items=[{"id": item["id"], "quantity": qty}],
+        proration_behavior="none",
+    )
+    return True
+
+
+async def sync_billing_quantities(conn: asyncpg.Connection, stripe_mod=None) -> dict:
+    """Reconcile every live subscription with the database. stripe_mod is
+    injectable for tests; production uses the configured stripe module."""
+    s = stripe_mod or stripe
+    if stripe_mod is None and not (stripe and STRIPE_SECRET_KEY):
+        return {"skipped": "billing dormant"}
+    summary = {"firm_subs": 0, "hoa_subs": 0, "stamped": 0, "detached": 0,
+               "quantity_updates": 0, "warnings": []}
+
+    firms = await conn.fetch(
+        "SELECT id, name, stripe_customer_id FROM pm_firms WHERE stripe_customer_id IS NOT NULL",
+    )
+    firm_customers = [f["stripe_customer_id"] for f in firms]
+
+    for firm in firms:
+        cust = firm["stripe_customer_id"]
+        try:
+            subs = [x for x in s.Subscription.list(customer=cust, status="all", limit=100)["data"]
+                    if x["status"] in _GOOD_STANDING]
+            if not subs:
+                continue
+            if len(subs) > 1:
+                summary["warnings"].append(f"firm {firm['name']}: multiple live subscriptions, skipped")
+                continue
+            sub = subs[0]
+            summary["firm_subs"] += 1
+
+            mapped = await conn.fetch(
+                f"""SELECT h.id, h.stripe_customer_id, h.stripe_subscription_id,
+                           h.billing_status, {_UNITS_SUBQ} AS units
+                    FROM hoas h JOIN pm_firm_hoas fh ON fh.hoa_id = h.id
+                    WHERE fh.firm_id = $1""",
+                firm["id"],
+            )
+            included, _ = _split_portfolio(mapped, cust)
+
+            # Associations added to the firm since checkout: cover them.
+            to_stamp = [h["id"] for h in included if h["stripe_customer_id"] != cust]
+            if to_stamp:
+                cancel_at = None
+                if sub.get("cancel_at_period_end") and sub.get("cancel_at"):
+                    cancel_at = datetime.fromtimestamp(sub["cancel_at"], tz=timezone.utc)
+                await conn.execute(
+                    "UPDATE hoas SET stripe_customer_id = $1, stripe_subscription_id = $2, "
+                    "billing_status = $3, billing_cancel_at = $4 WHERE id = ANY($5::uuid[])",
+                    cust, sub["id"], sub["status"], cancel_at, to_stamp,
+                )
+                summary["stamped"] += len(to_stamp)
+
+            # Associations that left the firm: stop paying for them and drop
+            # them back to unsubscribed (their own trial/checkout applies again).
+            included_ids = [h["id"] for h in included]
+            detached = await conn.fetch(
+                "UPDATE hoas SET stripe_customer_id = NULL, stripe_subscription_id = NULL, "
+                "billing_status = 'none', billing_cancel_at = NULL "
+                "WHERE stripe_customer_id = $1 AND NOT (id = ANY($2::uuid[])) RETURNING id",
+                cust, included_ids,
+            )
+            summary["detached"] += len(detached)
+
+            qty = sum(h["units"] for h in included)
+            if qty <= 0:
+                summary["warnings"].append(
+                    f"firm {firm['name']}: live subscription but no billable units — cancel via portal if intended",
+                )
+                continue
+            if _sync_quantity(s, sub, qty):
+                summary["quantity_updates"] += 1
+        except Exception as e:  # one broken firm shouldn't stop the rest
+            logger.exception("Billing sync failed for firm %s", firm["id"])
+            summary["warnings"].append(f"firm {firm['name']}: {e}")
+
+    # Self-paying associations (their customer isn't any firm's customer).
+    rows = await conn.fetch(
+        f"""SELECT h.id, h.name, h.stripe_subscription_id, {_UNITS_SUBQ} AS units
+            FROM hoas h
+            WHERE h.stripe_subscription_id IS NOT NULL
+              AND coalesce(h.billing_status, '') = ANY($1::text[])
+              AND (h.stripe_customer_id IS NULL OR NOT (h.stripe_customer_id = ANY($2::text[])))""",
+        list(_GOOD_STANDING), firm_customers,
+    )
+    for h in rows:
+        try:
+            sub = s.Subscription.retrieve(h["stripe_subscription_id"])
+            if sub["status"] not in _GOOD_STANDING:
+                continue
+            summary["hoa_subs"] += 1
+            if h["units"] <= 0:
+                summary["warnings"].append(f"hoa {h['name']}: live subscription but no billable units")
+                continue
+            if _sync_quantity(s, sub, h["units"]):
+                summary["quantity_updates"] += 1
+        except Exception as e:
+            logger.exception("Billing sync failed for hoa %s", h["id"])
+            summary["warnings"].append(f"hoa {h['name']}: {e}")
+
+    return summary
+
+
+@router.post("/billing/sync")
+async def billing_sync(
+    x_api_key: str | None = Header(None),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Internal (cron) — reconcile Stripe quantities; same auth as /alerts/run."""
+    if not INTERNAL_API_KEY or not x_api_key or not hmac.compare_digest(x_api_key, INTERNAL_API_KEY):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return await sync_billing_quantities(conn)
 
 
 def cancel_firm_subscriptions(customer_id: str | None) -> bool:

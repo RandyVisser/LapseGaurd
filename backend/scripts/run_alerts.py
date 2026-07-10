@@ -391,6 +391,19 @@ async def process_trial_reminders(conn) -> int:
     return count
 
 
+async def process_billing_sync(conn) -> dict:
+    """Reconcile Stripe subscription quantities with today's unit counts and
+    firm portfolios. No-op ({"skipped": ...}) unless STRIPE_SECRET_KEY is set
+    on this service. Lazy import + broad catch: a billing problem should never
+    break the alert run."""
+    try:
+        from routes.billing import sync_billing_quantities
+        return await sync_billing_quantities(conn)
+    except Exception as e:
+        print(f"[alerts] Billing sync FAILED: {e}")
+        return {"error": str(e)}
+
+
 async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
     async with pool.acquire() as conn:
@@ -399,10 +412,11 @@ async def main():
         noncompliant = await process_noncompliant_reminders(conn)
         lease = await process_lease_alerts(conn)
         trials = await process_trial_reminders(conn)
+        billing = await process_billing_sync(conn)
     await pool.close()
     print(f"[alerts] Done. {count} alerts, {reminders} invite reminders, "
           f"{noncompliant} non-compliant reminders, {lease} lease reminders, "
-          f"{trials} trial reminders sent.")
+          f"{trials} trial reminders sent. Billing sync: {billing}")
 
 
 if __name__ == "__main__":

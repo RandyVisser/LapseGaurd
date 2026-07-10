@@ -164,14 +164,24 @@ No build step needed locally — Railway handles it.
 ## Scheduled alerts (cron)
 
 A Railway **cron service** runs daily to send all reminder emails (renewal
-30/7/1, lapsed, non-compliant, and pending invites). Config:
+30/7/1, lapsed, non-compliant, and pending invites) and reconcile Stripe
+subscription quantities. Config:
 - **Cron Schedule:** `0 13 * * *` (daily, 13:00 UTC ≈ 9am ET)
 - **Start command:** `python scripts/run_alerts.py` (connects to the DB directly;
-  needs DATABASE_URL, RESEND_API_KEY, FROM_EMAIL, APP_URL)
+  needs DATABASE_URL, RESEND_API_KEY, FROM_EMAIL, APP_URL — plus
+  STRIPE_SECRET_KEY for the billing sync step, which silently no-ops without it)
 - Alternative: `curl -X POST -H "x-api-key: $INTERNAL_API_KEY" $APP_API_URL/alerts/run`
+  (and `.../billing/sync` for the billing step)
 
 All reminders are evaluated each run and throttled per type/interval, so a daily
 cadence never double-sends.
+
+The billing sync (`sync_billing_quantities` in routes/billing.py) makes every
+live subscription's quantity match today's billable unit counts, stamps
+associations newly added to a subscribed firm (they show paid and start being
+billed), and detaches ones that left (firm stops paying; they revert to
+unsubscribed). Quantity changes use proration_behavior='none' — they apply
+from the next invoice.
 
 ## Test accounts
 
