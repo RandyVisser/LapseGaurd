@@ -200,10 +200,10 @@ export default function AdminHo6Summary() {
                   <Card title="Top carriers by policy count">
                     <CarrierTable rows={data.top_carriers_by_count} valueLabel="Policies" valueFn={r => r.count} />
                   </Card>
-                  <Card title="Top carriers by premium / policy" subtitle="Average total premium per policy">
+                  <Card title="Lowest premium per policy" subtitle="Average total premium per policy">
                     <CarrierTable rows={data.top_carriers_by_premium} countKey="policies" valueLabel="Avg premium" valueFn={r => fmtMoney(r.avg_premium)} />
                   </Card>
-                  <Card title="Top carriers by rate" subtitle="Premium ÷ (Cov A + Cov C) × 100">
+                  <Card title="Best rate per $100" subtitle="Premium ÷ (Cov A + Cov C) × 100">
                     <CarrierTable rows={data.top_carriers_by_rate} countKey="policies" valueLabel="Avg rate/$100" valueFn={r => fmtRate(r.avg_rate)} />
                   </Card>
                 </div>
