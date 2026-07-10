@@ -65,14 +65,29 @@ export default function AdminSetup() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
         <img src="/assets/logo-full.svg" alt="condo.insure" className="h-10 mb-6" />
         <h1 className="text-2xl font-bold text-blue-800 mb-1">
-          {invite?.firm_name ? 'Join your team' : 'Set up your admin account'}
+          {invite?.firm_name ? 'Join your team'
+            : invite?.role === 'property_manager' ? 'Set up your property manager account'
+            : 'Set up your admin account'}
         </h1>
         <p className="text-sm text-slate-500 mb-1">
           {invite?.firm_name
             ? <>You're joining <strong>{invite.firm_name}</strong> — you'll see every association your firm manages</>
+            : invite?.role === 'property_manager'
+            ? <>You're the property manager for <strong>{invite?.hoa_name}</strong></>
             : <>You're the admin for <strong>{invite?.hoa_name}</strong></>}
         </p>
-        <p className="text-xs text-slate-400 mb-6">{invite?.email}</p>
+        <p className={invite?.role === 'property_manager' && !invite?.firm_name
+          ? 'text-xs text-slate-400 mb-3' : 'text-xs text-slate-400 mb-6'}>
+          {invite?.email}
+        </p>
+        {invite?.role === 'property_manager' && !invite?.firm_name && (
+          <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-6">
+            {invite?.existing_firm_name
+              ? <><strong>{invite.hoa_name}</strong> will be added to <strong>{invite.existing_firm_name}</strong>'s
+                  portfolio — everyone on your team will be able to see and manage it.</>
+              : <>Teammates you add to your firm later will also be able to see and manage this association.</>}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

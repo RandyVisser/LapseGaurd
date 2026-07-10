@@ -512,7 +512,7 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
     """Public — load the invite so the setup page can show who/what it's for.
     A GET (e.g. a scanner prefetch) never consumes anything."""
     row = await conn.fetchrow(
-        """SELECT ai.email, ai.accepted_at, h.name AS hoa_name, f.name AS firm_name
+        """SELECT ai.email, ai.accepted_at, ai.role, h.name AS hoa_name, f.name AS firm_name
            FROM admin_invites ai
            LEFT JOIN hoas h ON h.id = ai.hoa_id
            LEFT JOIN pm_firms f ON f.id = ai.firm_id
@@ -523,7 +523,24 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
         raise HTTPException(status_code=404, detail="Invite not found")
     if row["accepted_at"]:
         raise HTTPException(status_code=410, detail="This setup link has already been used.")
-    return {"email": row["email"], "hoa_name": row["hoa_name"], "firm_name": row["firm_name"]}
+    # For an association-side PM invite, accepting attaches the HOA to the
+    # accepter's whole firm — surface the firm so the setup page can disclose
+    # that before they proceed.
+    existing_firm_name = None
+    if (row["role"] or "hoa_admin") == "property_manager" and row["hoa_name"]:
+        uid = await conn.fetchval(
+            "SELECT id FROM auth.users WHERE lower(email) = lower($1)", row["email"],
+        )
+        if uid:
+            firm = await user_firm(conn, uid)
+            existing_firm_name = firm["name"] if firm else None
+    return {
+        "email": row["email"],
+        "hoa_name": row["hoa_name"],
+        "firm_name": row["firm_name"],
+        "role": row["role"] or "hoa_admin",
+        "existing_firm_name": existing_firm_name,
+    }
 
 
 class AdminInviteAccept(BaseModel):
