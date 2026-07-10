@@ -27,7 +27,9 @@ function Empty({ children }) {
 }
 
 // A simple list of policies (unit / owner / carrier + optional value column).
+// Each row links to the owner's detail page.
 function PolicyList({ rows, valueLabel, valueFn }) {
+  const navigate = useNavigate()
   if (!rows || rows.length === 0) return <Empty>None found.</Empty>
   return (
     <div className="overflow-x-auto">
@@ -42,8 +44,12 @@ function PolicyList({ rows, valueLabel, valueFn }) {
         </thead>
         <tbody className="divide-y divide-[#F0F3F8]">
           {rows.map((r, i) => (
-            <tr key={i}>
-              <td className="py-2 pr-3 font-semibold text-[#0B1B33] whitespace-nowrap">{r.unit_number || '—'}</td>
+            <tr
+              key={i}
+              onClick={() => r.tenant_id && navigate(`/admin/tenant/${r.tenant_id}`)}
+              className={r.tenant_id ? 'cursor-pointer hover:bg-[#F4F8FE]' : ''}
+            >
+              <td className="py-2 pr-3 font-semibold whitespace-nowrap text-[#014AC5]">{r.unit_number || '—'}</td>
               <td className="py-2 pr-3 text-[#54627A]">{r.owner || '—'}</td>
               <td className="py-2 pr-3 text-[#54627A]">{r.carrier || '—'}</td>
               {valueLabel && <td className="py-2 text-right font-medium text-[#0B1B33] whitespace-nowrap">{valueFn(r)}</td>}

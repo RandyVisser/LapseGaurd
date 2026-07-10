@@ -643,7 +643,7 @@ def _needs_ho6_reparse(p: dict) -> bool:
 async def _fetch_ho6_policies(conn, hoa_id: str):
     return await conn.fetch(
         """SELECT p.id, p.insurer, p.coverage_type, p.document_url, p.extracted_data,
-                  u.unit_number, u.owner_primary, t.name AS tenant_name
+                  t.id AS tenant_id, u.unit_number, u.owner_primary, t.name AS tenant_name
            FROM policies p
            JOIN tenants t ON t.id = p.tenant_id
            JOIN units u ON u.id = t.unit_id
@@ -685,6 +685,7 @@ async def ho6_summary(
         base = (cov_a or 0) + (cov_c or 0)
         rate = (premium / base * 100) if (premium is not None and base > 0) else None
         policies.append({
+            "tenant_id": str(r["tenant_id"]) if r["tenant_id"] else None,
             "unit_number": r["unit_number"],
             "owner": r["owner_primary"] or r["tenant_name"] or "—",
             "carrier": _norm_carrier(r["insurer"] or ext.get("insurer")),
@@ -723,7 +724,8 @@ async def ho6_summary(
         key=lambda x: x["avg_rate"])[:3]
 
     def _brief(p):
-        return {"unit_number": p["unit_number"], "owner": p["owner"], "carrier": p["carrier"]}
+        return {"tenant_id": p["tenant_id"], "unit_number": p["unit_number"],
+                "owner": p["owner"], "carrier": p["carrier"]}
 
     no_wind_mit = [_brief(p) for p in policies if p["wind_mit"] is False]
     wind_exclusion = [_brief(p) for p in policies if p["coverage_type"] == "ho6_wind_excluded"]
