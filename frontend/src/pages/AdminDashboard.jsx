@@ -91,7 +91,7 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
             <p className="text-lg font-extrabold tracking-tight mb-0.5" style={{ fontFamily: DISPLAY }}>
               {compliantTotal} of {total} units compliant
             </p>
-            <p className="text-[13px] text-[#C7D3EE]">Every owner's HO-6 meets your board's requirements</p>
+            <p className="text-[13px] text-[#C7D3EE]">Owners whose HO-6 meets your board's requirements</p>
           </div>
         </button>
 
