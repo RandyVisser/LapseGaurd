@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 const ALL_HOAS = '__all__'
 
 const fmtMoney = (n) => (n == null ? '—' : '$' + Math.round(n).toLocaleString('en-US'))
-const fmtRate = (n) => (n == null ? '—' : n.toFixed(2))
+const fmtRate = (n) => (n == null ? '—' : '$' + n.toFixed(2))
 
 // A compact card wrapper for each summary section.
 function Card({ title, subtitle, children }) {
@@ -204,7 +204,7 @@ export default function AdminHo6Summary() {
                     <CarrierTable rows={data.top_carriers_by_premium} countKey="policies" valueLabel="Avg premium" valueFn={r => fmtMoney(r.avg_premium)} />
                   </Card>
                   <Card title="Top carriers by rate" subtitle="Premium ÷ (Cov A + Cov C) × 100">
-                    <CarrierTable rows={data.top_carriers_by_rate} countKey="policies" valueLabel="Avg rate" valueFn={r => fmtRate(r.avg_rate)} />
+                    <CarrierTable rows={data.top_carriers_by_rate} countKey="policies" valueLabel="Avg rate/$100" valueFn={r => fmtRate(r.avg_rate)} />
                   </Card>
                 </div>
 

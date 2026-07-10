@@ -710,14 +710,15 @@ async def ho6_summary(
     top_by_count = sorted(
         ({"carrier": k, "count": v["count"]} for k, v in agg.items()),
         key=lambda x: -x["count"])[:3]
+    # Premium/policy and rate are ranked lowest-first (cheapest carriers surface).
     top_by_premium = sorted(
         ({"carrier": k, "avg_premium": round(_avg(v["premiums"]), 2), "policies": len(v["premiums"])}
          for k, v in agg.items() if v["premiums"]),
-        key=lambda x: -x["avg_premium"])[:3]
+        key=lambda x: x["avg_premium"])[:3]
     top_by_rate = sorted(
         ({"carrier": k, "avg_rate": round(_avg(v["rates"]), 3), "policies": len(v["rates"])}
          for k, v in agg.items() if v["rates"]),
-        key=lambda x: -x["avg_rate"])[:3]
+        key=lambda x: x["avg_rate"])[:3]
 
     def _brief(p):
         return {"unit_number": p["unit_number"], "owner": p["owner"], "carrier": p["carrier"]}
