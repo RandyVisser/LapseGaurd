@@ -199,13 +199,18 @@ export default function AdminHo6Summary() {
 
         {singleHoa && !loading && data && (
           <>
-            {/* Coverage / data-completeness banner */}
-            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-4 mb-6 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-              <span className="text-[#0B1B33]"><strong>{data.policy_count}</strong> HO-6 policies</span>
-              <span className="text-[#54627A]"><strong className="text-[#0B1B33]">{data.coverage.with_premium}</strong> with premium</span>
-              <span className="text-[#54627A]"><strong className="text-[#0B1B33]">{data.coverage.with_rate}</strong> with rate data</span>
-              <span className="text-[#54627A]"><strong className="text-[#0B1B33]">{data.coverage.with_wind_mit_data}</strong> with wind-mit data</span>
-              <span className="text-[#54627A]"><strong className="text-[#0B1B33]">{data.coverage.with_water_excl_data}</strong> with water-excl data</span>
+            {/* Data-completeness banner: how many dec pages each field was read from */}
+            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-4 mb-6">
+              <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+                <span className="text-[#0B1B33]"><strong>{data.policy_count}</strong> HO-6 policies</span>
+                <span className="text-[#54627A]">Premium read: <strong className="text-[#0B1B33]">{data.coverage.with_premium}/{data.policy_count}</strong></span>
+                <span className="text-[#54627A]">Rate data: <strong className="text-[#0B1B33]">{data.coverage.with_rate}/{data.policy_count}</strong></span>
+                <span className="text-[#54627A]">Wind-mit determined: <strong className="text-[#0B1B33]">{data.coverage.with_wind_mit_data}/{data.policy_count}</strong></span>
+                <span className="text-[#54627A]">Water-excl determined: <strong className="text-[#0B1B33]">{data.coverage.with_water_excl_data}/{data.policy_count}</strong></span>
+              </div>
+              <p className="text-xs text-[#8493A8] mt-2">
+                Counts show how many dec pages each field was read from (&ldquo;determined&rdquo; = a yes or no was found). The flag lists below show only policies where the issue is present, so a policy read as &ldquo;no exclusion&rdquo; won&rsquo;t appear there. Run &ldquo;Re-parse all&rdquo; to fill gaps.
+              </p>
             </div>
 
             {data.policy_count === 0 ? (
