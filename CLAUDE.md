@@ -163,15 +163,18 @@ No build step needed locally — Railway handles it.
 
 ## Scheduled alerts (cron)
 
-A Railway **cron service** runs daily to send all reminder emails (renewal
-30/7/1, lapsed, non-compliant, and pending invites) and reconcile Stripe
-subscription quantities. Config:
-- **Cron Schedule:** `0 13 * * *` (daily, 13:00 UTC ≈ 9am ET)
-- **Start command:** `python scripts/run_alerts.py` (connects to the DB directly;
-  needs DATABASE_URL, RESEND_API_KEY, FROM_EMAIL, APP_URL — plus
-  STRIPE_SECRET_KEY for the billing sync step, which silently no-ops without it)
-- Alternative: `curl -X POST -H "x-api-key: $INTERNAL_API_KEY" $APP_API_URL/alerts/run`
-  (and `.../billing/sync` for the billing step)
+The scheduler is a **GitHub Actions workflow** (`.github/workflows/scheduled-jobs.yml`),
+NOT a Railway cron service. It curls the backend with `x-api-key: INTERNAL_API_KEY`
+(secrets `INTERNAL_API_KEY` + `BACKEND_URL` live in the GitHub repo settings):
+- daily `0 13 * * *` (≈9am ET) → `POST /alerts/run` — all reminder emails
+  (renewal 30/7/1, lapsed, non-compliant, pending invites, trial expiry) plus
+  the Stripe quantity sync
+- monthly `30 13 1 * *` → `POST /reports/board/run` — board reports
+- manual runs: GitHub → Actions tab → "Scheduled jobs" → Run workflow
+
+IMPORTANT: `/alerts/run` (routes/alerts.py) must import every processor that
+`scripts/run_alerts.py main()` runs — the script itself is NOT what the cron
+executes, so a processor added only to the script never runs in production.
 
 All reminders are evaluated each run and throttled per type/interval, so a daily
 cadence never double-sends.
