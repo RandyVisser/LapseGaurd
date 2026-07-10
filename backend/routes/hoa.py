@@ -768,18 +768,30 @@ _HO6_REPARSE_BATCH = 15
 @router.post("/hoa/{hoa_id}/ho6-reparse")
 async def ho6_reparse(
     hoa_id: str,
+    force_since: str | None = None,
     user: AuthUser = Depends(require_super_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Re-run dec-page extraction on this association's current HO-6 policies that
-    are missing the summary fields, and merge those fields (premium, coverage_c,
-    wind_mitigation_credit, water_damage_exclusion) into extracted_data. Processes
-    one bounded batch and reports how many still need it, so the client can loop.
-    Compliance status/validation are left untouched. Super-user only."""
+    """Re-run dec-page extraction on this association's current HO-6 policies and
+    merge the summary fields (premium, coverage_c, wind_mitigation_credit,
+    water_damage_exclusion) into extracted_data. Processes one bounded batch and
+    reports how many still need it, so the client can loop. Compliance
+    status/validation are left untouched. Super-user only.
+
+    Normally targets only policies missing all four fields (and not yet re-parsed).
+    Pass force_since=<ISO timestamp set at loop start> to re-parse EVERY policy
+    once (e.g. after an extraction-prompt fix) — a policy stamped at/after that
+    time is skipped, so the client's loop still terminates."""
     await _assert_hoa_access(user, hoa_id, conn)
     rows = await _fetch_ho6_policies(conn, hoa_id)
 
-    pending = [r for r in rows if r["document_url"] and _ext_needs_reparse(_parse_ext(r["extracted_data"]))]
+    def _is_pending(ext) -> bool:
+        if force_since:
+            stamp = ext.get("ho6_reparsed_at")
+            return stamp is None or stamp < force_since
+        return _ext_needs_reparse(ext)
+
+    pending = [r for r in rows if r["document_url"] and _is_pending(_parse_ext(r["extracted_data"]))]
     batch = pending[:_HO6_REPARSE_BATCH]
 
     stamp = datetime.now(timezone.utc).isoformat()

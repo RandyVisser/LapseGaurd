@@ -117,20 +117,22 @@ export default function AdminHo6Summary() {
   useEffect(() => { load() }, [hoaId])
 
   // Loop the batched re-parse until nothing remains, showing progress.
-  async function handleReparse() {
+  // force=true re-parses EVERY policy once (e.g. after an extraction fix), using
+  // a run-start timestamp so the loop still terminates.
+  async function handleReparse(force = false) {
     if (!singleHoa || reparsing) return
     setReparsing(true); setError('')
+    const qs = force ? `?force_since=${encodeURIComponent(new Date().toISOString())}` : ''
     let done = 0
     try {
-      // Prime the total from the current summary's needs_reparse.
-      let total = data?.coverage?.needs_reparse || 0
+      let total = force ? (data?.policy_count || 0) : (data?.coverage?.needs_reparse || 0)
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const r = await apiPost(`/hoa/${hoaId}/ho6-reparse`, {})
+        const r = await apiPost(`/hoa/${hoaId}/ho6-reparse${qs}`, {})
         done += r.reparsed
         if (!total) total = done + r.remaining
         setProgress(`Re-parsed ${done}${total ? ` of ${total}` : ''}…`)
-        if (r.remaining === 0 || r.batch === 0) break
+        if (r.batch === 0 || r.remaining === 0) break
       }
       setProgress('Refreshing summary…')
       await load()
@@ -160,13 +162,24 @@ export default function AdminHo6Summary() {
           {singleHoa && (
             <div className="text-right">
               <button
-                onClick={handleReparse}
+                onClick={() => handleReparse(false)}
                 disabled={reparsing}
                 className="text-sm bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold px-4 py-2 rounded-lg disabled:opacity-60"
                 title="Re-runs AI extraction on dec pages missing premium / Cov C / wind-mit / water-damage data"
               >
                 {reparsing ? (progress || 'Re-parsing…') : 'Re-parse dec pages'}
               </button>
+              {!reparsing && (
+                <div className="mt-1">
+                  <button
+                    onClick={() => handleReparse(true)}
+                    className="text-xs text-[#014AC5] hover:underline"
+                    title="Re-run AI extraction on ALL dec pages — use after an extraction fix. Costs tokens for every policy."
+                  >
+                    Re-parse all (force)
+                  </button>
+                </div>
+              )}
               {data?.coverage?.needs_reparse > 0 && !reparsing && (
                 <p className="text-xs text-[#946410] mt-1">{data.coverage.needs_reparse} policies need re-parsing</p>
               )}
