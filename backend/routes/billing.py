@@ -440,6 +440,26 @@ async def create_pm_portal(
     return {"url": session.url}
 
 
+def cancel_firm_subscriptions(customer_id: str | None) -> bool:
+    """Cancel every live subscription on a firm's Stripe customer. Called
+    before a firm row is deleted — deleting first would orphan a subscription
+    that keeps charging with no portal left to cancel it. Returns False when a
+    cancellation failed (caller should keep the firm so billing stays
+    reachable). Trivially succeeds while billing is dormant: no keys means no
+    live subscription can exist."""
+    if not customer_id or not (stripe and STRIPE_SECRET_KEY):
+        return True
+    try:
+        subs = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+        for s in subs.auto_paging_iter():
+            if s["status"] not in ("canceled", "incomplete_expired"):
+                stripe.Subscription.delete(s["id"])
+        return True
+    except Exception:
+        logger.exception("Could not cancel Stripe subscriptions for customer %s", customer_id)
+        return False
+
+
 # ── Future paywall hook — currently a NO-OP, called from nowhere yet ─────────
 async def assert_billing_ok(conn: asyncpg.Connection, hoa_id: str) -> None:
     """When we decide to gate features behind payment, call this in those flows.

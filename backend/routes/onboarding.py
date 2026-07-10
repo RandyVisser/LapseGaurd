@@ -222,8 +222,14 @@ async def revoke_staff_login(conn, hoa_id, email: str | None) -> None:
                 firm["id"], uid,
             )
             if not remaining_hoas and not other_members:
-                await conn.execute("DELETE FROM pm_firms WHERE id = $1", firm["id"])
-                await _delete_supabase_user(uid)
+                # A live subscription must die with the firm, or it keeps
+                # charging with no portal left to cancel it. If cancellation
+                # fails, keep the firm + login (billing stays reachable) — the
+                # unmap above already revoked this association's data.
+                from routes.billing import cancel_firm_subscriptions
+                if cancel_firm_subscriptions(firm["stripe_customer_id"]):
+                    await conn.execute("DELETE FROM pm_firms WHERE id = $1", firm["id"])
+                    await _delete_supabase_user(uid)
         else:
             await _delete_supabase_user(uid)
     # Keep the audit record (email + ToS timestamp); just mark it revoked.
