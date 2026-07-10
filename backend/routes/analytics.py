@@ -41,12 +41,17 @@ _EXTRA = [
     ("owner_upload", "Dec pages uploaded"),
 ]
 
-# Internal/founder accounts excluded from the "Invited staff activated" count.
+# Internal/founder/test accounts excluded from the invited/activated counts.
+# Sandbox test staff use sandbox-*@condo.insure and are excluded by pattern
+# (see _NOT_INTERNAL_SQL), so new test logins never pollute the tickers.
 _INTERNAL_EMAILS = [
     "troy@condo.insure", "randy@condo.insure",
     "troy.visser@gmail.com", "randy.redfish@gmail.com",
     "troy@universalcondo.com",
+    "testadmin@condo.insure", "randy.redfish+pmtest@gmail.com",
 ]
+
+_NOT_INTERNAL_SQL = "lower(email) <> ALL($2::text[]) AND lower(email) NOT LIKE 'sandbox-%'"
 
 # In-memory per-IP rate limit so the public beacon can't bloat the table.
 _hits: dict[str, list[datetime]] = defaultdict(list)
@@ -109,9 +114,9 @@ async def funnel(
     # they're sent server-side, so there's no client to fire an event. coalesce
     # covers rows created before last_sent_at existed. Internal emails excluded.
     owners_invited = await conn.fetchval(
-        """SELECT count(*) FROM unit_invites
+        f"""SELECT count(*) FROM unit_invites
            WHERE coalesce(last_sent_at, created_at) > now() - make_interval(days => $1)
-             AND lower(email) <> ALL($2::text[])""",
+             AND {_NOT_INTERNAL_SQL}""",
         days, _INTERNAL_EMAILS,
     ) or 0
 
@@ -119,9 +124,9 @@ async def funnel(
     # not the funnel beacons — invited staff never hit the public signup page.
     # Internal/founder accounts are excluded from the count.
     staff_activated = await conn.fetchval(
-        """SELECT count(*) FROM admin_invites
+        f"""SELECT count(*) FROM admin_invites
            WHERE accepted_at > now() - make_interval(days => $1)
-             AND lower(email) <> ALL($2::text[])""",
+             AND {_NOT_INTERNAL_SQL}""",
         days, _INTERNAL_EMAILS,
     ) or 0
 
