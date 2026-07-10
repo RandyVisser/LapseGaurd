@@ -27,6 +27,7 @@ from routes.onboarding import router as onboarding_router
 from routes.inbound import router as inbound_router
 from routes.feedback import router as feedback_router
 from routes.billing import router as billing_router
+from routes.pm_team import router as pm_team_router
 from routes.analytics import router as analytics_router
 from routes.rentals import router as rentals_router
 
@@ -59,6 +60,7 @@ app.include_router(onboarding_router)
 app.include_router(inbound_router)
 app.include_router(feedback_router)
 app.include_router(billing_router)
+app.include_router(pm_team_router)
 app.include_router(analytics_router)
 app.include_router(rentals_router)
 

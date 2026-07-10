@@ -31,6 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from auth.jwt import AuthUser, require_hoa_admin
 from models.db import get_conn
 from services.email import APP_URL
+from services.firms import firm_manages_hoa, user_firm
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -71,11 +72,7 @@ async def _authz_hoa(conn: asyncpg.Connection, user: AuthUser, hoa_id: str):
     if user.role == "super_user":
         return hoa
     if user.role == "property_manager":
-        ok = await conn.fetchval(
-            "SELECT 1 FROM property_manager_hoas WHERE supabase_user_id = $1 AND hoa_id = $2",
-            user.sub, hoa_id,
-        )
-        if ok:
+        if await firm_manages_hoa(conn, user.sub, hoa_id):
             return hoa
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
     if str(user.hoa_id or "") == str(hoa_id):
@@ -252,11 +249,14 @@ async def stripe_webhook(
 
 
 # ── PM firm billing: one subscription covering every managed association ─────
-# A property manager pays once for their whole portfolio: one Stripe customer
-# (tracked in pm_billing), one subscription with quantity = combined billable
-# units. Because the graduated price is applied to the combined quantity, PMs
-# get the volume tiers ($0.50/$0.25) their associations would never reach
-# individually — that discount is the incentive to consolidate.
+# A property-management firm pays once for its whole portfolio: one Stripe
+# customer (pm_firms.stripe_customer_id), one subscription with quantity =
+# combined billable units. Because the graduated price is applied to the
+# combined quantity, firms get the volume tiers ($0.50/$0.25) their
+# associations would never reach individually — that discount is the
+# incentive to consolidate. Any member of the firm sees the same portfolio
+# billing; the subscription belongs to the firm, not to whoever clicked
+# Subscribe.
 #
 # Every covered HOA row is stamped with the firm's stripe_customer_id, so the
 # existing webhook above fans subscription status out to all of them and each
@@ -268,7 +268,7 @@ def _require_pm(user: AuthUser):
 
 
 async def _pm_portfolio(conn: asyncpg.Connection, user_id: str):
-    """All HOAs this PM manages, with billable unit counts and billing state."""
+    """All HOAs this PM's firm manages, with billable unit counts and billing state."""
     return await conn.fetch(
         """SELECT h.id, h.name, h.billing_status, h.stripe_customer_id,
                   h.stripe_subscription_id, h.trial_ends_at, h.billing_cancel_at,
@@ -277,8 +277,9 @@ async def _pm_portfolio(conn: asyncpg.Connection, user_id: str):
                        AND lower(coalesce(u.assoc_title, '')) <> 'property manager'
                        AND u.parent_unit_id IS NULL) AS units
            FROM hoas h
-           JOIN property_manager_hoas pmh ON pmh.hoa_id = h.id
-           WHERE pmh.supabase_user_id = $1
+           JOIN pm_firm_hoas fh ON fh.hoa_id = h.id
+           JOIN pm_firm_members m ON m.firm_id = fh.firm_id
+           WHERE m.supabase_user_id = $1
            ORDER BY h.name""",
         user_id,
     )
@@ -310,18 +311,17 @@ async def get_pm_billing(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     _require_pm(user)
-    firm_customer = await conn.fetchval(
-        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
-    )
+    firm = await user_firm(conn, user.sub)
+    firm_customer = firm["stripe_customer_id"] if firm else None
     hoas = await _pm_portfolio(conn, user.sub)
     included, excluded = _split_portfolio(hoas, firm_customer)
 
     # Firm subscription state lives on the stamped HOA rows (webhook keeps
     # them in sync); any one of them speaks for the whole subscription.
     stamped = [h for h in included if firm_customer and h["stripe_customer_id"] == firm_customer]
-    firm = next((h for h in stamped if h["stripe_subscription_id"]), None)
-    status = (firm["billing_status"] or "none") if firm else "none"
-    cancel_at = firm["billing_cancel_at"] if firm else None
+    sub_row = next((h for h in stamped if h["stripe_subscription_id"]), None)
+    status = (sub_row["billing_status"] or "none") if sub_row else "none"
+    cancel_at = sub_row["billing_cancel_at"] if sub_row else None
 
     units = sum(h["units"] for h in included)
     monthly = _graduated_monthly_cents(units)
@@ -336,7 +336,7 @@ async def get_pm_billing(
         "enabled": BILLING_ENABLED,
         "status": status,
         "in_good_standing": status in _GOOD_STANDING or trial_active,
-        "has_subscription": bool(firm),
+        "has_subscription": bool(sub_row),
         "units": units,
         "monthly_cents": monthly,
         "separate_monthly_cents": separate,
@@ -368,9 +368,10 @@ async def create_pm_checkout(
     if not STRIPE_PRICE_ID:
         raise HTTPException(status_code=503, detail="No Stripe price configured")
 
-    firm_customer = await conn.fetchval(
-        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
-    )
+    firm = await user_firm(conn, user.sub)
+    if not firm:
+        raise HTTPException(status_code=400, detail="No firm found for this account yet.")
+    firm_customer = firm["stripe_customer_id"]
     hoas = await _pm_portfolio(conn, user.sub)
     included, _ = _split_portfolio(hoas, firm_customer)
     if any(
@@ -386,13 +387,13 @@ async def create_pm_checkout(
     if not firm_customer:
         customer = stripe.Customer.create(
             email=user.email,
-            metadata={"pm_user_id": user.sub},
+            name=firm["name"],
+            metadata={"pm_firm_id": str(firm["id"])},
         )
         firm_customer = customer.id
         await conn.execute(
-            """INSERT INTO pm_billing (supabase_user_id, stripe_customer_id) VALUES ($1, $2)
-               ON CONFLICT (supabase_user_id) DO UPDATE SET stripe_customer_id = $2""",
-            user.sub, firm_customer,
+            "UPDATE pm_firms SET stripe_customer_id = $1 WHERE id = $2",
+            firm_customer, firm["id"],
         )
 
     # Stamp the firm customer on every covered HOA so the webhook marks them
@@ -415,7 +416,7 @@ async def create_pm_checkout(
         line_items=[{"price": STRIPE_PRICE_ID, "quantity": units}],
         success_url=f"{APP_URL}/admin/settings?billing=success",
         cancel_url=f"{APP_URL}/admin/settings?billing=cancel",
-        metadata={"pm_user_id": user.sub},
+        metadata={"pm_firm_id": str(firm["id"])},
         allow_promotion_codes=True,
         **({"subscription_data": subscription_data} if subscription_data else {}),
     )
@@ -429,13 +430,11 @@ async def create_pm_portal(
 ):
     _require_live()
     _require_pm(user)
-    firm_customer = await conn.fetchval(
-        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
-    )
-    if not firm_customer:
+    firm = await user_firm(conn, user.sub)
+    if not firm or not firm["stripe_customer_id"]:
         raise HTTPException(status_code=400, detail="No billing account yet — subscribe first.")
     session = stripe.billing_portal.Session.create(
-        customer=firm_customer,
+        customer=firm["stripe_customer_id"],
         return_url=f"{APP_URL}/admin/settings",
     )
     return {"url": session.url}

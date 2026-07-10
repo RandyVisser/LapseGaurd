@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr
 
 from auth.jwt import AuthUser, require_hoa_admin, require_super_user
 from models.db import get_conn
+from services.firms import ensure_firm, map_hoa_to_firm, user_firm
 from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
@@ -195,24 +196,35 @@ async def _delete_supabase_user(user_id: str) -> None:
 
 
 async def revoke_staff_login(conn, hoa_id, email: str | None) -> None:
-    """Revoke an Admin/PM's access to this association when their row is deleted:
-    drop their property-manager mapping and, if they no longer manage ANY
-    association, delete their Supabase login. The admin_invites record (email +
-    ToS acceptance) is preserved and stamped revoked_at, so the audit trail
-    survives for later reference."""
+    """Revoke an Admin/PM's access to this association when their row is deleted.
+    For a PM this unmaps the association from their FIRM (the association is
+    dropping the firm, so every member loses it). A firm left with no
+    associations and no other members is deleted along with its login; a plain
+    hoa_admin login (no firm) is deleted outright, as before. The admin_invites
+    record (email + ToS acceptance) is preserved and stamped revoked_at, so the
+    audit trail survives for later reference."""
     email = (email or "").strip()
     if not email:
         return
     uid = await _find_user_id_by_email(email)
     if uid:
-        await conn.execute(
-            "DELETE FROM property_manager_hoas WHERE supabase_user_id = $1::uuid AND hoa_id = $2",
-            uid, hoa_id,
-        )
-        remaining = await conn.fetchval(
-            "SELECT count(*) FROM property_manager_hoas WHERE supabase_user_id = $1::uuid", uid,
-        )
-        if not remaining:
+        firm = await user_firm(conn, uid)
+        if firm:
+            await conn.execute(
+                "DELETE FROM pm_firm_hoas WHERE firm_id = $1 AND hoa_id = $2",
+                firm["id"], hoa_id,
+            )
+            remaining_hoas = await conn.fetchval(
+                "SELECT count(*) FROM pm_firm_hoas WHERE firm_id = $1", firm["id"],
+            )
+            other_members = await conn.fetchval(
+                "SELECT count(*) FROM pm_firm_members WHERE firm_id = $1 AND supabase_user_id <> $2::uuid",
+                firm["id"], uid,
+            )
+            if not remaining_hoas and not other_members:
+                await conn.execute("DELETE FROM pm_firms WHERE id = $1", firm["id"])
+                await _delete_supabase_user(uid)
+        else:
             await _delete_supabase_user(uid)
     # Keep the audit record (email + ToS timestamp); just mark it revoked.
     await conn.execute(
@@ -500,8 +512,10 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
     """Public — load the invite so the setup page can show who/what it's for.
     A GET (e.g. a scanner prefetch) never consumes anything."""
     row = await conn.fetchrow(
-        """SELECT ai.email, ai.accepted_at, h.name AS hoa_name
-           FROM admin_invites ai JOIN hoas h ON h.id = ai.hoa_id
+        """SELECT ai.email, ai.accepted_at, h.name AS hoa_name, f.name AS firm_name
+           FROM admin_invites ai
+           LEFT JOIN hoas h ON h.id = ai.hoa_id
+           LEFT JOIN pm_firms f ON f.id = ai.firm_id
            WHERE ai.token = $1""",
         token,
     )
@@ -509,7 +523,7 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
         raise HTTPException(status_code=404, detail="Invite not found")
     if row["accepted_at"]:
         raise HTTPException(status_code=410, detail="This setup link has already been used.")
-    return {"email": row["email"], "hoa_name": row["hoa_name"]}
+    return {"email": row["email"], "hoa_name": row["hoa_name"], "firm_name": row["firm_name"]}
 
 
 class AdminInviteAccept(BaseModel):
@@ -531,7 +545,7 @@ async def accept_admin_invite(
         raise HTTPException(status_code=400, detail="You must agree to the Terms of Service to continue.")
     async with conn.transaction():
         row = await conn.fetchrow(
-            "SELECT id, email, hoa_id, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
+            "SELECT id, email, hoa_id, firm_id, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
             token,
         )
         if not row:
@@ -541,7 +555,7 @@ async def accept_admin_invite(
 
         role = row["role"] or "hoa_admin"
         # hoa_admin carries its association in the token; property_manager access
-        # comes from the property_manager_hoas mapping created below.
+        # comes from their firm's portfolio (pm_firm_hoas), mapped below.
         app_meta = {"role": role}
         if role == "hoa_admin":
             app_meta["hoa_id"] = str(row["hoa_id"])
@@ -568,16 +582,19 @@ async def accept_admin_invite(
                 raise
 
         if role == "property_manager":
-            # Map the PM login to this association (scoped admin access), if not already.
-            mapped = await conn.fetchval(
-                "SELECT 1 FROM property_manager_hoas WHERE supabase_user_id = $1::uuid AND hoa_id = $2",
-                uid, row["hoa_id"],
-            )
-            if not mapped:
+            if row["firm_id"]:
+                # Teammate invite: join the firm — grants the whole portfolio.
+                # If they somehow already belong to a firm, keep the original.
                 await conn.execute(
-                    "INSERT INTO property_manager_hoas (supabase_user_id, hoa_id) VALUES ($1::uuid, $2)",
-                    uid, row["hoa_id"],
+                    """INSERT INTO pm_firm_members (firm_id, supabase_user_id) VALUES ($1, $2::uuid)
+                       ON CONFLICT (supabase_user_id) DO NOTHING""",
+                    row["firm_id"], uid,
                 )
+            else:
+                # Association-side PM invite: attach the HOA to this PM's firm
+                # (their first association creates a single-owner firm).
+                firm_id = await ensure_firm(conn, uid, row["email"])
+                await map_hoa_to_firm(conn, firm_id, row["hoa_id"])
         else:
             # Create the Admin line (unit-less row) so the Admins card/list reflects
             # the now-active admin — deduped by email.

@@ -17,6 +17,7 @@ from models.db import get_conn
 from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
+from services.firms import firm_manages_hoa
 from services.policy_parser import parse_dec_page
 from services.email import (
     board_report_html, send_email,
@@ -51,11 +52,7 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
     if user.role == "super_user":
         return
     if user.role == "property_manager":
-        row = await conn.fetchrow(
-            "SELECT 1 FROM property_manager_hoas WHERE supabase_user_id = $1 AND hoa_id = $2",
-            user.sub, hoa_id,
-        )
-        if row is None:
+        if not await firm_manages_hoa(conn, user.sub, hoa_id):
             raise HTTPException(status_code=403, detail="Access denied to this HOA")
         return
     if user.hoa_id and user.hoa_id != hoa_id:
@@ -326,10 +323,13 @@ async def list_hoas(
     if user.role == "super_user":
         rows = await conn.fetch(f"SELECT {_HOA_SEARCH_FIELDS} FROM hoas h ORDER BY h.name")
     elif user.role == "property_manager":
+        # Every member of the firm sees the firm's whole portfolio — including
+        # associations added after they joined.
         rows = await conn.fetch(
             f"""SELECT {_HOA_SEARCH_FIELDS} FROM hoas h
-               JOIN property_manager_hoas pmh ON pmh.hoa_id = h.id
-               WHERE pmh.supabase_user_id = $1
+               JOIN pm_firm_hoas fh ON fh.hoa_id = h.id
+               JOIN pm_firm_members m ON m.firm_id = fh.firm_id
+               WHERE m.supabase_user_id = $1
                ORDER BY h.name""",
             user.sub,
         )

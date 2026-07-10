@@ -882,6 +882,32 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
     return subject, html
 
 
+def pm_team_invite_html(firm_name: str, inviter_email: str, setup_url: str) -> tuple[str, str]:
+    """A property manager invited a colleague to their firm: one link that
+    grants dashboard access to every association the firm manages."""
+    firm = _html.escape(firm_name or "your firm")
+    inviter = _html.escape(inviter_email or "a colleague")
+    subject = f"You've been added to {firm_name or 'your team'} on condo.insure"
+    html = f"""
+    <html><body style="margin:0;background:#f1f5f9;
+          font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+      <div style="max-width:600px;margin:0 auto;padding:24px 12px">
+        {_header()}
+        <p style="color:#111827;font-size:16px;margin:0 0 4px">Hi there,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 8px">
+          <strong>{inviter}</strong> invited you to join <strong>{firm}</strong> on condo.insure.
+          Set a password and you'll have the compliance dashboard for every association
+          your firm manages — current ones and any added later.
+        </p>
+        {_btn(setup_url, "Set your password & sign in")}
+        <p style="color:#9ca3af;font-size:13px;line-height:1.5;margin:16px 0 0">
+          Didn't expect this? You can ignore this email and nothing will happen.
+        </p>
+        {_footer()}
+      </div></body></html>"""
+    return subject, html
+
+
 def new_association_notification_html(
     association_name: str,
     address: str,

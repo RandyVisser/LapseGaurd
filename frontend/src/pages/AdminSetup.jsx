@@ -64,9 +64,13 @@ export default function AdminSetup() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
         <img src="/assets/logo-full.svg" alt="condo.insure" className="h-10 mb-6" />
-        <h1 className="text-2xl font-bold text-blue-800 mb-1">Set up your admin account</h1>
+        <h1 className="text-2xl font-bold text-blue-800 mb-1">
+          {invite?.firm_name ? 'Join your team' : 'Set up your admin account'}
+        </h1>
         <p className="text-sm text-slate-500 mb-1">
-          You're the admin for <strong>{invite?.hoa_name}</strong>
+          {invite?.firm_name
+            ? <>You're joining <strong>{invite.firm_name}</strong> — you'll see every association your firm manages</>
+            : <>You're the admin for <strong>{invite?.hoa_name}</strong></>}
         </p>
         <p className="text-xs text-slate-400 mb-6">{invite?.email}</p>
 

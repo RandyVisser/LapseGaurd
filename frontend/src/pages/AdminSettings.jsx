@@ -5,6 +5,7 @@ import { apiGet, apiPut, apiPost, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import BillingPanel from '../components/BillingPanel'
 import PmBillingPanel from '../components/PmBillingPanel'
+import PmTeamPanel from '../components/PmTeamPanel'
 
 // Billing stays hidden until switched on (set VITE_BILLING_ENABLED=true).
 const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true'
@@ -240,6 +241,8 @@ export default function AdminSettings() {
         {unitMsg && <p className="text-sm text-[#0E8E68] mb-4">{unitMsg}</p>}
 
         {loading && <div className="bg-white rounded-xl border border-[#E8ECF2] h-40 animate-pulse" />}
+
+        {!loading && hoaId === ALL_HOAS && role === 'property_manager' && <PmTeamPanel />}
 
         {BILLING_ENABLED && !loading && hoaId === ALL_HOAS && role === 'property_manager' && <PmBillingPanel />}
 
