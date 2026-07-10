@@ -210,8 +210,8 @@ export default function AdminHo6Summary() {
 
                 {/* Flag lists */}
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Card title="Lowest Cov A limits" subtitle="Up to 10 policies with the smallest dwelling limit">
-                    <PolicyList rows={data.lowest_cov_a} valueLabel="Cov A" valueFn={r => fmtMoney(r.cov_a)} />
+                  <Card title={`Cov A limit under ${fmtMoney(data.low_cov_a_threshold)}`} subtitle="Policies with a dwelling limit below the threshold">
+                    <PolicyList rows={data.low_cov_a} valueLabel="Cov A" valueFn={r => fmtMoney(r.cov_a)} />
                   </Card>
                   <Card title="May have a wind exclusion" subtitle="coverage_type = HO6 wind-excluded">
                     <PolicyList rows={data.wind_exclusion} />

@@ -620,6 +620,8 @@ def _num(v) -> float | None:
 _HO6_EXCLUDE_TYPES = ("ho4", "wind_only")
 # Summary fields the re-parse backfills into extracted_data.
 _HO6_SUMMARY_FIELDS = ("premium", "coverage_c", "wind_mitigation_credit", "water_damage_exclusion")
+# Cov A limit below which a policy is flagged as low dwelling coverage.
+_COV_A_THRESHOLD = 60000
 
 
 def _ext_needs_reparse(ext: dict) -> bool:
@@ -726,9 +728,10 @@ async def ho6_summary(
     no_wind_mit = [_brief(p) for p in policies if p["wind_mit"] is False]
     wind_exclusion = [_brief(p) for p in policies if p["coverage_type"] == "ho6_wind_excluded"]
     water_exclusion = [_brief(p) for p in policies if p["water_excl"] is True]
-    lowest_cov_a = sorted(
-        ({**_brief(p), "cov_a": p["cov_a"]} for p in policies if p["cov_a"] is not None),
-        key=lambda x: x["cov_a"])[:10]
+    low_cov_a = sorted(
+        ({**_brief(p), "cov_a": p["cov_a"]} for p in policies
+         if p["cov_a"] is not None and p["cov_a"] < _COV_A_THRESHOLD),
+        key=lambda x: x["cov_a"])
 
     # How many current policies still need a re-parse to populate the new fields:
     # has a dec page, is missing all four fields, and hasn't been re-parsed before
@@ -749,7 +752,8 @@ async def ho6_summary(
         "top_carriers_by_rate": top_by_rate,
         "no_wind_mitigation": no_wind_mit,
         "wind_exclusion": wind_exclusion,
-        "lowest_cov_a": lowest_cov_a,
+        "low_cov_a": low_cov_a,
+        "low_cov_a_threshold": _COV_A_THRESHOLD,
         "water_damage_exclusion": water_exclusion,
     }
 
