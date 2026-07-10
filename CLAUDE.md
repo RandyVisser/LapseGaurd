@@ -33,6 +33,9 @@ backend/
     onboarding.py      # POST /onboard/association, admin/PM invite tokens
     alerts.py          # POST /alerts/run (cron endpoint), /reports/board/run
     billing.py         # /hoa/{id}/billing, checkout/portal, Stripe webhook — BILLING_ENABLED
+                        # + /pm/billing: PM-firm consolidated subscription (combined units,
+                        # volume tiers as the incentive; covered HOA rows share the firm's
+                        # stripe_customer_id so the webhook fans status out to all of them)
     rentals.py         # /unit/{id}/rental, /lease, rental invite — RENTALS_ENABLED
     feedback.py        # POST/GET/PATCH /feedback — backs in-app FeedbackWidget
     inbound.py         # POST /inbound/email — docs@condo.insure email-in flow
@@ -70,6 +73,7 @@ frontend/src/
     ImportWizard.jsx    # bulk unit import (CSV) flow
     AddEmailsWizard.jsx # bulk tenant email add flow
     BillingPanel.jsx    # Stripe billing UI, flag-gated
+    PmBillingPanel.jsx  # PM portfolio billing (all associations, one subscription), flag-gated
     FeedbackWidget.jsx  # in-app feedback submission
 ```
 
@@ -138,6 +142,7 @@ policies      id, tenant_id, insurer, policy_number, expiration_date, status,
 unit_invites  id, unit_id, email, token, accepted_at
 documents     id, hoa_id, name, file_url, uploaded_by
 alert_log     id, tenant_id, alert_type, sent_at
+pm_billing    supabase_user_id (pk), stripe_customer_id, created_at   # PM firm's consolidated-billing Stripe customer
 ```
 
 Storage buckets:

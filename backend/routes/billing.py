@@ -251,6 +251,196 @@ async def stripe_webhook(
     return {"received": True}
 
 
+# ── PM firm billing: one subscription covering every managed association ─────
+# A property manager pays once for their whole portfolio: one Stripe customer
+# (tracked in pm_billing), one subscription with quantity = combined billable
+# units. Because the graduated price is applied to the combined quantity, PMs
+# get the volume tiers ($0.50/$0.25) their associations would never reach
+# individually — that discount is the incentive to consolidate.
+#
+# Every covered HOA row is stamped with the firm's stripe_customer_id, so the
+# existing webhook above fans subscription status out to all of them and each
+# association reads as paid through the normal per-HOA billing endpoint.
+
+def _require_pm(user: AuthUser):
+    if user.role != "property_manager":
+        raise HTTPException(status_code=403, detail="Property-manager account required")
+
+
+async def _pm_portfolio(conn: asyncpg.Connection, user_id: str):
+    """All HOAs this PM manages, with billable unit counts and billing state."""
+    return await conn.fetch(
+        """SELECT h.id, h.name, h.billing_status, h.stripe_customer_id,
+                  h.stripe_subscription_id, h.trial_ends_at, h.billing_cancel_at,
+                  (SELECT count(*) FROM units u
+                     WHERE u.hoa_id = h.id
+                       AND lower(coalesce(u.assoc_title, '')) <> 'property manager'
+                       AND u.parent_unit_id IS NULL) AS units
+           FROM hoas h
+           JOIN property_manager_hoas pmh ON pmh.hoa_id = h.id
+           WHERE pmh.supabase_user_id = $1
+           ORDER BY h.name""",
+        user_id,
+    )
+
+
+def _split_portfolio(hoas, firm_customer):
+    """Included = billable under the firm subscription. Excluded = associations
+    that already pay on their own (a live subscription under a different
+    Stripe customer) — we never double-charge those."""
+    included, excluded = [], []
+    for h in hoas:
+        self_paying = (
+            h["stripe_subscription_id"]
+            and (h["billing_status"] or "") in _GOOD_STANDING
+            and (not firm_customer or h["stripe_customer_id"] != firm_customer)
+        )
+        (excluded if self_paying else included).append(h)
+    return included, excluded
+
+
+def _latest_trial_end(hoas):
+    ends = [h["trial_ends_at"] for h in hoas if h["trial_ends_at"]]
+    return max(ends) if ends else None
+
+
+@router.get("/pm/billing")
+async def get_pm_billing(
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    _require_pm(user)
+    firm_customer = await conn.fetchval(
+        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
+    )
+    hoas = await _pm_portfolio(conn, user.sub)
+    included, excluded = _split_portfolio(hoas, firm_customer)
+
+    # Firm subscription state lives on the stamped HOA rows (webhook keeps
+    # them in sync); any one of them speaks for the whole subscription.
+    stamped = [h for h in included if firm_customer and h["stripe_customer_id"] == firm_customer]
+    firm = next((h for h in stamped if h["stripe_subscription_id"]), None)
+    status = (firm["billing_status"] or "none") if firm else "none"
+    cancel_at = firm["billing_cancel_at"] if firm else None
+
+    units = sum(h["units"] for h in included)
+    monthly = _graduated_monthly_cents(units)
+    separate = sum(_graduated_monthly_cents(h["units"]) for h in included)
+    trial_ends_at = _latest_trial_end(included)
+    trial_days_left = None
+    if trial_ends_at:
+        trial_days_left = max((trial_ends_at - datetime.now(timezone.utc)).days, 0)
+    trial_active = bool(trial_days_left)
+
+    return {
+        "enabled": BILLING_ENABLED,
+        "status": status,
+        "in_good_standing": status in _GOOD_STANDING or trial_active,
+        "has_subscription": bool(firm),
+        "units": units,
+        "monthly_cents": monthly,
+        "separate_monthly_cents": separate,
+        "savings_cents": max(separate - monthly, 0),
+        "trial_ends_at": trial_ends_at.isoformat() if trial_ends_at else None,
+        "trial_days_left": trial_days_left,
+        "trial_active": trial_active,
+        "cancel_at": cancel_at.isoformat() if cancel_at else None,
+        "hoas": [
+            {
+                "id": str(h["id"]),
+                "name": h["name"],
+                "units": h["units"],
+                "status": h["billing_status"] or "none",
+                "included": h in included,
+            }
+            for h in hoas
+        ],
+    }
+
+
+@router.post("/pm/billing/checkout")
+async def create_pm_checkout(
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    _require_live()
+    _require_pm(user)
+    if not STRIPE_PRICE_ID:
+        raise HTTPException(status_code=503, detail="No Stripe price configured")
+
+    firm_customer = await conn.fetchval(
+        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
+    )
+    hoas = await _pm_portfolio(conn, user.sub)
+    included, _ = _split_portfolio(hoas, firm_customer)
+    if any(
+        firm_customer and h["stripe_customer_id"] == firm_customer
+        and h["stripe_subscription_id"] and (h["billing_status"] or "") in _GOOD_STANDING
+        for h in included
+    ):
+        raise HTTPException(status_code=400, detail="Already subscribed — use Manage billing.")
+    units = sum(h["units"] for h in included)
+    if units <= 0:
+        raise HTTPException(status_code=400, detail="No billable units across your associations yet.")
+
+    if not firm_customer:
+        customer = stripe.Customer.create(
+            email=user.email,
+            metadata={"pm_user_id": user.sub},
+        )
+        firm_customer = customer.id
+        await conn.execute(
+            """INSERT INTO pm_billing (supabase_user_id, stripe_customer_id) VALUES ($1, $2)
+               ON CONFLICT (supabase_user_id) DO UPDATE SET stripe_customer_id = $2""",
+            user.sub, firm_customer,
+        )
+
+    # Stamp the firm customer on every covered HOA so the webhook marks them
+    # all paid the moment checkout completes.
+    await conn.execute(
+        "UPDATE hoas SET stripe_customer_id = $1 WHERE id = ANY($2::uuid[])",
+        firm_customer, [h["id"] for h in included],
+    )
+
+    # Same mid-trial courtesy as per-HOA checkout: first charge lands when the
+    # (latest) trial would have ended anyway.
+    subscription_data = {}
+    trial_ends_at = _latest_trial_end(included)
+    if trial_ends_at and trial_ends_at > datetime.now(timezone.utc) + timedelta(days=2):
+        subscription_data["trial_end"] = int(trial_ends_at.timestamp())
+
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        customer=firm_customer,
+        line_items=[{"price": STRIPE_PRICE_ID, "quantity": units}],
+        success_url=f"{APP_URL}/admin/settings?billing=success",
+        cancel_url=f"{APP_URL}/admin/settings?billing=cancel",
+        metadata={"pm_user_id": user.sub},
+        allow_promotion_codes=True,
+        **({"subscription_data": subscription_data} if subscription_data else {}),
+    )
+    return {"url": session.url}
+
+
+@router.post("/pm/billing/portal")
+async def create_pm_portal(
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    _require_live()
+    _require_pm(user)
+    firm_customer = await conn.fetchval(
+        "SELECT stripe_customer_id FROM pm_billing WHERE supabase_user_id = $1", user.sub,
+    )
+    if not firm_customer:
+        raise HTTPException(status_code=400, detail="No billing account yet — subscribe first.")
+    session = stripe.billing_portal.Session.create(
+        customer=firm_customer,
+        return_url=f"{APP_URL}/admin/settings",
+    )
+    return {"url": session.url}
+
+
 # ── Future paywall hook — currently a NO-OP, called from nowhere yet ─────────
 async def assert_billing_ok(conn: asyncpg.Connection, hoa_id: str) -> None:
     """When we decide to gate features behind payment, call this in those flows.
