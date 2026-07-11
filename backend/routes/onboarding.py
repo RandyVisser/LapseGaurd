@@ -22,7 +22,7 @@ from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
     new_association_notification_html, email_changed_html,
-    staff_activated_notification_html,
+    staff_activated_notification_html, staff_added_to_association_html,
 )
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -148,6 +148,21 @@ async def _update_user_password(user_id: str, password: str, app_metadata: dict)
             f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
             headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
             json={"password": password, "email_confirm": True, "app_metadata": app_metadata},
+        )
+    if resp.status_code not in (200, 201):
+        data = resp.json()
+        raise HTTPException(status_code=400, detail=data.get("msg") or data.get("message") or "Could not update account")
+
+
+async def _update_user_app_metadata(user_id: str, app_metadata: dict) -> None:
+    """Update ONLY a Supabase user's app_metadata (role, hoa_id) — never the
+    password. Used when an already-registered user is granted access via an
+    invite, so the invite can't be forwarded to reset their password."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.put(
+            f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+            headers={"apikey": SERVICE_ROLE_KEY, "Authorization": f"Bearer {SERVICE_ROLE_KEY}"},
+            json={"app_metadata": app_metadata},
         )
     if resp.status_code not in (200, 201):
         data = resp.json()
@@ -505,6 +520,23 @@ async def invite_pm(
     if body.email and pm_email.lower() != (unit["email_primary"] or "").strip().lower():
         await conn.execute("UPDATE units SET email_primary = $2 WHERE id = $1", body.unit_id, pm_email)
 
+    # If this email already has a property-manager login, do NOT send a
+    # password-setup link — a forwarded setup link would let a third party reset
+    # their password and lock them out of every association. Instead grant access
+    # to this association immediately and tell them to sign in as usual.
+    existing = await conn.fetchrow(
+        "SELECT id, raw_app_meta_data->>'role' AS role FROM auth.users WHERE lower(email) = lower($1)",
+        pm_email,
+    )
+    if existing and existing["role"] == "property_manager":
+        # Grant access via the PM's firm (same mapping accept uses) so the new
+        # association shows up for their whole team.
+        firm_id = await ensure_firm(conn, existing["id"], pm_email)
+        await map_hoa_to_firm(conn, firm_id, hoa_id)
+        subject, html = staff_added_to_association_html(unit["hoa_name"], f"{APP_URL}/login", unit["owner_primary"])
+        background_tasks.add_task(send_email, pm_email, subject, html)
+        return {"invited": True, "email": pm_email, "existing_account": True}
+
     token = await _create_staff_invite(conn, hoa_id, pm_email, "property_manager")
     setup_url = f"{APP_URL}/admin-setup/{token}"
     subject, html = welcome_admin_html(unit["owner_primary"] or "", unit["hoa_name"], setup_url=setup_url)
@@ -591,16 +623,23 @@ async def accept_admin_invite(
                     detail="This email is already the admin of another association. Ask to be added as a Property Manager for this one instead.",
                 )
 
+        existing_account = False
         try:
             uid = await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
         except HTTPException as e:
-            # Account already exists (e.g. a prior invite) — the token was emailed
-            # to this address, so set the password on the existing account.
+            # Account already exists. NEVER reset its password from an invite — a
+            # forwarded invite must not let a third party change an existing user's
+            # password and hijack their account. Grant access via metadata only
+            # (and never demote a super_user); they sign in with their own password.
             if "already" in str(e.detail).lower() or "registered" in str(e.detail).lower():
                 uid = await _find_user_id_by_email(row["email"])
                 if not uid:
                     raise HTTPException(status_code=409, detail="An account already exists for this email. Use “Forgot password” on the sign-in page to set your password.")
-                await _update_user_password(uid, body.password, app_meta)
+                existing_account = True
+                current_role = await conn.fetchval(
+                    "SELECT raw_app_meta_data->>'role' FROM auth.users WHERE id = $1::uuid", uid)
+                if current_role != "super_user":
+                    await _update_user_app_metadata(uid, app_meta)
             else:
                 raise
 
@@ -642,7 +681,7 @@ async def accept_admin_invite(
 
     # Heads-up to support@ that this person just went live (outside the txn).
     await _queue_staff_activated_alert(conn, background_tasks, role, row["email"], row["hoa_id"])
-    return {"ok": True}
+    return {"ok": True, "existing_account": existing_account}
 
 
 @router.get("/invite/{token}")

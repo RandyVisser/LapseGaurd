@@ -35,7 +35,10 @@ export default function AdminSetup() {
         const data = await res.json()
         throw new Error(data.detail || 'Could not set up your account')
       }
-      navigate('/login?welcome=admin')
+      const data = await res.json().catch(() => ({}))
+      // If the email already had an account, we did NOT change its password —
+      // send them to sign in with their existing one rather than implying reset.
+      navigate(data.existing_account ? '/login?welcome=existing' : '/login?welcome=admin')
     } catch (err) {
       setError(err.message)
     } finally {

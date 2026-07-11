@@ -908,6 +908,33 @@ def pm_team_invite_html(firm_name: str, inviter_email: str, setup_url: str) -> t
     return subject, html
 
 
+def staff_added_to_association_html(hoa_name: str, login_url: str, recipient_name: str | None = None) -> tuple[str, str]:
+    """Sent when someone who ALREADY has a condo.insure login is granted access to
+    a new association. Deliberately contains NO password-setup link — an existing
+    account keeps its current password (forwarding this email must never let a
+    third party reset it). They just sign in as usual."""
+    greeting = _html.escape((recipient_name or "").strip()) or "there"
+    safe_hoa = _html.escape(hoa_name or "a new association")
+    subject = f"You've been added to {hoa_name} on condo.insure"
+    html = f"""
+    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+      {_header()}
+      <p style="color:#374151">Hi {greeting},</p>
+      <p style="color:#374151">
+        You've been given access to <strong>{safe_hoa}</strong> on condo.insure. It's now
+        available under your existing account — no new password needed.
+      </p>
+      <p style="color:#374151">Sign in with your usual condo.insure email and password to manage it.</p>
+      {_btn(login_url, "Sign in")}
+      <p style="color:#9ca3af;font-size:13px;line-height:1.5;margin:16px 0 0">
+        Forgot your password? Use &ldquo;Forgot password&rdquo; on the sign-in page — that's the only
+        way to reset it, so this invitation can't be used to change your password.
+      </p>
+      {_footer()}
+    </div></body></html>"""
+    return subject, html
+
+
 def new_association_notification_html(
     association_name: str,
     address: str,

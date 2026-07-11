@@ -65,6 +65,11 @@ export default function Login() {
               Password updated! Sign in with your new password.
             </div>
           )}
+          {welcome === 'existing' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm text-blue-800">
+              You already have a condo.insure account — the new association was added to it. Sign in with your existing password. Forgot it? Use “Forgot password” below.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
