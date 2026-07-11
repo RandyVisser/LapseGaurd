@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import BillingPanel from '../components/BillingPanel'
 import PmBillingPanel from '../components/PmBillingPanel'
 import PmTeamPanel from '../components/PmTeamPanel'
+import HoaOptions from '../components/HoaOptions'
 
 // Billing stays hidden until switched on (set VITE_BILLING_ENABLED=true).
 const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true'
@@ -56,16 +57,12 @@ export default function AdminSettings() {
   const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
 
-  // PM-firm directory (super users): groups the switcher by firm and powers
-  // the firms card on the all-associations view.
+  // PM-firm directory (super users): groups the switcher by firm (HoaOptions)
+  // and powers the firms card on the all-associations view.
   const [firms, setFirms] = useState([])
   useEffect(() => {
     if (role === 'super_user') apiGet('/firms').then(setFirms).catch(() => {})
   }, [role])
-  const firmHoaIds = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
-  const independentHoas = [...availableHoas]
-    .filter(h => !firmHoaIds.has(h.id))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   const hoaFieldValues = (() => {
     const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
@@ -221,21 +218,7 @@ export default function AdminSettings() {
                 className="flex-1 min-w-0 border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
               >
                 <option value={ALL_HOAS}>All Associations</option>
-                {role === 'super_user' && firms.length > 0 ? (
-                  <>
-                    {firms.filter(f => f.hoas.length > 0).map(f => (
-                      <optgroup key={f.id} label={`Firm: ${f.name}`}>
-                        {f.hoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                      </optgroup>
-                    ))}
-                    <optgroup label="Independent">
-                      {independentHoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                    </optgroup>
-                  </>
-                ) : (
-                  [...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                    .map(h => <option key={h.id} value={h.id}>{h.name}</option>)
-                )}
+                <HoaOptions role={role} hoas={availableHoas} firms={firms} />
               </select>
               <span className="text-xs text-[#8493A8] flex-shrink-0">or search by</span>
               <select

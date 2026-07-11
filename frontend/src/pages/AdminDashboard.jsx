@@ -9,6 +9,7 @@ import useIsMobile from '../hooks/useIsMobile'
 import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 import TrialBanner from '../components/TrialBanner'
+import HoaOptions from '../components/HoaOptions'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 // Subrental flagging — dark until the full rental flow is built + tested.
@@ -1178,8 +1179,7 @@ export default function AdminDashboard() {
                   className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
                 >
                   <option value={ALL_HOAS}>All Associations</option>
-                  {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                    .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  <HoaOptions role={role} hoas={availableHoas} />
                 </select>
                 <span className="text-xs text-[#8493A8] whitespace-nowrap flex-shrink-0">or search by</span>
                 <select
