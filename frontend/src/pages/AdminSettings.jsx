@@ -45,7 +45,21 @@ const PREVIEW_ROWS = [
 const ALL_HOAS = '__all__'
 
 export default function AdminSettings() {
-  const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
+  const { hoaId: globalHoaId, role, availableHoas, setSelectedHoaId: setGlobalHoaId } = useAuth()
+  // Super users open Settings on the all-associations overview (firm/association
+  // directory — cheap to render), regardless of the dashboard's Sandbox default.
+  // This is page-local: it never flips the global selection onto the heavy
+  // all-associations dashboard. Picking an association here updates both.
+  const [showAll, setShowAll] = useState(true)
+  const hoaId = role === 'super_user' && showAll ? '__all__' : globalHoaId
+  function setSelectedHoaId(id) {
+    if (role === 'super_user') {
+      setShowAll(id === '__all__')
+      if (id !== '__all__') setGlobalHoaId(id)
+    } else {
+      setGlobalHoaId(id)
+    }
+  }
   const navigate = useNavigate()
   const [form, setForm] = useState(null)
   const [loading, setLoading] = useState(true)
