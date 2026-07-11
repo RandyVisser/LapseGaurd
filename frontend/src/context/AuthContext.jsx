@@ -45,11 +45,15 @@ export function AuthProvider({ children }) {
     if (session && (role === 'super_user' || role === 'property_manager' || role === 'hoa_admin')) {
       apiGet('/hoas').then(list => {
         setAvailableHoas(list)
-        // super_users / PMs manage many associations → default to the
-        // all-associations overview (no single HOA's title leaks in). A plain
-        // hoa_admin defaults to their one association.
-        const multi = role === 'super_user' || role === 'property_manager'
-        setSelectedHoaId(prev => prev || (multi ? '__all__' : list[0]?.id) || null)
+        // Defaults: super_users land on Sandbox (or the first association) —
+        // the all-associations aggregate fans out across every HOA and won't
+        // scale as customers grow, so it's opt-in via the switcher. PMs keep
+        // the portfolio overview; a plain hoa_admin gets their one association.
+        const SANDBOX_HOA = '00000000-0000-0000-0000-000000000001'
+        const superDefault = (list.find(h => h.id === SANDBOX_HOA) || list[0])?.id
+        setSelectedHoaId(prev => prev
+          || (role === 'super_user' ? superDefault : role === 'property_manager' ? '__all__' : list[0]?.id)
+          || null)
       }).catch(() => {})
     }
   }, [session?.user?.id, role])
