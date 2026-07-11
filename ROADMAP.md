@@ -17,9 +17,10 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 
 ## Core compliance hardening
 
-- [ ] **Bounce visibility** (S) — surface `email_bounces` in the UI: red flag on
-      unit rows with bouncing owner emails + dashboard count. Silent alert
-      failure is a core-promise failure. ← recommended first
+- [ ] **Bounce handling, remaining slice** (S) — capture + per-unit "✉ Bounced"
+      badge + invite-skip already exist. Still missing: the renewal-alert cron
+      doesn't skip/flag bounced addresses (keeps mailing dead inboxes), and
+      there's no aggregate "N owners unreachable" count on the dashboard.
 - [ ] **Most-current dec page AI agent** (M) — when a unit has multiple uploads,
       have Claude pick the governing one instead of trusting upload order.
 - [ ] **Master policy tracking** (M) — track the association's own building
