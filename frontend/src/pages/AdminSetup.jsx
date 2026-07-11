@@ -26,10 +26,14 @@ export default function AdminSetup() {
     setError('')
     setSubmitting(true)
     try {
+      // An existing account never sends a password — it only accepts + agrees to
+      // the ToS (its password is never touched).
       const res = await fetch(`${API}/admin-invite/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, agree_tos: agreeTos }),
+        body: JSON.stringify(invite?.existing_account
+          ? { agree_tos: agreeTos }
+          : { password, agree_tos: agreeTos }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -68,7 +72,8 @@ export default function AdminSetup() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
         <img src="/assets/logo-full.svg" alt="condo.insure" className="h-10 mb-6" />
         <h1 className="text-2xl font-bold text-blue-800 mb-1">
-          {invite?.firm_name ? 'Join your team'
+          {invite?.existing_account ? 'Accept your invitation'
+            : invite?.firm_name ? 'Join your team'
             : invite?.role === 'property_manager' ? 'Set up your property manager account'
             : 'Set up your admin account'}
         </h1>
@@ -92,19 +97,28 @@ export default function AdminSetup() {
           </p>
         )}
 
+        {invite?.existing_account && (
+          <p className="text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-6">
+            You already have a condo.insure account — no new password needed. Accept below and this
+            association is added to your account; keep signing in with your existing password.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Set a Password</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {!invite?.existing_account && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Set a Password</label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <label className="flex items-start gap-2 text-sm text-slate-600">
             <input
@@ -128,7 +142,7 @@ export default function AdminSetup() {
 
           <button type="submit" disabled={submitting}
             className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-60">
-            {submitting ? 'Setting up…' : 'Create my account'}
+            {submitting ? 'Submitting…' : invite?.existing_account ? 'Accept invitation' : 'Create my account'}
           </button>
         </form>
       </div>

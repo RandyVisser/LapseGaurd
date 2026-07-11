@@ -528,20 +528,21 @@ async def invite_pm(
         "SELECT id, raw_app_meta_data->>'role' AS role FROM auth.users WHERE lower(email) = lower($1)",
         pm_email,
     )
+    token = await _create_staff_invite(conn, hoa_id, pm_email, "property_manager")
+    accept_url = f"{APP_URL}/admin-setup/{token}"
+
     if existing and existing["role"] == "property_manager":
-        # Grant access via the PM's firm (same mapping accept uses) so the new
-        # association shows up for their whole team.
-        firm_id = await ensure_firm(conn, existing["id"], pm_email)
-        await map_hoa_to_firm(conn, firm_id, hoa_id)
-        subject, html = staff_added_to_association_html(unit["hoa_name"], f"{APP_URL}/login", unit["owner_primary"])
+        # Already has a login: send an invite that lands on a ToS-only acceptance
+        # page — they still explicitly accept and agree to the terms, but set NO
+        # new password (so a forwarded invite can't reset their password). The
+        # firm mapping is applied when they accept.
+        subject, html = staff_added_to_association_html(unit["hoa_name"], accept_url, unit["owner_primary"])
         background_tasks.add_task(send_email, pm_email, subject, html)
         return {"invited": True, "email": pm_email, "existing_account": True}
 
-    token = await _create_staff_invite(conn, hoa_id, pm_email, "property_manager")
-    setup_url = f"{APP_URL}/admin-setup/{token}"
-    subject, html = welcome_admin_html(unit["owner_primary"] or "", unit["hoa_name"], setup_url=setup_url)
+    # New login: normal set-a-password setup flow.
+    subject, html = welcome_admin_html(unit["owner_primary"] or "", unit["hoa_name"], setup_url=accept_url)
     background_tasks.add_task(send_email, pm_email, subject, html)
-
     return {"invited": True, "email": pm_email}
 
 
@@ -564,25 +565,30 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
     # For an association-side PM invite, accepting attaches the HOA to the
     # accepter's whole firm — surface the firm so the setup page can disclose
     # that before they proceed.
+    existing_uid = await conn.fetchval(
+        "SELECT id FROM auth.users WHERE lower(email) = lower($1)", row["email"],
+    )
     existing_firm_name = None
-    if (row["role"] or "hoa_admin") == "property_manager" and row["hoa_name"]:
-        uid = await conn.fetchval(
-            "SELECT id FROM auth.users WHERE lower(email) = lower($1)", row["email"],
-        )
-        if uid:
-            firm = await user_firm(conn, uid)
-            existing_firm_name = firm["name"] if firm else None
+    if (row["role"] or "hoa_admin") == "property_manager" and row["hoa_name"] and existing_uid:
+        firm = await user_firm(conn, existing_uid)
+        existing_firm_name = firm["name"] if firm else None
     return {
         "email": row["email"],
         "hoa_name": row["hoa_name"],
         "firm_name": row["firm_name"],
         "role": row["role"] or "hoa_admin",
         "existing_firm_name": existing_firm_name,
+        # When true, the setup page collects only ToS acceptance (no password) —
+        # the invitee already has a login and keeps their existing password.
+        "existing_account": bool(existing_uid),
     }
 
 
 class AdminInviteAccept(BaseModel):
-    password: str
+    # Optional: only a brand-new login sets a password here. An already-registered
+    # invitee accepts + agrees to the ToS without one (their password is never
+    # touched, so a forwarded invite can't be used to reset it).
+    password: str | None = None
     agree_tos: bool = False
 
 
@@ -623,25 +629,24 @@ async def accept_admin_invite(
                     detail="This email is already the admin of another association. Ask to be added as a Property Manager for this one instead.",
                 )
 
-        existing_account = False
-        try:
+        existing_uid = await conn.fetchval(
+            "SELECT id FROM auth.users WHERE lower(email) = lower($1)", row["email"])
+        if existing_uid:
+            # Existing account: they still accept + agree to the ToS here, but we
+            # NEVER reset their password from an invite (a forwarded invite must not
+            # let a third party change someone's password and hijack the account).
+            # Grant access via metadata only, and never demote a super_user.
+            uid = str(existing_uid)
+            existing_account = True
+            current_role = await conn.fetchval(
+                "SELECT raw_app_meta_data->>'role' FROM auth.users WHERE id = $1::uuid", uid)
+            if current_role != "super_user":
+                await _update_user_app_metadata(uid, app_meta)
+        else:
+            if not body.password or len(body.password) < 8:
+                raise HTTPException(status_code=400, detail="Please choose a password of at least 8 characters.")
             uid = await _create_supabase_user(row["email"], body.password, app_meta, email_confirm=True)
-        except HTTPException as e:
-            # Account already exists. NEVER reset its password from an invite — a
-            # forwarded invite must not let a third party change an existing user's
-            # password and hijack their account. Grant access via metadata only
-            # (and never demote a super_user); they sign in with their own password.
-            if "already" in str(e.detail).lower() or "registered" in str(e.detail).lower():
-                uid = await _find_user_id_by_email(row["email"])
-                if not uid:
-                    raise HTTPException(status_code=409, detail="An account already exists for this email. Use “Forgot password” on the sign-in page to set your password.")
-                existing_account = True
-                current_role = await conn.fetchval(
-                    "SELECT raw_app_meta_data->>'role' FROM auth.users WHERE id = $1::uuid", uid)
-                if current_role != "super_user":
-                    await _update_user_app_metadata(uid, app_meta)
-            else:
-                raise
+            existing_account = False
 
         if role == "property_manager":
             if row["firm_id"]:

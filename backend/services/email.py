@@ -908,11 +908,11 @@ def pm_team_invite_html(firm_name: str, inviter_email: str, setup_url: str) -> t
     return subject, html
 
 
-def staff_added_to_association_html(hoa_name: str, login_url: str, recipient_name: str | None = None) -> tuple[str, str]:
-    """Sent when someone who ALREADY has a condo.insure login is granted access to
-    a new association. Deliberately contains NO password-setup link — an existing
-    account keeps its current password (forwarding this email must never let a
-    third party reset it). They just sign in as usual."""
+def staff_added_to_association_html(hoa_name: str, accept_url: str, recipient_name: str | None = None) -> tuple[str, str]:
+    """Sent when someone who ALREADY has a condo.insure login is invited to a new
+    association. The link opens a ToS-only acceptance page — they accept and agree
+    to the terms, but set NO new password (an existing account keeps its current
+    password, so forwarding this email can't let a third party reset it)."""
     greeting = _html.escape((recipient_name or "").strip()) or "there"
     safe_hoa = _html.escape(hoa_name or "a new association")
     subject = f"You've been added to {hoa_name} on condo.insure"
@@ -921,14 +921,17 @@ def staff_added_to_association_html(hoa_name: str, login_url: str, recipient_nam
       {_header()}
       <p style="color:#374151">Hi {greeting},</p>
       <p style="color:#374151">
-        You've been given access to <strong>{safe_hoa}</strong> on condo.insure. It's now
-        available under your existing account — no new password needed.
+        You've been added to <strong>{safe_hoa}</strong> on condo.insure. Click below to review
+        and accept — you'll confirm you agree to the Terms of Service.
       </p>
-      <p style="color:#374151">Sign in with your usual condo.insure email and password to manage it.</p>
-      {_btn(login_url, "Sign in")}
+      <p style="color:#374151">
+        No new password is needed: this is added to your existing account, and you'll keep
+        signing in with your current email and password.
+      </p>
+      {_btn(accept_url, "Review &amp; accept")}
       <p style="color:#9ca3af;font-size:13px;line-height:1.5;margin:16px 0 0">
-        Forgot your password? Use &ldquo;Forgot password&rdquo; on the sign-in page — that's the only
-        way to reset it, so this invitation can't be used to change your password.
+        This link only adds the association to your account — it can't be used to change your
+        password. To reset a password, use &ldquo;Forgot password&rdquo; on the sign-in page.
       </p>
       {_footer()}
     </div></body></html>"""

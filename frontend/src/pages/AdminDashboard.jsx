@@ -999,7 +999,7 @@ export default function AdminDashboard() {
       const r = await apiPost(`/hoa/${hoaId}/invite-pm`, { unit_id: pmInviteUnit, email: pmInviteEmail.trim() || undefined })
       setPmInviteUnit(null)
       setInviteAllMsg(r.existing_account
-        ? `Property manager added — ${r.email} already has an account and can sign in with their existing password.`
+        ? `Property manager invited — ${r.email} already has an account, so they just accept & agree to the terms (no new password).`
         : `Property manager invited — set-up email sent to ${r.email}.`)
       refreshDashboard()  // so the PM's status badge reflects the invite
       setTimeout(() => setInviteAllMsg(''), 8000)
@@ -1027,7 +1027,7 @@ export default function AdminDashboard() {
           : (await apiPost(`/hoa/${hoaId}/property-manager`, { name: inviteName.trim() || undefined, email })).unit_id
         const r = await apiPost(`/hoa/${hoaId}/invite-pm`, { unit_id: unitId, email })
         setInviteAllMsg(r.existing_account
-          ? `Property manager added — ${r.email} already has an account and can sign in with their existing password.`
+          ? `Property manager invited — ${r.email} already has an account, so they just accept & agree to the terms (no new password).`
           : `Property manager invited — set-up email sent to ${r.email}.`)
       }
       setInviteAdminOpen(false)
