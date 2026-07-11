@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { apiGet } from '../supabase'
 
 // Option list for the association switcher <select>. Super users get the list
@@ -8,8 +8,10 @@ import { apiGet } from '../supabase'
 //
 // Pass `firms` if the page already fetched GET /firms (Settings does, for its
 // PM Firms card); otherwise the component fetches it itself for super users.
-// `selectableFirms` adds an "Entire portfolio" option (value `firm:<id>`) to
-// each firm group — the dashboard uses it for the firm portfolio view.
+// With `selectableFirms` (the dashboard), the firm NAME itself is the option —
+// picking it (value `firm:<id>`) opens the firm's whole-portfolio view, with
+// its associations indented beneath it. Optgroup labels aren't clickable in
+// native selects, so firm groups become options in that mode.
 export default function HoaOptions({ role, hoas, firms: firmsProp, selectableFirms = false }) {
   const [fetched, setFetched] = useState([])
   useEffect(() => {
@@ -23,15 +25,25 @@ export default function HoaOptions({ role, hoas, firms: firmsProp, selectableFir
   }
   const inFirm = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
   const independent = sorted.filter(h => !inFirm.has(h.id))
+  if (selectableFirms) {
+    return (
+      <>
+        {firms.filter(f => f.hoas.length > 0).map(f => (
+          <Fragment key={f.id}>
+            <option value={`firm:${f.id}`}>{f.name}</option>
+            {f.hoas.map(h => <option key={h.id} value={h.id}>{' '}{h.name}</option>)}
+          </Fragment>
+        ))}
+        <optgroup label="Independent">
+          {independent.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        </optgroup>
+      </>
+    )
+  }
   return (
     <>
       {firms.filter(f => f.hoas.length > 0).map(f => (
         <optgroup key={f.id} label={`Firm: ${f.name}`}>
-          {selectableFirms && (
-            <option value={`firm:${f.id}`}>
-              Entire portfolio ({f.hoas.length} association{f.hoas.length !== 1 ? 's' : ''})
-            </option>
-          )}
           {f.hoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
         </optgroup>
       ))}
