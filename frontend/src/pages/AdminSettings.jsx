@@ -309,6 +309,30 @@ export default function AdminSettings() {
           </div>
         )}
 
+        {!loading && hoaId === ALL_HOAS && role === 'super_user' && (() => {
+          const inFirm = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
+          const independent = [...availableHoas]
+            .filter(h => !inFirm.has(h.id))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          if (independent.length === 0) return null
+          return (
+            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6">
+              <p className="font-semibold text-[#0B1B33]">Independent Associations</p>
+              <p className="text-xs text-[#54627A] mt-1 mb-3">
+                Self-managed — no PM firm attached. Click one to open its settings.
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {independent.map(h => (
+                  <button key={h.id} type="button" onClick={() => setSelectedHoaId(h.id)}
+                    className="text-xs bg-[#EEF3FB] text-[#014AC5] hover:bg-[#DCE7F8] rounded px-2 py-0.5">
+                    {h.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {!loading && hoaId === ALL_HOAS && (
           <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-8 text-center text-[#54627A]">
             Select a single association above to view and edit its settings.
