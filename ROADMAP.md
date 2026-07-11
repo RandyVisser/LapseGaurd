@@ -17,10 +17,10 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 
 ## Core compliance hardening
 
-- [ ] **Bounce handling, remaining slice** (S) — capture + per-unit "✉ Bounced"
-      badge + invite-skip already exist. Still missing: the renewal-alert cron
-      doesn't skip/flag bounced addresses (keeps mailing dead inboxes), and
-      there's no aggregate "N owners unreachable" count on the dashboard.
+- [x] **Bounce handling, remaining slice** — shipped 2026-07-11: alert cron
+      skips bounced addresses (falling back to the owner's other email when
+      only one bounced) and the dashboard's needs-attention strip shows an
+      "Email bouncing" pill that filters to the affected units.
 - [ ] **Most-current dec page AI agent** (M) — when a unit has multiple uploads,
       have Claude pick the governing one instead of trusting upload order.
 - [ ] **Master policy tracking** (M) — track the association's own building

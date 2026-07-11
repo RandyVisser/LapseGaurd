@@ -146,6 +146,7 @@ function ActionStrip({ summary, activeFilter, setActiveFilter }) {
     { filter: 'missing', value: summary.missing, label: 'Missing policy', countCls: 'text-[#54627A]' },
     { filter: 'invite_sent', value: summary.invite_sent, label: 'Awaiting upload', countCls: 'text-[#54627A]' },
     { filter: 'not_invited', value: summary.not_invited, label: 'Not invited', countCls: 'text-[#54627A]' },
+    { filter: 'bounced', value: summary.bounced_emails, label: 'Email bouncing', countCls: 'text-[#C0492F]' },
   ].filter(p => (p.value ?? 0) > 0)
   if (pills.length === 0) return null
   return (
@@ -1090,7 +1091,7 @@ export default function AdminDashboard() {
           const allUnits = results.flatMap(([, u]) => u)
           const summaries = results.map(([s]) => s)
           const merged = summaries.reduce((acc, s) => {
-            for (const key of ['total_units', 'board_members', 'rented_units', 'admins', 'property_managers', 'compliant', 'manually_approved', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count']) {
+            for (const key of ['total_units', 'board_members', 'rented_units', 'admins', 'property_managers', 'compliant', 'manually_approved', 'expiring', 'lapsed', 'non_compliant', 'pending_review', 'missing', 'invite_sent', 'not_invited', 'invites_sent', 'documents_count', 'bounced_emails']) {
               acc[key] = (acc[key] || 0) + (s[key] || 0)
             }
             return acc
@@ -1144,6 +1145,7 @@ export default function AdminDashboard() {
         else if (activeFilter === 'missing') { if (u.status !== 'missing') return false }
         else if (activeFilter === 'invite_sent') { if (u.status !== 'missing' || !u.invite_sent) return false }
         else if (activeFilter === 'not_invited') { if (u.status !== 'missing' || u.invite_sent) return false }
+        else if (activeFilter === 'bounced') { if (!u.email_bounced) return false }
         else { if (u.status !== activeFilter) return false }
       }
       if (search) {

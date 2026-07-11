@@ -29,13 +29,21 @@ _SENDER_UNIT_SQL = """COALESCE(h.email_sender_unit_id,
 _SENDER_EMAIL_SQL = """(SELECT su.email_primary FROM units su WHERE su.id = """ + _SENDER_UNIT_SQL + """)"""
 
 
-def _alert_recipient(row) -> str | None:
+async def _bounced_emails(conn) -> set[str]:
+    """Addresses Resend has reported bounced/complained (email_bounces) — we
+    never mail these again; the fix is the admin correcting the address, which
+    the dashboard's Bounced badge and needs-attention pill point them at."""
+    return {r["email"] for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
+
+
+def _alert_recipient(row, bounced: set[str] = frozenset()) -> str | None:
     """Send to the owner at the email the admin manages on the dashboard
     (units.email_primary), falling back to the tenant record's email. Skips
-    placeholder @condo.insure addresses (no real inbox)."""
+    placeholder @condo.insure addresses (no real inbox) and addresses that
+    have bounced — a bounced primary falls back to the tenant email."""
     for addr in (row.get("email_primary"), row.get("tenant_email")):
         a = (addr or "").strip()
-        if a and not a.lower().endswith("@condo.insure"):
+        if a and not a.lower().endswith("@condo.insure") and a.lower() not in bounced:
             return a
     return None
 
@@ -66,8 +74,12 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
               < NOW() - (COALESCE(h.invite_reminder_days, 7) * INTERVAL '1 day')
         """,
     )
+    bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
+        if (row["email"] or "").strip().lower() in bounced:
+            print(f"[alerts] Skipped invite reminder to {row['email']} — address has bounced")
+            continue
         is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
         invite_url = f"{APP_URL}/join/{row['token']}"
         em = (row["email"] or "").strip().lower()
@@ -92,6 +104,7 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
 
 async def process_alerts(conn: asyncpg.Connection) -> int:
     today = date.today()
+    bounced = await _bounced_emails(conn)
 
     rows = await conn.fetch(
         """
@@ -178,8 +191,10 @@ async def process_alerts(conn: asyncpg.Connection) -> int:
         if already_sent:
             continue
 
-        recipient = _alert_recipient(row)
+        recipient = _alert_recipient(row, bounced)
         if not recipient:
+            if _alert_recipient(row):
+                print(f"[alerts] Skipped {alert_type} for Unit {row['unit_number']} — every address has bounced")
             continue
         em = recipient.lower()
         recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
@@ -220,6 +235,7 @@ async def process_lease_alerts(conn: asyncpg.Connection) -> int:
     the association's 30/7/1 milestones) or has expired, so they upload a renewal.
     Throttled per owner-tenant/type via alert_log, like the policy reminders."""
     today = date.today()
+    bounced = await _bounced_emails(conn)
     rows = await conn.fetch(
         r"""
         SELECT u.id AS unit_id, u.unit_number, u.email_primary, u.email_secondary,
@@ -252,10 +268,11 @@ async def process_lease_alerts(conn: asyncpg.Connection) -> int:
         if not row["alerts_enabled"] or not row["owner_tenant_id"]:
             continue  # need a tenant_id to throttle via alert_log
 
-        # Notify the owner at a real address (skip placeholder @condo.insure)
+        # Notify the owner at a real, deliverable address (skip placeholder
+        # @condo.insure and anything that has bounced)
         def _real(addr):
             a = (addr or "").strip()
-            return a if a and not a.lower().endswith("@condo.insure") else ""
+            return a if a and not a.lower().endswith("@condo.insure") and a.lower() not in bounced else ""
         recipient = _real(row["email_primary"]) or _real(row["owner_tenant_email"])
         if not recipient:
             continue
@@ -325,6 +342,7 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
           AND (t.email IS NOT NULL OR u.email_primary IS NOT NULL)
         """,
     )
+    bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
         already = await conn.fetchval(
@@ -335,8 +353,10 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
         )
         if already:
             continue
-        recipient = _alert_recipient(row)
+        recipient = _alert_recipient(row, bounced)
         if not recipient:
+            if _alert_recipient(row):
+                print(f"[alerts] Skipped non-compliant reminder for Unit {row['unit_number']} — every address has bounced")
             continue
         em = recipient.lower()
         recipient_name = row.get("owner_secondary") if em and em == (row.get("email_secondary") or "").strip().lower() else (row.get("owner_primary") or row["tenant_name"])
@@ -379,8 +399,12 @@ async def process_trial_reminders(conn) -> int:
              AND coalesce(admin_email, '') <> ''
              AND (trial_ends_at::date - CURRENT_DATE) IN (14, 3, 1, 0)"""
     )
+    bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
+        if (row["admin_email"] or "").strip().lower() in bounced:
+            print(f"[alerts] Skipped trial reminder for {row['name']} — admin address has bounced")
+            continue
         subject, html = trial_ending_html(
             row["name"], int(row["days_left"]), row["trial_ends_at"],
             f"{APP_URL}/admin/settings",

@@ -147,6 +147,7 @@ class ComplianceSummary(BaseModel):
     invite_sent: int = 0   # units with no policy that have been invited
     not_invited: int = 0   # units with no policy and no invite sent
     documents_count: int = 0  # shared association documents on file
+    bounced_emails: int = 0   # owner units whose primary email is bouncing (unreachable)
 
 
 class DocumentCreate(BaseModel):

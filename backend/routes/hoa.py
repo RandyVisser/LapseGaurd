@@ -580,6 +580,17 @@ async def compliance_summary(
         "SELECT COUNT(*) FROM documents WHERE hoa_id = $1", hoa_id,
     ) or 0
 
+    # Owner units we can't reach: primary email has bounced (matches the
+    # per-row email_bounced flag on /units; staff rows excluded).
+    bounced_emails = await conn.fetchval(
+        """SELECT COUNT(*) FROM units u
+           WHERE u.hoa_id = $1 AND u.parent_unit_id IS NULL
+             AND lower(coalesce(u.assoc_title, '')) NOT IN ('property manager', 'admin')
+             AND u.email_primary IS NOT NULL
+             AND EXISTS (SELECT 1 FROM email_bounces b WHERE lower(b.email) = lower(u.email_primary))""",
+        hoa_id,
+    ) or 0
+
     return ComplianceSummary(
         total_units=total_units,
         board_members=board_members,
@@ -597,6 +608,7 @@ async def compliance_summary(
         invite_sent=invite_sent,
         not_invited=not_invited,
         documents_count=documents_count,
+        bounced_emails=bounced_emails,
     )
 
 
