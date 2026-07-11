@@ -55,9 +55,10 @@ export default function PmBillingPanel() {
         !error && <p className="text-sm text-[#8493A8]">Loading…</p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
             <Stat label="Associations" value={included.length} />
             <Stat label="Units" value={data.units} />
+            <Stat label="Effective Rate" value={data.units > 0 ? `${dollars(data.monthly_cents / data.units)}/unit` : '—'} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
           {data.savings_cents > 0 && (
