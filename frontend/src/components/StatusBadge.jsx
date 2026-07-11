@@ -10,8 +10,8 @@ const colors = {
 }
 
 const labels = {
-  active:         'AI Approved',
-  expiring:       'AI Approved',
+  active:         'Approved',
+  expiring:       'Approved',
   non_compliant:  'Needs Attention',
   lapsed:         'Expired',
   missing:        'Missing Policy',

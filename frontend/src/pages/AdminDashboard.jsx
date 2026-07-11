@@ -47,7 +47,7 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
 
   const chips = [
     { filter: 'all', value: total, label: 'Total units' },
-    { filter: 'active', value: summary.compliant ?? 0, label: 'AI approved' },
+    { filter: 'active', value: summary.compliant ?? 0, label: 'Approved' },
     { filter: 'manual', value: summary.manually_approved ?? 0, label: 'Manual approval' },
     { filter: 'board', value: summary.board_members ?? 0, label: 'Board members' },
     { filter: 'staff', value: (summary.admins ?? 0) + (summary.property_managers ?? 0), label: 'Dashboard users', onClick: onStaffClick },
