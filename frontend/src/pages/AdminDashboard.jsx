@@ -569,7 +569,7 @@ function ColumnsPicker({ visible, setVisible }) {
 }
 
 export default function AdminDashboard() {
-  const { hoaId, role, availableHoas, refreshHoas, selectedHoaId, setSelectedHoaId } = useAuth()
+  const { hoaId: globalHoaId, role, availableHoas, refreshHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
@@ -601,8 +601,31 @@ export default function AdminDashboard() {
 
   const ALL_HOAS = '__all__'
 
+  // Firm portfolio view (super users): picking a firm in the switcher shows
+  // the All-Associations aggregate restricted to that firm's associations.
+  // Page-local, like the Settings overview default — it never leaks a
+  // "firm:" value into the global selection other pages read.
+  const [firmView, setFirmView] = useState(null)
+  const [firms, setFirms] = useState([])
+  useEffect(() => {
+    if (role === 'super_user') apiGet('/firms').then(setFirms).catch(() => {})
+  }, [role])
+  const activeFirm = firmView ? firms.find(f => f.id === firmView) : null
+  const hoaId = activeFirm ? ALL_HOAS : globalHoaId
+  const scopeHoas = activeFirm
+    ? availableHoas.filter(h => activeFirm.hoas.some(fh => fh.id === h.id))
+    : availableHoas
+
+  function chooseFromSwitcher(value) {
+    setHoaFieldValue('')
+    if (value.startsWith('firm:')) { setFirmView(value.slice(5)); return }
+    setFirmView(null)
+    setSelectedHoaId(value)
+  }
+
   function handleHoaFieldValueChange(value) {
     setHoaFieldValue(value)
+    setFirmView(null)
     if (value === ALL_HOAS) {
       setSelectedHoaId(ALL_HOAS)
       return
@@ -971,6 +994,7 @@ export default function AdminDashboard() {
         admin_email: addHoaForm.admin_email.trim() || undefined,
       })
       await refreshHoas()
+      setFirmView(null)
       setSelectedHoaId(hoa_id)  // jump straight into the new association
       setAddHoaOpen(false)
       setAddHoaForm({ association_name: '', address: '', admin_email: '' })
@@ -1058,7 +1082,7 @@ export default function AdminDashboard() {
     if (!hoaId) return
     if (hoaId === ALL_HOAS) {
       Promise.all(
-        availableHoas.map(h =>
+        scopeHoas.map(h =>
           Promise.all([apiGet(`/hoa/${h.id}/compliance`), apiGet(`/hoa/${h.id}/units`)])
         )
       )
@@ -1093,7 +1117,7 @@ export default function AdminDashboard() {
     setSelectedTenantIds(new Set())
     setAddressFilter('')
     refreshDashboard()
-  }, [hoaId, availableHoas])
+  }, [hoaId, availableHoas, firmView, firms])
 
   // Distinct building addresses for the filter dropdown (natural order, e.g. "12 Bay Dr" after "2 Bay Dr")
   const buildingAddresses = [...new Set(units.map(u => u.street_address).filter(Boolean))]
@@ -1157,7 +1181,9 @@ export default function AdminDashboard() {
         <div className="mb-5">
           <div>
             <h2 className="text-[26px] leading-tight font-extrabold tracking-tight text-[#0B1B33]" style={{ fontFamily: DISPLAY }}>
-              {hoaId === ALL_HOAS ? 'All Associations' : (selectedHoa?.name || 'Compliance Dashboard')}
+              {hoaId === ALL_HOAS
+                ? (activeFirm ? `${activeFirm.name} — portfolio` : 'All Associations')
+                : (selectedHoa?.name || 'Compliance Dashboard')}
             </h2>
             {(selectedHoa?.corp_name || summary) && hoaId !== ALL_HOAS && (
               <p className="text-[13px] text-[#54627A] mt-0.5">
@@ -1174,12 +1200,12 @@ export default function AdminDashboard() {
                 {/* Primary: pick any association by name (works for every HOA,
                     including signup-created ones with no PropRadar fields) */}
                 <select
-                  value={hoaId || ''}
-                  onChange={e => { setHoaFieldValue(''); setSelectedHoaId(e.target.value) }}
+                  value={activeFirm ? `firm:${firmView}` : (globalHoaId || '')}
+                  onChange={e => chooseFromSwitcher(e.target.value)}
                   className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
                 >
                   <option value={ALL_HOAS}>All Associations</option>
-                  <HoaOptions role={role} hoas={availableHoas} />
+                  <HoaOptions role={role} hoas={availableHoas} firms={firms} selectableFirms />
                 </select>
                 <span className="text-xs text-[#8493A8] whitespace-nowrap flex-shrink-0">or search by</span>
                 <select

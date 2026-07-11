@@ -8,7 +8,9 @@ import { apiGet } from '../supabase'
 //
 // Pass `firms` if the page already fetched GET /firms (Settings does, for its
 // PM Firms card); otherwise the component fetches it itself for super users.
-export default function HoaOptions({ role, hoas, firms: firmsProp }) {
+// `selectableFirms` adds an "Entire portfolio" option (value `firm:<id>`) to
+// each firm group — the dashboard uses it for the firm portfolio view.
+export default function HoaOptions({ role, hoas, firms: firmsProp, selectableFirms = false }) {
   const [fetched, setFetched] = useState([])
   useEffect(() => {
     if (!firmsProp && role === 'super_user') apiGet('/firms').then(setFetched).catch(() => {})
@@ -25,6 +27,11 @@ export default function HoaOptions({ role, hoas, firms: firmsProp }) {
     <>
       {firms.filter(f => f.hoas.length > 0).map(f => (
         <optgroup key={f.id} label={`Firm: ${f.name}`}>
+          {selectableFirms && (
+            <option value={`firm:${f.id}`}>
+              Entire portfolio ({f.hoas.length} association{f.hoas.length !== 1 ? 's' : ''})
+            </option>
+          )}
           {f.hoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
         </optgroup>
       ))}
