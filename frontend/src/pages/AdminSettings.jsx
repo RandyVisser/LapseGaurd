@@ -56,6 +56,17 @@ export default function AdminSettings() {
   const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
 
+  // PM-firm directory (super users): groups the switcher by firm and powers
+  // the firms card on the all-associations view.
+  const [firms, setFirms] = useState([])
+  useEffect(() => {
+    if (role === 'super_user') apiGet('/firms').then(setFirms).catch(() => {})
+  }, [role])
+  const firmHoaIds = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
+  const independentHoas = [...availableHoas]
+    .filter(h => !firmHoaIds.has(h.id))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
   const hoaFieldValues = (() => {
     const key = HOA_FIELD_OPTIONS[hoaFieldType]?.key
     const seen = new Set()
@@ -210,8 +221,21 @@ export default function AdminSettings() {
                 className="flex-1 min-w-0 border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
               >
                 <option value={ALL_HOAS}>All Associations</option>
-                {[...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                  .map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                {role === 'super_user' && firms.length > 0 ? (
+                  <>
+                    {firms.filter(f => f.hoas.length > 0).map(f => (
+                      <optgroup key={f.id} label={`Firm: ${f.name}`}>
+                        {f.hoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                      </optgroup>
+                    ))}
+                    <optgroup label="Independent">
+                      {independentHoas.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                    </optgroup>
+                  </>
+                ) : (
+                  [...availableHoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                    .map(h => <option key={h.id} value={h.id}>{h.name}</option>)
+                )}
               </select>
               <span className="text-xs text-[#8493A8] flex-shrink-0">or search by</span>
               <select
@@ -245,6 +269,37 @@ export default function AdminSettings() {
         {!loading && hoaId === ALL_HOAS && role === 'property_manager' && <PmTeamPanel />}
 
         {BILLING_ENABLED && !loading && hoaId === ALL_HOAS && role === 'property_manager' && <PmBillingPanel />}
+
+        {!loading && hoaId === ALL_HOAS && role === 'super_user' && firms.length > 0 && (
+          <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6">
+            <p className="font-semibold text-[#0B1B33]">PM Firms</p>
+            <p className="text-xs text-[#54627A] mt-1 mb-3">
+              Property-management firms and the associations they manage. Click an association to open its settings.
+            </p>
+            <div className="border border-[#E8ECF2] rounded-lg divide-y divide-[#E8ECF2]">
+              {firms.map(f => (
+                <div key={f.id} className="px-3 py-2.5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-medium text-[#0B1B33]">{f.name}</p>
+                    <p className="text-xs text-[#8493A8] truncate">{f.members.join(', ')}</p>
+                  </div>
+                  {f.hoas.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {f.hoas.map(h => (
+                        <button key={h.id} type="button" onClick={() => setSelectedHoaId(h.id)}
+                          className="text-xs bg-[#EEF3FB] text-[#014AC5] hover:bg-[#DCE7F8] rounded px-2 py-0.5">
+                          {h.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#8493A8] mt-1">No associations yet</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!loading && hoaId === ALL_HOAS && (
           <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-8 text-center text-[#54627A]">

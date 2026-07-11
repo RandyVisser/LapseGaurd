@@ -11,7 +11,7 @@ import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
-from auth.jwt import AuthUser, require_hoa_admin
+from auth.jwt import AuthUser, require_hoa_admin, require_super_user
 from models.db import get_conn
 from services.email import APP_URL, pm_team_invite_html, send_email
 from services.firms import ensure_firm, user_firm
@@ -155,6 +155,42 @@ async def remove_member(
         from routes.onboarding import _delete_supabase_user
         await _delete_supabase_user(member_user_id)
     return {"removed": True}
+
+
+@router.get("/firms")
+async def list_firms(
+    user: AuthUser = Depends(require_super_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Staff directory of PM firms: who's in each and which associations they
+    manage. Powers the firm grouping in the super-user association switcher."""
+    firms = await conn.fetch(
+        """SELECT f.id, f.name,
+                  coalesce(array_agg(DISTINCT lower(au.email))
+                           FILTER (WHERE au.email IS NOT NULL), '{}') AS members
+           FROM pm_firms f
+           LEFT JOIN pm_firm_members m ON m.firm_id = f.id
+           LEFT JOIN auth.users au ON au.id = m.supabase_user_id
+           GROUP BY f.id, f.name
+           ORDER BY f.name""",
+    )
+    hoa_rows = await conn.fetch(
+        """SELECT fh.firm_id, h.id, h.name
+           FROM pm_firm_hoas fh JOIN hoas h ON h.id = fh.hoa_id
+           ORDER BY h.name""",
+    )
+    hoas_by_firm = {}
+    for r in hoa_rows:
+        hoas_by_firm.setdefault(r["firm_id"], []).append({"id": str(r["id"]), "name": r["name"]})
+    return [
+        {
+            "id": str(f["id"]),
+            "name": f["name"],
+            "members": list(f["members"]),
+            "hoas": hoas_by_firm.get(f["id"], []),
+        }
+        for f in firms
+    ]
 
 
 class TeamRename(BaseModel):
