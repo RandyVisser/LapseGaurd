@@ -162,35 +162,57 @@ async def list_firms(
     user: AuthUser = Depends(require_super_user),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Staff directory of PM firms: who's in each and which associations they
-    manage. Powers the firm grouping in the super-user association switcher."""
+    """Staff directory of PM firms: who's in each, which associations they
+    manage, and a billing snapshot (combined units, monthly total, status).
+    Powers the firm grouping + hover card in the super-user settings view."""
+    from routes.billing import _GOOD_STANDING, _UNITS_SUBQ, _graduated_monthly_cents, _split_portfolio
+
     firms = await conn.fetch(
-        """SELECT f.id, f.name,
+        """SELECT f.id, f.name, f.stripe_customer_id,
                   coalesce(array_agg(DISTINCT lower(au.email))
                            FILTER (WHERE au.email IS NOT NULL), '{}') AS members
            FROM pm_firms f
            LEFT JOIN pm_firm_members m ON m.firm_id = f.id
            LEFT JOIN auth.users au ON au.id = m.supabase_user_id
-           GROUP BY f.id, f.name
+           GROUP BY f.id, f.name, f.stripe_customer_id
            ORDER BY f.name""",
     )
     hoa_rows = await conn.fetch(
-        """SELECT fh.firm_id, h.id, h.name
-           FROM pm_firm_hoas fh JOIN hoas h ON h.id = fh.hoa_id
-           ORDER BY h.name""",
+        f"""SELECT fh.firm_id, h.id, h.name, h.stripe_customer_id,
+                   h.stripe_subscription_id, h.billing_status, {_UNITS_SUBQ} AS units
+            FROM pm_firm_hoas fh JOIN hoas h ON h.id = fh.hoa_id
+            ORDER BY h.name""",
     )
     hoas_by_firm = {}
     for r in hoa_rows:
-        hoas_by_firm.setdefault(r["firm_id"], []).append({"id": str(r["id"]), "name": r["name"]})
-    return [
-        {
+        hoas_by_firm.setdefault(r["firm_id"], []).append(r)
+
+    out = []
+    for f in firms:
+        hoas = hoas_by_firm.get(f["id"], [])
+        included, excluded = _split_portfolio(hoas, f["stripe_customer_id"])
+        units = sum(h["units"] for h in included)
+        # Same derivation as GET /pm/billing: the firm subscription's state
+        # lives on the HOA rows stamped with the firm's customer.
+        stamped = [h for h in included
+                   if f["stripe_customer_id"] and h["stripe_customer_id"] == f["stripe_customer_id"]]
+        sub_row = next((h for h in stamped if h["stripe_subscription_id"]), None)
+        status = (sub_row["billing_status"] or "none") if sub_row else "none"
+        out.append({
             "id": str(f["id"]),
             "name": f["name"],
             "members": list(f["members"]),
-            "hoas": hoas_by_firm.get(f["id"], []),
-        }
-        for f in firms
-    ]
+            "hoas": [{"id": str(h["id"]), "name": h["name"], "units": h["units"]} for h in hoas],
+            "billing": {
+                "units": units,
+                "monthly_cents": _graduated_monthly_cents(units),
+                "status": status,
+                "has_subscription": bool(sub_row),
+                "in_good_standing": status in _GOOD_STANDING,
+                "self_paying": len(excluded),
+            },
+        })
+    return out
 
 
 class TeamRename(BaseModel):
