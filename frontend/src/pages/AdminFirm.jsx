@@ -5,19 +5,38 @@ import PmBillingPanel from '../components/PmBillingPanel'
 import FirmDirectory from '../components/FirmDirectory'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { CompBar } from '../components/FirmDashboard'
 
 const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true'
 const GROUP_COLORS = ['#0E8E68', '#946410', '#C0492F', '#014AC5', '#54627A', '#06245C']
 
 // ── Firm Console (design spec 2026-07-12) ───────────────────────────────────
-// One place a PM firm runs its book: Overview / Associations / People (Users +
-// Groups) / Billing / Settings. Roles: owner (everything), manager (people ops
-// + read-only billing), member (their assigned/group book). Super users get
-// the platform-wide firm directory instead.
+// The people/billing/settings side of the firm (the associations list lives on
+// the Dashboard). Roles: owner (everything), manager (people ops + read-only
+// billing), member (sees the roster only). Super users get the platform-wide
+// firm directory instead.
+
+const rolePill = r => r === 'owner'
+  ? <span className="text-[10px] font-semibold uppercase tracking-wide bg-[#EEF3FB] text-[#014AC5] rounded px-1.5 py-0.5">Owner</span>
+  : r === 'manager'
+    ? <span className="text-[10px] font-semibold uppercase tracking-wide bg-[#E2F4EC] text-[#0E8E68] rounded px-1.5 py-0.5">Manager</span>
+    : null
+
+// Shown on Users/Groups while the firm is open-visibility: assignments and
+// groups are being recorded but don't restrict anything yet.
+function OpenVisibilityNote({ isOwner, onGoSettings }) {
+  return (
+    <p className="text-xs text-[#54627A] bg-[#EEF3FB] border border-[#C7DBF5] rounded-lg px-3 py-2 mb-3">
+      Right now everyone on your team sees every association (open visibility).
+      Assignments and groups are saved but don't limit anything until{' '}
+      {isOwner
+        ? <>you turn on <button type="button" onClick={onGoSettings} className="text-[#014AC5] font-medium hover:underline">"Limit members to their assigned associations" in Settings</button>.</>
+        : <>the firm owner limits visibility in Settings.</>}
+    </p>
+  )
+}
 
 // ── People: Users + Groups ───────────────────────────────────────────────────
-function PeopleTab({ view }) {
+function PeopleTab({ view, onGoSettings }) {
   const [team, setTeam] = useState(null)
   const [groups, setGroups] = useState([])
   const [error, setError] = useState('')
@@ -44,12 +63,14 @@ function PeopleTab({ view }) {
   if (!team) return <p className="text-sm text-[#8493A8]">Loading…</p>
   const canManage = team.role === 'owner' || team.role === 'manager'
   const isOwner = team.role === 'owner'
+  const openVis = team.firm.open_visibility !== false
   const groupsOf = uid => groups.filter(g => g.member_ids.includes(uid))
 
   return (
     <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-5">
       {error && <p className="text-sm text-[#C0492F] mb-3">{error}</p>}
       {msg && <p className="text-sm text-[#0E8E68] mb-3">{msg}</p>}
+      {canManage && openVis && <OpenVisibilityNote isOwner={isOwner} onGoSettings={onGoSettings} />}
 
       {view === 'users' && (
         <>
@@ -68,7 +89,9 @@ function PeopleTab({ view }) {
                         style={{ background: '#EEF3FB', color: g.color || '#014AC5' }}>{g.name}</span>
                     ))}
                     <span className="text-xs text-[#8493A8]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                      {m.role === 'owner' || m.role === 'manager' ? 'sees all' : `${m.assigned_hoa_ids.length} assigned`}
+                      {openVis || m.role === 'owner' || m.role === 'manager'
+                        ? 'sees all'
+                        : `${m.assigned_hoa_ids.length} assigned`}
                     </span>
                     {isOwner && !m.you && m.role !== 'owner' && (
                       <select value={m.role} disabled={busy}
@@ -78,7 +101,7 @@ function PeopleTab({ view }) {
                         <option value="manager">Manager</option>
                       </select>
                     )}
-                    {canManage && !m.you && m.role === 'member' && (
+                    {canManage && !m.you && m.role === 'member' && !openVis && (
                       <button type="button" onClick={() => setEditing(editing === m.user_id ? null : m.user_id)}
                         className="text-xs text-[#014AC5] hover:underline">Assignments</button>
                     )}
@@ -164,7 +187,12 @@ function PeopleTab({ view }) {
             {groups.map(g => (
               <GroupCard key={g.id} group={g} team={team} busy={busy} canManage={canManage} run={run} />
             ))}
-            {groups.length === 0 && <p className="text-sm text-[#8493A8] col-span-2">No groups yet.</p>}
+            {groups.length === 0 && (
+              <p className="text-sm text-[#8493A8] col-span-2">
+                No groups yet. Name one below (e.g. "Green Team"), then tick which PMs are
+                on it and which associations they cover.
+              </p>
+            )}
           </div>
           {canManage && (
             <form onSubmit={e => { e.preventDefault(); const name = newGroup.trim(); if (!name) return
@@ -211,6 +239,9 @@ function GroupCard({ group, team, busy, canManage, run }) {
             {m.email}
           </label>
         ))}
+        {team.members.filter(m => m.role !== 'owner').length === 0 && (
+          <span className="text-xs text-[#8493A8]">No teammates yet — invite PMs on the Users tab.</span>
+        )}
       </div>
       <p className="text-[10.5px] uppercase text-[#8493A8] mb-1" style={{ fontFamily: 'JetBrains Mono, monospace', letterSpacing: '.08em' }}>Associations</p>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -266,7 +297,9 @@ function SettingsTab() {
           className="mt-0.5 rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
         <span><span className="font-medium text-[#0B1B33]">Limit members to their assigned associations.</span>{' '}
           Owners and managers always see the whole portfolio; members see their direct
-          assignments plus their groups' books.</span>
+          assignments plus their groups' books. After turning this on, set each member's
+          assignments on the Users tab (or put them in groups on the Groups tab) — an
+          unassigned member sees nothing.</span>
       </label>
     </div>
   )
@@ -279,10 +312,15 @@ export default function AdminFirm() {
   const [firms, setFirms] = useState([])
   const [tab, setTab] = useState('users')
   const [myRole, setMyRole] = useState(null)
+  const [firmName, setFirmName] = useState('')
 
   useEffect(() => {
     if (role === 'super_user') apiGet('/firms').then(setFirms).catch(() => {})
-    if (role === 'property_manager') apiGet('/pm/team').then(t => setMyRole(t.role)).catch(() => setMyRole('member'))
+    if (role === 'property_manager') {
+      apiGet('/pm/team')
+        .then(t => { setMyRole(t.role); setFirmName(t.firm?.name || '') })
+        .catch(() => setMyRole('member'))
+    }
   }, [role])
 
   if (role && role !== 'property_manager' && role !== 'super_user') {
@@ -309,28 +347,33 @@ export default function AdminFirm() {
       <main className="max-w-[60rem] mx-auto px-4 py-8">
         <div className="mb-5">
           <h1 className="text-xl font-bold text-[#0B1B33]">
-            {role === 'super_user' ? 'PM Firms' : 'Firm Console'}
+            {role === 'super_user' ? 'PM Firms' : (firmName || 'Your Firm')}
           </h1>
           <p className="text-sm text-[#54627A] mt-1">
             {role === 'super_user'
               ? 'Every property-management firm on the platform, and who they manage.'
-              : 'Your portfolio, your people, and how it all gets billed.'}
+              : myRole === 'member'
+                ? 'Your firm’s team. Your associations are on the Dashboard.'
+                : 'Your team, who sees what, and how the portfolio gets billed. Your associations are on the Dashboard.'}
           </p>
         </div>
 
         {role === 'property_manager' && (
           <>
-            <div className="flex gap-1 border-b border-[#E8ECF2] mb-5 overflow-x-auto">
-              {tabs.map(t => (
-                <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                  className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px ${
-                    tab === t.id ? 'text-[#014AC5] border-[#014AC5]' : 'text-[#54627A] border-transparent hover:text-[#0B1B33]'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {tab === 'users' && <PeopleTab view="users" />}
-            {tab === 'groups' && <PeopleTab view="groups" />}
+            {/* A plain member only has the roster — skip the tab chrome. */}
+            {tabs.length > 1 && (
+              <div className="flex gap-1 border-b border-[#E8ECF2] mb-5 overflow-x-auto">
+                {tabs.map(t => (
+                  <button key={t.id} type="button" onClick={() => setTab(t.id)}
+                    className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px ${
+                      tab === t.id ? 'text-[#014AC5] border-[#014AC5]' : 'text-[#54627A] border-transparent hover:text-[#0B1B33]'}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {tab === 'users' && <PeopleTab view="users" onGoSettings={() => setTab('settings')} />}
+            {tab === 'groups' && <PeopleTab view="groups" onGoSettings={() => setTab('settings')} />}
             {tab === 'billing' && <PmBillingPanel />}
             {tab === 'settings' && <SettingsTab />}
           </>
