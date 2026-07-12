@@ -236,7 +236,7 @@ export default function Signup() {
             Set up in minutes
           </span>
           <h2 className="mt-4 text-[34px] leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-            From a spreadsheet of unknowns to a board that stays green.
+            From a spreadsheet of unknowns to a dashboard that stays green.
           </h2>
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">1</span><span>Add your association — that&rsquo;s the whole form</span></li>
