@@ -40,10 +40,13 @@ async def get_team(
 ):
     firm = await _require_firm(conn, user)
     members = await conn.fetch(
-        """SELECT m.supabase_user_id, m.is_owner, m.created_at, au.email
+        """SELECT m.supabase_user_id, m.is_owner, m.created_at, au.email,
+                  coalesce(array_agg(a.hoa_id) FILTER (WHERE a.hoa_id IS NOT NULL), '{}') AS assigned
            FROM pm_firm_members m
            LEFT JOIN auth.users au ON au.id = m.supabase_user_id
+           LEFT JOIN pm_member_hoas a ON a.supabase_user_id = m.supabase_user_id
            WHERE m.firm_id = $1
+           GROUP BY m.supabase_user_id, m.is_owner, m.created_at, au.email
            ORDER BY m.is_owner DESC, m.created_at""",
         firm["id"],
     )
@@ -53,15 +56,35 @@ async def get_team(
            ORDER BY created_at""",
         firm["id"],
     )
+    # The firm's portfolio, for the assignment checkboxes. Only owners get the
+    # full list — under assignment-based visibility a member shouldn't learn
+    # the firm's other accounts from the team panel.
+    portfolio = []
+    if firm["is_owner"] or firm["open_visibility"]:
+        portfolio = [
+            {"id": str(r["id"]), "name": r["name"]}
+            for r in await conn.fetch(
+                """SELECT h.id, h.name FROM pm_firm_hoas fh JOIN hoas h ON h.id = fh.hoa_id
+                   WHERE fh.firm_id = $1 ORDER BY h.name""",
+                firm["id"],
+            )
+        ]
     return {
-        "firm": {"id": str(firm["id"]), "name": firm["name"]},
+        "firm": {
+            "id": str(firm["id"]),
+            "name": firm["name"],
+            "open_visibility": firm["open_visibility"],
+            "cab_number": firm["cab_number"],
+        },
         "is_owner": firm["is_owner"],
+        "hoas": portfolio,
         "members": [
             {
                 "user_id": str(m["supabase_user_id"]),
                 "email": m["email"],
                 "is_owner": m["is_owner"],
                 "you": str(m["supabase_user_id"]) == str(user.sub),
+                "assigned_hoa_ids": [str(h) for h in m["assigned"]],
             }
             for m in members
         ],
@@ -215,20 +238,71 @@ async def list_firms(
     return out
 
 
-class TeamRename(BaseModel):
-    name: str
+class TeamSettings(BaseModel):
+    name: str | None = None
+    open_visibility: bool | None = None
+    cab_number: str | None = None
 
 
 @router.patch("/pm/team")
-async def rename_firm(
-    body: TeamRename,
+async def update_firm_settings(
+    body: TeamSettings,
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     firm = await _require_firm(conn, user)
     _require_owner(firm)
-    name = (body.name or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Firm name can't be empty.")
-    await conn.execute("UPDATE pm_firms SET name = $1 WHERE id = $2", name[:120], firm["id"])
-    return {"renamed": True, "name": name[:120]}
+    if body.name is not None:
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Firm name can't be empty.")
+        await conn.execute("UPDATE pm_firms SET name = $1 WHERE id = $2", name[:120], firm["id"])
+    if body.open_visibility is not None:
+        await conn.execute(
+            "UPDATE pm_firms SET open_visibility = $1 WHERE id = $2",
+            body.open_visibility, firm["id"],
+        )
+    if body.cab_number is not None:
+        await conn.execute(
+            "UPDATE pm_firms SET cab_number = $1 WHERE id = $2",
+            body.cab_number.strip()[:40] or None, firm["id"],
+        )
+    return {"updated": True}
+
+
+class MemberAssignments(BaseModel):
+    hoa_ids: list[str]
+
+
+@router.put("/pm/team/members/{member_user_id}/hoas")
+async def set_member_assignments(
+    member_user_id: str,
+    body: MemberAssignments,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Replace a member's association assignments (owner-only). Assignments
+    must be within the firm's portfolio — enforced by FK, surfaced as a 400."""
+    firm = await _require_firm(conn, user)
+    _require_owner(firm)
+    is_member = await conn.fetchval(
+        "SELECT 1 FROM pm_firm_members WHERE firm_id = $1 AND supabase_user_id = $2::uuid",
+        firm["id"], member_user_id,
+    )
+    if not is_member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    async with conn.transaction():
+        await conn.execute(
+            "DELETE FROM pm_member_hoas WHERE supabase_user_id = $1::uuid", member_user_id,
+        )
+        try:
+            for hoa_id in dict.fromkeys(body.hoa_ids):  # de-dupe, keep order
+                await conn.execute(
+                    "INSERT INTO pm_member_hoas (firm_id, supabase_user_id, hoa_id) VALUES ($1, $2::uuid, $3::uuid)",
+                    firm["id"], member_user_id, hoa_id,
+                )
+        except asyncpg.ForeignKeyViolationError:
+            raise HTTPException(status_code=400, detail="One of those associations isn't managed by your firm.")
+        except asyncpg.DataError:
+            raise HTTPException(status_code=400, detail="Invalid association id.")
+    return {"updated": True, "assigned": len(dict.fromkeys(body.hoa_ids))}

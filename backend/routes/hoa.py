@@ -17,7 +17,7 @@ from models.db import get_conn
 from models.schemas import ComplianceSummary, PolicyStatus, UnitComplianceOut
 from services.audit import log_audit
 from services.compliance import evaluate_compliance
-from services.firms import firm_manages_hoa
+from services.firms import firm_manages_hoa, visible_hoas_sql
 from services.policy_parser import parse_dec_page
 from services.email import (
     board_report_html, send_email,
@@ -323,13 +323,12 @@ async def list_hoas(
     if user.role == "super_user":
         rows = await conn.fetch(f"SELECT {_HOA_SEARCH_FIELDS} FROM hoas h ORDER BY h.name")
     elif user.role == "property_manager":
-        # Every member of the firm sees the firm's whole portfolio — including
-        # associations added after they joined.
+        # Open-visibility firms: every member sees the whole portfolio.
+        # Assignment-based firms: members see only their assigned
+        # associations (owners always see all). See services/firms.py.
         rows = await conn.fetch(
             f"""SELECT {_HOA_SEARCH_FIELDS} FROM hoas h
-               JOIN pm_firm_hoas fh ON fh.hoa_id = h.id
-               JOIN pm_firm_members m ON m.firm_id = fh.firm_id
-               WHERE m.supabase_user_id = $1
+               WHERE h.id IN ({visible_hoas_sql('$1')})
                ORDER BY h.name""",
             user.sub,
         )

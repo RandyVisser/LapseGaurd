@@ -91,8 +91,11 @@ export default function AdminSetup() {
         {invite?.role === 'property_manager' && !invite?.firm_name && (
           <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-6">
             {invite?.existing_firm_name
-              ? <><strong>{invite.hoa_name}</strong> will be added to <strong>{invite.existing_firm_name}</strong>'s
-                  portfolio — everyone on your team will be able to see and manage it.</>
+              ? (invite?.existing_firm_open !== false
+                  ? <><strong>{invite.hoa_name}</strong> will be added to <strong>{invite.existing_firm_name}</strong>'s
+                      portfolio — everyone on your team will be able to see and manage it.</>
+                  : <><strong>{invite.hoa_name}</strong> will be added to <strong>{invite.existing_firm_name}</strong>'s
+                      portfolio — you and the teammates assigned to it will be able to see and manage it.</>)
               : <>Teammates you add to your firm later will also be able to see and manage this association.</>}
           </p>
         )}

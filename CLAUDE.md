@@ -81,7 +81,15 @@ frontend/src/
 ## Roles
 
 - `hoa_admin` — association manager. `hoa_id` in JWT `app_metadata`. Sees admin routes.
-- `property_manager` — staff at a PM firm (`pm_firms`). Admin-equivalent access to every association the FIRM manages (`pm_firm_members` → `pm_firm_hoas`); no single fixed `hoa_id` (selects an active HOA client-side, see `AuthContext`'s `effectiveHoaId`). The firm owner invites/removes teammates and manages the firm's consolidated billing from Settings → all-associations view.
+- `property_manager` — staff at a PM firm (`pm_firms`). Two visibility modes per firm
+  (`pm_firms.open_visibility`, owner-toggled in the Team panel): open (default) = every
+  member sees the firm's whole portfolio; assignment-based = members see only associations
+  they're assigned to (`pm_member_hoas`), owners always see all, and firm billing becomes
+  owner-only. Access resolves through `services/firms.py` (`firm_manages_hoa` /
+  `visible_hoas_sql`) — change it there, not per-endpoint. No single fixed `hoa_id`
+  (selects an active HOA client-side, see `AuthContext`'s `effectiveHoaId`). The firm
+  owner invites/removes teammates, assigns associations, and manages consolidated billing
+  from Settings → all-associations view.
 - `super_user` — Randy + dad only. Admin-equivalent access across all HOAs, plus `/admin/feedback`.
 - `tenant` — unit owner. No `hoa_id` in JWT; fetched from `/tenant/me`. Sees tenant routes.
 
@@ -143,9 +151,11 @@ policies      id, tenant_id, insurer, policy_number, expiration_date, status,
 unit_invites  id, unit_id, email, token, accepted_at
 documents     id, hoa_id, name, file_url, uploaded_by
 alert_log     id, tenant_id, alert_type, sent_at
-pm_firms          id, name, stripe_customer_id   # PM company: members share the portfolio; consolidated billing hangs here
+pm_firms          id, name, stripe_customer_id, cab_number, open_visibility   # PM company; consolidated billing hangs here
 pm_firm_members   firm_id, supabase_user_id (unique — one firm per login), is_owner
-pm_firm_hoas      firm_id, hoa_id                # associations the firm manages
+pm_firm_hoas      firm_id, hoa_id                # associations the firm manages (billing scope)
+pm_member_hoas    firm_id, supabase_user_id, hoa_id   # per-PM assignments (visibility scope when
+                  # open_visibility=false); composite FKs onto members + firm portfolio, cascade
 admin_invites     also carries firm_id (nullable) for teammate invites; hoa_id nullable
 # property_manager_hoas and pm_billing are LEGACY (superseded by the pm_firm_* tables); kept only so
 # pre-firm deploys keep working — drop both in a later cleanup.

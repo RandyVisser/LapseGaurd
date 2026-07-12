@@ -17,7 +17,7 @@ from pydantic import BaseModel, EmailStr
 
 from auth.jwt import AuthUser, require_hoa_admin, require_super_user
 from models.db import get_conn
-from services.firms import ensure_firm, map_hoa_to_firm, user_firm
+from services.firms import assign_member_hoa, ensure_firm, map_hoa_to_firm, user_firm
 from routes.hoa import _assert_hoa_access
 from services.email import (
     send_email, invite_email_html, welcome_admin_html,
@@ -212,12 +212,15 @@ async def _delete_supabase_user(user_id: str) -> None:
 
 async def revoke_staff_login(conn, hoa_id, email: str | None) -> None:
     """Revoke an Admin/PM's access to this association when their row is deleted.
-    For a PM this unmaps the association from their FIRM (the association is
-    dropping the firm, so every member loses it). A firm left with no
-    associations and no other members is deleted along with its login; a plain
-    hoa_admin login (no firm) is deleted outright, as before. The admin_invites
-    record (email + ToS acceptance) is preserved and stamped revoked_at, so the
-    audit trail survives for later reference."""
+
+    For a PM: unassign that member from the association. The FIRM keeps the
+    association as long as it still has another PM contact row here (a big firm
+    swapping one manager for another shouldn't lose the account); when the last
+    one goes, the association is dropping the firm — unmap it, and a firm left
+    with no associations and no other members is deleted along with its login
+    (any live subscription canceled first). A plain hoa_admin login (no firm)
+    is deleted outright, as before. The admin_invites record (email + ToS
+    acceptance) is preserved and stamped revoked_at for the audit trail."""
     email = (email or "").strip()
     if not email:
         return
@@ -225,6 +228,29 @@ async def revoke_staff_login(conn, hoa_id, email: str | None) -> None:
     if uid:
         firm = await user_firm(conn, uid)
         if firm:
+            await conn.execute(
+                "DELETE FROM pm_member_hoas WHERE supabase_user_id = $1::uuid AND hoa_id = $2",
+                uid, hoa_id,
+            )
+            # Another PM contact from the same firm still on this association?
+            other_contact = await conn.fetchval(
+                """SELECT 1 FROM units u
+                   JOIN auth.users au ON lower(au.email) = lower(u.email_primary)
+                   JOIN pm_firm_members m ON m.supabase_user_id = au.id AND m.firm_id = $3
+                   WHERE u.hoa_id = $1
+                     AND lower(coalesce(u.assoc_title, '')) = 'property manager'
+                     AND lower(coalesce(u.email_primary, '')) <> lower($2)""",
+                hoa_id, email, firm["id"],
+            )
+            if other_contact:
+                # The firm keeps the account; only this PM loses it. Their
+                # login survives (they may be assigned elsewhere).
+                await conn.execute(
+                    "UPDATE admin_invites SET revoked_at = now() "
+                    "WHERE hoa_id = $1 AND lower(email) = lower($2) AND revoked_at IS NULL",
+                    hoa_id, email,
+                )
+                return
             await conn.execute(
                 "DELETE FROM pm_firm_hoas WHERE firm_id = $1 AND hoa_id = $2",
                 firm["id"], hoa_id,
@@ -569,15 +595,21 @@ async def get_admin_invite(token: str, conn: asyncpg.Connection = Depends(get_co
         "SELECT id FROM auth.users WHERE lower(email) = lower($1)", row["email"],
     )
     existing_firm_name = None
+    existing_firm_open = True
     if (row["role"] or "hoa_admin") == "property_manager" and row["hoa_name"] and existing_uid:
         firm = await user_firm(conn, existing_uid)
         existing_firm_name = firm["name"] if firm else None
+        if firm:
+            existing_firm_open = firm["open_visibility"]
     return {
         "email": row["email"],
         "hoa_name": row["hoa_name"],
         "firm_name": row["firm_name"],
         "role": row["role"] or "hoa_admin",
         "existing_firm_name": existing_firm_name,
+        # Assignment-based firms: only assigned members see the association,
+        # so the "everyone on your team will see this" disclosure doesn't apply.
+        "existing_firm_open": existing_firm_open,
         # When true, the setup page collects only ToS acceptance (no password) —
         # the invitee already has a login and keeps their existing password.
         "existing_account": bool(existing_uid),
@@ -659,9 +691,12 @@ async def accept_admin_invite(
                 )
             else:
                 # Association-side PM invite: attach the HOA to this PM's firm
-                # (their first association creates a single-owner firm).
+                # (their first association creates a single-owner firm) and
+                # assign the accepter to it — under assignment-based
+                # visibility, accepting IS the assignment.
                 firm_id = await ensure_firm(conn, uid, row["email"])
                 await map_hoa_to_firm(conn, firm_id, row["hoa_id"])
+                await assign_member_hoa(conn, firm_id, uid, row["hoa_id"])
         else:
             # Create the Admin line (unit-less row) so the Admins card/list reflects
             # the now-active admin — deduped by email.

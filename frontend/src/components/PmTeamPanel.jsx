@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPost, apiPatch, apiDelete } from '../supabase'
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../supabase'
 
 // Firm roster for property managers: everyone listed here sees the firm's
 // whole portfolio. One invite = access to every association, current and
@@ -78,9 +78,27 @@ export default function PmTeamPanel() {
         </div>
       </div>
       <p className="text-xs text-[#54627A] mt-2 mb-3">
-        Everyone on your team can see and manage every association your firm handles —
-        including ones added later.
+        {data?.firm?.open_visibility !== false
+          ? <>Everyone on your team can see and manage every association your firm handles —
+              including ones added later.</>
+          : <>Members see only the associations they're assigned to. Owners see everything.</>}
       </p>
+      {data?.is_owner && (
+        <div className="flex flex-wrap items-center gap-3 mb-3 text-xs">
+          <label className="flex items-center gap-1.5 text-[#54627A]">
+            <input type="checkbox" checked={data.firm.open_visibility === false} disabled={busy}
+              onChange={e => run(() => apiPatch('/pm/team', { open_visibility: !e.target.checked }))}
+              className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
+            Limit members to their assigned associations
+          </label>
+          <label className="flex items-center gap-1.5 text-[#54627A]">
+            CAB #
+            <input defaultValue={data.firm.cab_number || ''} disabled={busy} placeholder="—"
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (data.firm.cab_number || '')) run(() => apiPatch('/pm/team', { cab_number: v })) }}
+              className="w-24 border border-[#DCE3EC] rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+          </label>
+        </div>
+      )}
       {error && <p className="text-sm text-[#C0492F] mb-3">{error}</p>}
       {msg && <p className="text-sm text-[#0E8E68] mb-3">{msg}</p>}
 
@@ -88,21 +106,44 @@ export default function PmTeamPanel() {
         <>
           <div className="border border-[#E8ECF2] rounded-lg divide-y divide-[#E8ECF2] mb-3">
             {data.members.map(m => (
-              <div key={m.user_id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span className="text-[#0B1B33]">
-                  {m.email || m.user_id}
-                  {m.you && <span className="text-[#8493A8]"> (you)</span>}
-                  {m.is_owner && (
-                    <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide bg-[#EEF3FB] text-[#014AC5] rounded px-1.5 py-0.5">Owner</span>
+              <div key={m.user_id} className="px-3 py-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#0B1B33]">
+                    {m.email || m.user_id}
+                    {m.you && <span className="text-[#8493A8]"> (you)</span>}
+                    {m.is_owner && (
+                      <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide bg-[#EEF3FB] text-[#014AC5] rounded px-1.5 py-0.5">Owner</span>
+                    )}
+                  </span>
+                  {data.is_owner && !m.you && (
+                    <button type="button" disabled={busy}
+                      onClick={() => window.confirm(`Remove ${m.email} from your team? Their login will be deleted.`)
+                        && run(() => apiDelete(`/pm/team/members/${m.user_id}`))}
+                      className="text-xs text-[#C0492F] hover:underline">
+                      Remove
+                    </button>
                   )}
-                </span>
-                {data.is_owner && !m.you && (
-                  <button type="button" disabled={busy}
-                    onClick={() => window.confirm(`Remove ${m.email} from your team? Their login will be deleted.`)
-                      && run(() => apiDelete(`/pm/team/members/${m.user_id}`))}
-                    className="text-xs text-[#C0492F] hover:underline">
-                    Remove
-                  </button>
+                </div>
+                {/* Assignment editor: owners tick which associations this member
+                    handles. Owners always see everything, so no editor on them. */}
+                {data.is_owner && !m.is_owner && data.firm.open_visibility === false && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                    {data.hoas.map(h => (
+                      <label key={h.id} className="flex items-center gap-1 text-xs text-[#54627A]">
+                        <input type="checkbox" disabled={busy}
+                          checked={m.assigned_hoa_ids.includes(h.id)}
+                          onChange={e => {
+                            const next = e.target.checked
+                              ? [...m.assigned_hoa_ids, h.id]
+                              : m.assigned_hoa_ids.filter(id => id !== h.id)
+                            run(() => apiPut(`/pm/team/members/${m.user_id}/hoas`, { hoa_ids: next }))
+                          }}
+                          className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
+                        {h.name}
+                      </label>
+                    ))}
+                    {data.hoas.length === 0 && <span className="text-xs text-[#8493A8]">No associations in the portfolio yet.</span>}
+                  </div>
                 )}
               </div>
             ))}

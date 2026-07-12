@@ -44,6 +44,9 @@ export default function PmBillingPanel() {
   const included = data?.hoas?.filter(h => h.included) || []
   const excluded = data?.hoas?.filter(h => !h.included) || []
 
+  // Assignment-based firms: billing is owner-only; members see nothing here.
+  if (data?.restricted) return null
+
   return (
     <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6">
       <p className="font-semibold text-[#0B1B33]">Billing — all associations</p>
