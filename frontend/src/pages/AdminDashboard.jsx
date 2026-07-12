@@ -2099,8 +2099,10 @@ export default function AdminDashboard() {
                             onClick: () => { setPmInviteUnit(u.unit_id); setPmInviteEmail(u.email_primary || '') },
                           },
                           {
-                            label: 'Add New PM…',
-                            onClick: () => { setAddPmFor(u.unit_id); setPmForm({ name: '', firm: '', phone: '', email: '' }) },
+                            // Invite either a Property Manager or an Admin (role
+                            // chosen in the dialog), not just another PM.
+                            label: 'Invite to dashboard…',
+                            onClick: openInviteContact,
                           },
                           {
                             label: 'Delete…',
