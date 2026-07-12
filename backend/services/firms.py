@@ -15,7 +15,7 @@ async def user_firm(conn: asyncpg.Connection, user_id: str):
     attached to one yet."""
     return await conn.fetchrow(
         """SELECT f.id, f.name, f.stripe_customer_id, f.open_visibility,
-                  f.cab_number, m.is_owner
+                  f.cab_number, f.billing_mode, m.is_owner
            FROM pm_firm_members m JOIN pm_firms f ON f.id = m.firm_id
            WHERE m.supabase_user_id = $1""",
         user_id,

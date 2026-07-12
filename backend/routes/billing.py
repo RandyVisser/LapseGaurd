@@ -105,6 +105,32 @@ def _graduated_monthly_cents(units: int) -> int:
     return max(cost, 5000)
 
 
+async def _firm_rate_for_hoa(conn: asyncpg.Connection, hoa_id: str):
+    """If a firm manages this association and passes billing through
+    ('association' mode), the association pays its own bill at the firm's BULK
+    rate: the blended per-unit price of the firm's whole portfolio on the
+    graduated tiers. Returns (firm_row, rate_cents) or None. Note: no $50
+    minimum on the bulk rate — that's the firm-deal incentive."""
+    firm = await conn.fetchrow(
+        """SELECT f.id, f.name, f.billing_mode FROM pm_firms f
+           JOIN pm_firm_hoas fh ON fh.firm_id = f.id
+           WHERE fh.hoa_id = $1 ORDER BY fh.created_at LIMIT 1""",
+        hoa_id,
+    )
+    if not firm or firm["billing_mode"] != "association":
+        return None
+    total_units = await conn.fetchval(
+        f"""SELECT coalesce(sum({_UNITS_SUBQ}), 0)
+            FROM pm_firm_hoas fh JOIN hoas h ON h.id = fh.hoa_id
+            WHERE fh.firm_id = $1""",
+        firm["id"],
+    ) or 0
+    if total_units <= 0:
+        return None
+    rate = max(round(_graduated_monthly_cents(total_units) / total_units), 1)
+    return firm, rate
+
+
 # ── Read: always works, even while dormant ──────────────────────────────────
 @router.get("/hoa/{hoa_id}/billing")
 async def get_billing(
@@ -114,10 +140,17 @@ async def get_billing(
 ):
     hoa = await _authz_hoa(conn, user, hoa_id)
     units = await _billable_units(conn, hoa_id)
-    monthly = _graduated_monthly_cents(units)
-    # Effective blended rate for display; graduated tiers mean big portfolios
-    # pay less per unit than the headline $1.
-    rate = round(monthly / units) if units else DEFAULT_UNIT_RATE_CENTS
+    # A firm in pass-through mode gives its associations the firm's bulk rate;
+    # otherwise standard graduated pricing on this association's own units.
+    firm_rate = await _firm_rate_for_hoa(conn, hoa_id)
+    if firm_rate:
+        rate = firm_rate[1]
+        monthly = units * rate
+    else:
+        monthly = _graduated_monthly_cents(units)
+        # Effective blended rate for display; graduated tiers mean big
+        # portfolios pay less per unit than the headline $1.
+        rate = round(monthly / units) if units else DEFAULT_UNIT_RATE_CENTS
     trial_ends_at = hoa["trial_ends_at"]
     trial_days_left = None
     if trial_ends_at:
@@ -135,6 +168,8 @@ async def get_billing(
         "trial_days_left": trial_days_left,
         "trial_active": trial_active,
         "cancel_at": hoa["billing_cancel_at"].isoformat() if hoa["billing_cancel_at"] else None,
+        "firm_rate": bool(firm_rate),
+        "firm_name": firm_rate[0]["name"] if firm_rate else None,
     }
 
 
@@ -151,6 +186,7 @@ async def create_checkout(
     if not price_id:
         raise HTTPException(status_code=503, detail="No Stripe price configured")
     units = await _billable_units(conn, hoa_id)
+    firm_rate = await _firm_rate_for_hoa(conn, hoa_id)
 
     customer_id = hoa["stripe_customer_id"]
     if not customer_id:
@@ -172,10 +208,25 @@ async def create_checkout(
     if trial_ends_at and trial_ends_at > datetime.now(timezone.utc) + timedelta(days=2):
         subscription_data["trial_end"] = int(trial_ends_at.timestamp())
 
+    # Pass-through firms: the association subscribes itself, but at the firm's
+    # bulk per-unit rate (ad-hoc monthly price) instead of the public tiers.
+    if firm_rate:
+        line_item = {
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": f"condo.insure — per-unit, {firm_rate[0]['name']} firm rate"},
+                "unit_amount": firm_rate[1],
+                "recurring": {"interval": "month"},
+            },
+            "quantity": max(units, 1),
+        }
+    else:
+        line_item = {"price": price_id, "quantity": max(units, 1)}
+
     session = stripe.checkout.Session.create(
         mode="subscription",
         customer=customer_id,
-        line_items=[{"price": price_id, "quantity": max(units, 1)}],
+        line_items=[line_item],
         success_url=f"{APP_URL}/admin/settings?billing=success",
         cancel_url=f"{APP_URL}/admin/settings?billing=cancel",
         metadata={"hoa_id": hoa_id},
@@ -331,6 +382,13 @@ async def get_pm_billing(
     units = sum(h["units"] for h in included)
     monthly = _graduated_monthly_cents(units)
     separate = sum(_graduated_monthly_cents(h["units"]) for h in included)
+    # Bulk rate for pass-through mode: blended over the WHOLE portfolio
+    # (including self-subscribed associations — they're part of the deal).
+    portfolio_units = sum(h["units"] for h in hoas)
+    firm_unit_rate = (
+        max(round(_graduated_monthly_cents(portfolio_units) / portfolio_units), 1)
+        if portfolio_units else DEFAULT_UNIT_RATE_CENTS
+    )
     trial_ends_at = _latest_trial_end(included)
     trial_days_left = None
     if trial_ends_at:
@@ -339,6 +397,9 @@ async def get_pm_billing(
 
     return {
         "enabled": BILLING_ENABLED,
+        "billing_mode": firm["billing_mode"] if firm else "firm",
+        "is_owner": bool(firm and firm["is_owner"]),
+        "firm_unit_rate_cents": firm_unit_rate,
         "status": status,
         "in_good_standing": status in _GOOD_STANDING or trial_active,
         "has_subscription": bool(sub_row),
@@ -378,6 +439,11 @@ async def create_pm_checkout(
         raise HTTPException(status_code=400, detail="No firm found for this account yet.")
     if not firm["open_visibility"] and not firm["is_owner"]:
         raise HTTPException(status_code=403, detail="Only the firm owner can manage billing.")
+    if firm["billing_mode"] == "association":
+        raise HTTPException(
+            status_code=400,
+            detail="Your firm passes billing to each association — they subscribe individually at your firm rate.",
+        )
     firm_customer = firm["stripe_customer_id"]
     hoas = await _pm_portfolio(conn, user.sub)
     included, _ = _split_portfolio(hoas, firm_customer)

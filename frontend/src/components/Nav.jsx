@@ -18,6 +18,9 @@ export default function Nav({ role, title }) {
     ? [
         { to: '/admin/dashboard', label: 'Dashboard' },
         { to: '/admin/documents', label: 'Documents' },
+        // Firm home — property managers (their own firm) and super users (directory)
+        ...(actualRole === 'property_manager' || actualRole === 'super_user'
+          ? [{ to: '/admin/firm', label: 'Firm' }] : []),
         { to: '/admin/settings', label: 'Settings' },
         // Feedback inbox — super-users only (Randy + dad)
         ...(actualRole === 'super_user' ? [{ to: '/admin/feedback', label: 'Feedback' }] : []),

@@ -63,6 +63,8 @@ frontend/src/
     AdminTenantDetail.jsx  # /admin/tenant/:id — policy history, AI validation
     AdminDocuments.jsx # /admin/documents — upload shared HOA docs
     AdminSettings.jsx  # /admin/settings — HOA settings, billing panel (flag-gated)
+    AdminFirm.jsx      # /admin/firm — PM: own firm (team, assignments, billing mode);
+                        # super_user: firm directory. PM+super_user only
     AdminFeedback.jsx  # /admin/feedback — super_user only
     TenantDashboard.jsx    # /tenant/dashboard — policy upload, building docs
     TenantDocuments.jsx    # /tenant/documents — HOA shared docs (tenant view)
@@ -151,7 +153,9 @@ policies      id, tenant_id, insurer, policy_number, expiration_date, status,
 unit_invites  id, unit_id, email, token, accepted_at
 documents     id, hoa_id, name, file_url, uploaded_by
 alert_log     id, tenant_id, alert_type, sent_at
-pm_firms          id, name, stripe_customer_id, cab_number, open_visibility   # PM company; consolidated billing hangs here
+pm_firms          id, name, stripe_customer_id, cab_number, open_visibility,
+                  billing_mode ('firm' = consolidated sub | 'association' = each HOA
+                  subscribes itself at the firm's blended bulk rate)   # PM company
 pm_firm_members   firm_id, supabase_user_id (unique — one firm per login), is_owner
 pm_firm_hoas      firm_id, hoa_id                # associations the firm manages (billing scope)
 pm_member_hoas    firm_id, supabase_user_id, hoa_id   # per-PM assignments (visibility scope when

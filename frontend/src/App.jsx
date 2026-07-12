@@ -18,6 +18,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const AdminDocuments = lazy(() => import('./pages/AdminDocuments'))
 const AdminSettings = lazy(() => import('./pages/AdminSettings'))
+const AdminFirm = lazy(() => import('./pages/AdminFirm'))
 const AdminTenantDetail = lazy(() => import('./pages/AdminTenantDetail'))
 const TenantDashboard = lazy(() => import('./pages/TenantDashboard'))
 const TenantDocuments = lazy(() => import('./pages/TenantDocuments'))
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/admin/dashboard" element={<RequireAuth role="hoa_admin"><AdminDashboard /></RequireAuth>} />
             <Route path="/admin/documents" element={<RequireAuth role="hoa_admin"><AdminDocuments /></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth role="hoa_admin"><AdminSettings /></RequireAuth>} />
+            <Route path="/admin/firm" element={<RequireAuth role="hoa_admin"><AdminFirm /></RequireAuth>} />
             <Route path="/admin/feedback" element={<RequireAuth role="super_user"><AdminFeedback /></RequireAuth>} />
             <Route path="/admin/ho6-summary" element={<RequireAuth role="super_user"><AdminHo6Summary /></RequireAuth>} />
             <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />

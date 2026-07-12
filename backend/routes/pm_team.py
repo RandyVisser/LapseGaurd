@@ -242,6 +242,7 @@ class TeamSettings(BaseModel):
     name: str | None = None
     open_visibility: bool | None = None
     cab_number: str | None = None
+    billing_mode: str | None = None  # 'firm' | 'association'
 
 
 @router.patch("/pm/team")
@@ -266,6 +267,27 @@ async def update_firm_settings(
         await conn.execute(
             "UPDATE pm_firms SET cab_number = $1 WHERE id = $2",
             body.cab_number.strip()[:40] or None, firm["id"],
+        )
+    if body.billing_mode is not None:
+        if body.billing_mode not in ("firm", "association"):
+            raise HTTPException(status_code=400, detail="billing_mode must be 'firm' or 'association'.")
+        if body.billing_mode == "association" and firm["stripe_customer_id"]:
+            # Don't strand a live consolidated subscription: the firm would keep
+            # paying while associations start paying too. Cancel it first.
+            live = await conn.fetchval(
+                """SELECT 1 FROM hoas WHERE stripe_customer_id = $1
+                   AND stripe_subscription_id IS NOT NULL
+                   AND billing_status IN ('active', 'trialing')""",
+                firm["stripe_customer_id"],
+            )
+            if live:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Your firm has an active consolidated subscription — cancel it via Manage billing before passing billing to the associations.",
+                )
+        await conn.execute(
+            "UPDATE pm_firms SET billing_mode = $1 WHERE id = $2",
+            body.billing_mode, firm["id"],
         )
     return {"updated": True}
 

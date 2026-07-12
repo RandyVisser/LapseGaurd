@@ -57,6 +57,11 @@ export default function BillingPanel({ hoaId }) {
             <Stat label="Effective rate" value={`${dollars(data.unit_rate_cents)}/unit`} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
           </div>
+          {data.firm_rate && (
+            <p className="text-sm text-[#0E8E68] font-medium mb-2">
+              Billed at {data.firm_name}'s bulk firm rate ({dollars(data.unit_rate_cents)}/unit).
+            </p>
+          )}
           <p className="text-sm text-[#54627A] mb-1">
             Status: <span className="font-medium text-[#0B1B33]">
               {data.cancel_at && data.status !== 'canceled' ? 'Canceled' : (STATUS_LABEL[data.status] || data.status)}
