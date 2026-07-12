@@ -10,7 +10,7 @@ import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 import TrialBanner from '../components/TrialBanner'
 import HoaOptions from '../components/HoaOptions'
-import FirmOverview from '../components/FirmOverview'
+import FirmDashboard from '../components/FirmDashboard'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 // Subrental flagging — dark until the full rental flow is built + tested.
@@ -614,6 +614,11 @@ export default function AdminDashboard() {
   }, [role])
   const activeFirm = firmView ? firms.find(f => f.id === firmView) : null
   const hoaId = activeFirm ? ALL_HOAS : globalHoaId
+  // Multi-association PMs: the all-associations view IS the firm dashboard —
+  // an association list that opens into the classic per-association dashboard.
+  // (Single-association PMs never land here; AuthContext defaults them into
+  // their one association.)
+  const firmListView = role === 'property_manager' && hoaId === ALL_HOAS && !activeFirm
   const scopeHoas = activeFirm
     ? availableHoas.filter(h => activeFirm.hoas.some(fh => fh.id === h.id))
     : availableHoas
@@ -1059,6 +1064,12 @@ export default function AdminDashboard() {
   function refreshDashboard() {
     if (!hoaId) return
     if (hoaId === ALL_HOAS) {
+      // PMs' all-associations view is the FirmDashboard list (it fetches its
+      // own aggregates) — never fan out per-HOA summary/unit calls for it.
+      if (firmListView) {
+        setSummary(null); setUnits([]); setTrendData([])
+        return
+      }
       Promise.all(
         scopeHoas.map(h =>
           Promise.all([apiGet(`/hoa/${h.id}/compliance`), apiGet(`/hoa/${h.id}/units`)])
@@ -1237,14 +1248,11 @@ export default function AdminDashboard() {
           />
         )}
 
-        {/* PMs' all-associations view opens on the firm-level dashboard:
-            portfolio KPIs + worst-compliance list (server-aggregated),
-            instead of the merged single-HOA hero. */}
-        {role === 'property_manager' && hoaId === ALL_HOAS && (
-          <FirmOverview openHoa={id => setSelectedHoaId(id)} />
-        )}
+        {/* Multi-association PMs: summary KPIs + the association list; a row
+            click opens that association's classic dashboard. */}
+        {firmListView && <FirmDashboard openHoa={id => setSelectedHoaId(id)} />}
 
-        {summary && !(role === 'property_manager' && hoaId === ALL_HOAS) && (
+        {summary && !firmListView && (
           <ComplianceHero
             summary={summary}
             activeFilter={activeFilter}
@@ -1264,7 +1272,7 @@ export default function AdminDashboard() {
 
         {trendOpen && trendData.length > 0 && <TrendChart data={trendData} />}
 
-        {!isMobile && (
+        {!firmListView && !isMobile && (
           <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
             <div className="flex items-center flex-wrap gap-y-2">
               <div className="flex items-center gap-1.5">
@@ -1816,6 +1824,7 @@ export default function AdminDashboard() {
         )}
 
         {/* List toolbar — search + view controls, right above what they act on */}
+        {!firmListView && (
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="flex items-center flex-1 max-w-xs">
@@ -1881,8 +1890,9 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+        )}
 
-        {isMobile ? (
+        {firmListView ? null : isMobile ? (
           <div className="space-y-2">
             {filteredUnits.map(u => {
               const expanded = expandedUnitId === u.unit_id
