@@ -94,10 +94,13 @@ frontend/src/
   (`pm_groups`/`pm_group_members`/`pm_group_hoas`). Access resolves through
   `services/firms.py` (`_MAY_SEE` / `firm_manages_hoa` / `visible_hoas_sql`) — change it
   there, not per-endpoint. Groups change what people SEE, never what gets billed. No
-  single fixed `hoa_id` (client-side selection, see `AuthContext`). Firm-level UI: the
-  Firm Console at /admin/firm (Associations registry + firm-side add-association, People
-  Users/Groups, Billing, Settings); the firm-level dashboard (KPIs + worst-compliance,
-  GET /pm/overview) renders on /admin/dashboard's all-associations view for PMs.
+  single fixed `hoa_id` (client-side selection, see `AuthContext`). Firm-level UI: a PM
+  who can see exactly ONE association lands straight in the classic per-association
+  dashboard (AuthContext default; indistinguishable from an hoa_admin); multi-association
+  PMs land on the firm dashboard — summary KPIs + the association list w/ firm-side
+  add-association (FirmDashboard.jsx on /admin/dashboard; GET /pm/overview +
+  /pm/associations, no per-HOA fan-out). The Firm page at /admin/firm is Users / Groups /
+  Billing / Settings.
 - `super_user` — Randy + dad only. Admin-equivalent access across all HOAs, plus `/admin/feedback`.
 - `tenant` — unit owner. No `hoa_id` in JWT; fetched from `/tenant/me`. Sees tenant routes.
 
