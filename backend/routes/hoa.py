@@ -921,6 +921,7 @@ class PmLicense(BaseModel):
     cam_state: Optional[str] = None
     cam_zip: Optional[str] = None
     cab_number: Optional[str] = None
+    cab_firm_name: Optional[str] = None
     cab_address: Optional[str] = None
     cab_city: Optional[str] = None
     cab_state: Optional[str] = None

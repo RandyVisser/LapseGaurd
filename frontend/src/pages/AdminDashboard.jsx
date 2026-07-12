@@ -1571,6 +1571,14 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
+                    {prefix === 'cab' && (
+                      <div>
+                        <label className="block text-xs font-medium text-[#54627A] mb-1">Property Management Firm</label>
+                        <input value={pmLicenseForm.cab_firm_name || ''}
+                          onChange={e => setPmLicenseForm(f => ({ ...f, cab_firm_name: e.target.value }))}
+                          className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+                      </div>
+                    )}
                     <div>
                       <label className="block text-xs font-medium text-[#54627A] mb-1">Address</label>
                       <input value={pmLicenseForm[`${prefix}_address`] || ''}
