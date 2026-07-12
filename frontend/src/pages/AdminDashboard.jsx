@@ -671,8 +671,6 @@ export default function AdminDashboard() {
     } catch (err) { setError(err.message) }
   }
 
-  const [addPmFor, setAddPmFor] = useState(null)
-  const [pmForm, setPmForm] = useState({ name: '', firm: '', phone: '', email: '' })
 
   // Super-user-only PM licensing card (CAM manager license + CAB firm license)
   const [pmLicenseUnit, setPmLicenseUnit] = useState(null)
@@ -701,7 +699,6 @@ export default function AdminDashboard() {
   const [addAdminFor, setAddAdminFor] = useState(null)
   const [adminForm, setAdminForm] = useState({ name: '', email: '' })
   const [addingAdmin, setAddingAdmin] = useState(false)
-  const [addingPm, setAddingPm] = useState(false)
   const [soldUnit, setSoldUnit] = useState(null)
   const [soldForm, setSoldForm] = useState({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' })
   const [savingSold, setSavingSold] = useState(false)
@@ -857,27 +854,6 @@ export default function AdminDashboard() {
     finally { setSavingSold(false) }
   }
 
-  async function handleAddPm(e) {
-    e.preventDefault()
-    setAddingPm(true)
-    try {
-      // From the (empty) PM card there's no source PM unit — copy subdivision
-      // from any unit in this HOA so the new PM lands in the same subdivision
-      const sourceUnitId = addPmFor === 'new' ? (units[0]?.unit_id || null) : addPmFor
-      await apiPost(`/hoa/${hoaId}/property-manager`, {
-        name: pmForm.name,
-        email: pmForm.email,
-        management_firm: pmForm.firm,
-        phone: pmForm.phone,
-        source_unit_id: sourceUnitId,
-      })
-      refreshDashboard()  // update the Property Managers count + list
-      setActiveFilter('pm')
-      setAddPmFor(null)
-      setPmForm({ name: '', firm: '', phone: '', email: '' })
-    } catch (err) { setError(err.message) }
-    finally { setAddingPm(false) }
-  }
 
   async function handleAddAdmin(e) {
     e.preventDefault()
@@ -1797,50 +1773,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {addPmFor && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-semibold text-[#0B1B33] mb-1">Add New Property Manager</h2>
-              <p className="text-xs text-[#8493A8] mb-4">Creates a new PM position in this subdivision.</p>
-              <form onSubmit={handleAddPm} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-[#54627A] mb-1">Name</label>
-                  <input value={pmForm.name} onChange={e => setPmForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Manager name"
-                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[#54627A] mb-1">Management Firm</label>
-                  <input value={pmForm.firm} onChange={e => setPmForm(f => ({ ...f, firm: e.target.value }))}
-                    placeholder="Company name"
-                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[#54627A] mb-1">Email</label>
-                  <input type="email" value={pmForm.email} onChange={e => setPmForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="manager@email.com"
-                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[#54627A] mb-1">Phone</label>
-                  <input type="tel" value={pmForm.phone} onChange={e => setPmForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder="(555) 555-5555"
-                    className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button type="submit" disabled={addingPm}
-                    className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
-                    {addingPm ? 'Adding…' : 'Add PM'}
-                  </button>
-                  <button type="button" onClick={() => setAddPmFor(null)}
-                    className="flex-1 border border-[#DCE3EC] text-[#54627A] text-sm font-semibold py-2 rounded-lg hover:bg-slate-50">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {addAdminFor && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
