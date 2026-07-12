@@ -1538,9 +1538,12 @@ export default function AdminDashboard() {
         {pmLicenseUnit && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="font-semibold text-[#0B1B33] mb-1">Property Manager Licensing</h2>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="font-semibold text-[#0B1B33]">Property Manager Licensing</h2>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8493A8] border border-[#DCE3EC] rounded px-1.5 py-0.5">Super-user only</span>
+              </div>
               <p className="text-xs text-[#54627A] mb-1">
-                {pmLicenseUnit.owner_primary || 'Property Manager'} — super-user only.
+                Licensing details for {pmLicenseUnit.owner_primary || 'this property manager'}.
               </p>
               {pmLicenseUnit.email_primary && (
                 <p className="text-xs text-[#54627A] mb-4"><span className="font-medium text-[#54627A]">Email:</span> {pmLicenseUnit.email_primary}</p>
