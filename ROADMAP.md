@@ -6,9 +6,11 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 
 ## PM-firm growth (north star — outbound campaign is live)
 
-- [ ] **Firm self-serve onboarding** (L) — the front door for Apollo prospects:
-      PM firm signs up → creates firm → adds associations → CSV-imports each
-      one's owners. Today firms only form one association-side invite at a time.
+- [ ] **Firm self-serve onboarding** (M, was L) — mostly delivered by the Firm
+      Console (2026-07-12): firms add associations + PMs self-serve from
+      /admin/firm. Remaining: a public "sign up as a PM firm" entry point
+      (today the first PM login still arrives via an association-side or
+      super-user invite).
 - [ ] **Portfolio digest email for PMs** (M) — weekly summary across the firm's
       associations: newly lapsed, expiring soon, uploads needing review.
       Retention hook; PMs live in email.
