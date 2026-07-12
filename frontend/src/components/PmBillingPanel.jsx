@@ -60,7 +60,7 @@ export default function PmBillingPanel() {
             <Stat label="Units" value={data.units} />
             <Stat label="Effective Rate" value={data.units > 0 ? `${dollars(data.monthly_cents / data.units)}/unit` : '—'} />
             <Stat label="Monthly" value={dollars(data.monthly_cents)} />
-            <Stat label="Portfolio Savings" value={`${dollars(data.savings_cents || 0)}/mo`} />
+            <Stat label="Portfolio Savings" value={`$${Math.round((data.savings_cents || 0) / 100).toLocaleString('en-US')}/mo`} />
           </div>
           {data.savings_cents > 0 && (
             <p className="text-sm text-[#0E8E68] font-medium mb-3">
