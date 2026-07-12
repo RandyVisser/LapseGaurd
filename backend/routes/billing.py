@@ -361,9 +361,9 @@ async def get_pm_billing(
 ):
     _require_pm(user)
     firm = await user_firm(conn, user.sub)
-    # Assignment-based firms: billing is the owner's business — a member
-    # scoped to a few associations shouldn't see the whole firm's bill.
-    if firm and not firm["open_visibility"] and not firm["is_owner"]:
+    # Owners manage billing, managers get a read-only view; a plain member in
+    # an assignment-based firm doesn't see the firm's bill at all.
+    if firm and not firm["open_visibility"] and firm["role"] == "member":
         return {"enabled": BILLING_ENABLED, "restricted": True}
     firm_customer = firm["stripe_customer_id"] if firm else None
     hoas = await _pm_portfolio(conn, user.sub)
@@ -434,7 +434,7 @@ async def create_pm_checkout(
     firm = await user_firm(conn, user.sub)
     if not firm:
         raise HTTPException(status_code=400, detail="No firm found for this account yet.")
-    if not firm["open_visibility"] and not firm["is_owner"]:
+    if firm["role"] != "owner":
         raise HTTPException(status_code=403, detail="Only the firm owner can manage billing.")
     if firm["billing_mode"] == "association":
         raise HTTPException(
@@ -503,7 +503,7 @@ async def create_pm_portal(
     firm = await user_firm(conn, user.sub)
     if not firm or not firm["stripe_customer_id"]:
         raise HTTPException(status_code=400, detail="No billing account yet — subscribe first.")
-    if not firm["open_visibility"] and not firm["is_owner"]:
+    if firm["role"] != "owner":
         raise HTTPException(status_code=403, detail="Only the firm owner can manage billing.")
     session = stripe.billing_portal.Session.create(
         customer=firm["stripe_customer_id"],

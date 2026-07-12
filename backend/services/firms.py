@@ -1,21 +1,40 @@
 """PM firm resolution — the one place that answers "which firm is this
-property-manager login part of, and which associations does that firm manage?"
+property-manager login part of, and which associations may they access?"
 
 A firm is the real customer for the PM business: members (logins) come and go,
 associations get added over time, and the consolidated Stripe subscription
 belongs to the firm, not to whichever employee clicked Subscribe. One firm per
 login for now (pm_firm_members.supabase_user_id is UNIQUE).
+
+Roles (pm_firm_members.role): owner (billing, settings, promotions),
+manager (people ops, sees the whole portfolio), member (their book).
+Visibility: an open-visibility firm shows every member everything; otherwise a
+member sees the union of their direct assignments (pm_member_hoas) and the
+books of the groups they belong to (pm_group_*). Owners/managers always see
+all. Groups change what people SEE, never what gets billed (billing reads
+pm_firm_hoas only).
 """
 import asyncpg
 
+# One clause per grant path — the whole permission model in one predicate.
+# `m` = pm_firm_members row, `f` = pm_firms row, `fh` = pm_firm_hoas row.
+_MAY_SEE = """(f.open_visibility
+               OR m.role IN ('owner', 'manager')
+               OR EXISTS (SELECT 1 FROM pm_member_hoas a
+                          WHERE a.supabase_user_id = m.supabase_user_id
+                            AND a.hoa_id = fh.hoa_id)
+               OR EXISTS (SELECT 1 FROM pm_group_members gm
+                          JOIN pm_group_hoas gh ON gh.group_id = gm.group_id
+                          WHERE gm.supabase_user_id = m.supabase_user_id
+                            AND gh.hoa_id = fh.hoa_id))"""
+
 
 async def user_firm(conn: asyncpg.Connection, user_id: str):
-    """The firm this PM login belongs to (id, name, stripe_customer_id,
-    open_visibility, cab_number, is_owner), or None if they haven't been
-    attached to one yet."""
+    """The firm this PM login belongs to (id, name, stripe fields, modes,
+    role/is_owner), or None if they haven't been attached to one yet."""
     return await conn.fetchrow(
         """SELECT f.id, f.name, f.stripe_customer_id, f.open_visibility,
-                  f.cab_number, f.billing_mode, m.is_owner
+                  f.cab_number, f.billing_mode, m.is_owner, m.role
            FROM pm_firm_members m JOIN pm_firms f ON f.id = m.firm_id
            WHERE m.supabase_user_id = $1""",
         user_id,
@@ -23,19 +42,13 @@ async def user_firm(conn: asyncpg.Connection, user_id: str):
 
 
 async def firm_manages_hoa(conn: asyncpg.Connection, user_id: str, hoa_id: str) -> bool:
-    """May this PM login access the given association? The firm must manage it,
-    AND the member must be able to see it: in an open-visibility firm every
-    member sees the whole portfolio; otherwise only owners and members
-    assigned to the association (pm_member_hoas)."""
+    """May this PM login access the given association? The firm must manage it
+    AND the member must be able to see it (see _MAY_SEE)."""
     return bool(await conn.fetchval(
-        """SELECT 1 FROM pm_firm_members m
-           JOIN pm_firms f ON f.id = m.firm_id
-           JOIN pm_firm_hoas fh ON fh.firm_id = m.firm_id AND fh.hoa_id = $2
-           WHERE m.supabase_user_id = $1
-             AND (f.open_visibility OR m.is_owner
-                  OR EXISTS (SELECT 1 FROM pm_member_hoas a
-                             WHERE a.supabase_user_id = m.supabase_user_id
-                               AND a.hoa_id = fh.hoa_id))""",
+        f"""SELECT 1 FROM pm_firm_members m
+            JOIN pm_firms f ON f.id = m.firm_id
+            JOIN pm_firm_hoas fh ON fh.firm_id = m.firm_id AND fh.hoa_id = $2
+            WHERE m.supabase_user_id = $1 AND {_MAY_SEE}""",
         user_id, hoa_id,
     ))
 
@@ -46,11 +59,7 @@ def visible_hoas_sql(user_param: str = "$1") -> str:
     return f"""SELECT fh.hoa_id FROM pm_firm_members m
                JOIN pm_firms f ON f.id = m.firm_id
                JOIN pm_firm_hoas fh ON fh.firm_id = m.firm_id
-               WHERE m.supabase_user_id = {user_param}
-                 AND (f.open_visibility OR m.is_owner
-                      OR EXISTS (SELECT 1 FROM pm_member_hoas a
-                                 WHERE a.supabase_user_id = m.supabase_user_id
-                                   AND a.hoa_id = fh.hoa_id))"""
+               WHERE m.supabase_user_id = {user_param} AND {_MAY_SEE}"""
 
 
 async def ensure_firm(conn: asyncpg.Connection, user_id: str, fallback_name: str) -> str:
@@ -63,7 +72,8 @@ async def ensure_firm(conn: asyncpg.Connection, user_id: str, fallback_name: str
         "INSERT INTO pm_firms (name) VALUES ($1) RETURNING id", fallback_name,
     )
     await conn.execute(
-        "INSERT INTO pm_firm_members (firm_id, supabase_user_id, is_owner) VALUES ($1, $2, true)",
+        "INSERT INTO pm_firm_members (firm_id, supabase_user_id, is_owner, role) "
+        "VALUES ($1, $2, true, 'owner')",
         firm_id, user_id,
     )
     return firm_id
@@ -77,9 +87,9 @@ async def map_hoa_to_firm(conn: asyncpg.Connection, firm_id: str, hoa_id: str) -
 
 
 async def assign_member_hoa(conn: asyncpg.Connection, firm_id: str, user_id: str, hoa_id: str) -> None:
-    """Assign a member to an association (no-op in open-visibility firms'
-    behavior, but recorded regardless so flipping to assignment mode later
-    starts from an accurate picture)."""
+    """Assign a member to an association (no visible effect in open-visibility
+    firms, but recorded regardless so flipping to assignment mode later starts
+    from an accurate picture)."""
     await conn.execute(
         "INSERT INTO pm_member_hoas (firm_id, supabase_user_id, hoa_id) VALUES ($1, $2::uuid, $3) "
         "ON CONFLICT DO NOTHING",

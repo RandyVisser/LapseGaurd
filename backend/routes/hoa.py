@@ -515,7 +515,12 @@ async def compliance_summary(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     await _assert_hoa_access(user, hoa_id, conn)
+    return await build_compliance_summary(conn, hoa_id)
 
+
+async def build_compliance_summary(conn: asyncpg.Connection, hoa_id: str) -> ComplianceSummary:
+    """One association's compliance summary. Shared by the per-HOA endpoint and
+    the firm console's portfolio aggregation, so their numbers always agree."""
     rows = await conn.fetch(
         """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, u.is_rental, t.id AS tenant_id,
                   EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite

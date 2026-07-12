@@ -638,7 +638,7 @@ async def accept_admin_invite(
         raise HTTPException(status_code=400, detail="You must agree to the Terms of Service to continue.")
     async with conn.transaction():
         row = await conn.fetchrow(
-            "SELECT id, email, hoa_id, firm_id, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
+            "SELECT id, email, hoa_id, firm_id, preassign_hoa_ids, accepted_at, role FROM admin_invites WHERE token = $1 FOR UPDATE",
             token,
         )
         if not row:
@@ -682,13 +682,17 @@ async def accept_admin_invite(
 
         if role == "property_manager":
             if row["firm_id"]:
-                # Teammate invite: join the firm — grants the whole portfolio.
-                # If they somehow already belong to a firm, keep the original.
+                # Teammate invite: join the firm as a member. If they somehow
+                # already belong to a firm, keep the original.
                 await conn.execute(
-                    """INSERT INTO pm_firm_members (firm_id, supabase_user_id) VALUES ($1, $2::uuid)
+                    """INSERT INTO pm_firm_members (firm_id, supabase_user_id, role) VALUES ($1, $2::uuid, 'member')
                        ON CONFLICT (supabase_user_id) DO NOTHING""",
                     row["firm_id"], uid,
                 )
+                # Apply any associations the inviter pre-assigned, so the new
+                # PM lands seeing their book on day one.
+                for hoa in (row["preassign_hoa_ids"] or []):
+                    await assign_member_hoa(conn, row["firm_id"], uid, hoa)
             else:
                 # Association-side PM invite: attach the HOA to this PM's firm
                 # (their first association creates a single-owner firm) and

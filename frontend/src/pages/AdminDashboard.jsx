@@ -10,6 +10,7 @@ import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 import TrialBanner from '../components/TrialBanner'
 import HoaOptions from '../components/HoaOptions'
+import FirmOverview from '../components/FirmOverview'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 // Subrental flagging — dark until the full rental flow is built + tested.
@@ -1236,7 +1237,14 @@ export default function AdminDashboard() {
           />
         )}
 
-        {summary && (
+        {/* PMs' all-associations view opens on the firm-level dashboard:
+            portfolio KPIs + worst-compliance list (server-aggregated),
+            instead of the merged single-HOA hero. */}
+        {role === 'property_manager' && hoaId === ALL_HOAS && (
+          <FirmOverview openHoa={id => setSelectedHoaId(id)} />
+        )}
+
+        {summary && !(role === 'property_manager' && hoaId === ALL_HOAS) && (
           <ComplianceHero
             summary={summary}
             activeFilter={activeFilter}

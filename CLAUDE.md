@@ -37,7 +37,9 @@ backend/
                         # volume tiers as the incentive; covered HOA rows share the firm's
                         # stripe_customer_id so the webhook fans status out to all of them)
     rentals.py         # /unit/{id}/rental, /lease, rental invite — RENTALS_ENABLED
-    pm_team.py         # /pm/team — firm roster: invite/remove teammates, rename firm
+    pm_team.py         # firm console backend: /pm/team (roster, roles, invites w/
+                        # pre-assignments), /pm/groups CRUD, /pm/overview, /pm/associations
+                        # (registry + firm-side add), /firms (super_user directory)
     feedback.py        # POST/GET/PATCH /feedback — backs in-app FeedbackWidget
     inbound.py         # POST /inbound/email — docs@condo.insure email-in flow
     analytics.py       # POST /analytics/event, GET /analytics/funnel
@@ -83,15 +85,19 @@ frontend/src/
 ## Roles
 
 - `hoa_admin` — association manager. `hoa_id` in JWT `app_metadata`. Sees admin routes.
-- `property_manager` — staff at a PM firm (`pm_firms`). Two visibility modes per firm
-  (`pm_firms.open_visibility`, owner-toggled in the Team panel): open (default) = every
-  member sees the firm's whole portfolio; assignment-based = members see only associations
-  they're assigned to (`pm_member_hoas`), owners always see all, and firm billing becomes
-  owner-only. Access resolves through `services/firms.py` (`firm_manages_hoa` /
-  `visible_hoas_sql`) — change it there, not per-endpoint. No single fixed `hoa_id`
-  (selects an active HOA client-side, see `AuthContext`'s `effectiveHoaId`). The firm
-  owner invites/removes teammates, assigns associations, and manages consolidated billing
-  from Settings → all-associations view.
+- `property_manager` — staff at a PM firm (`pm_firms`), role-tiered
+  (`pm_firm_members.role`): owner (billing, firm settings, promote/demote), manager
+  (people ops — invite/remove members, assignments, groups; read-only billing; always
+  sees all), member (their book). Visibility per firm (`pm_firms.open_visibility`,
+  owner-toggled): open (default) = everyone sees the whole portfolio; assignment-based =
+  members see direct assignments (`pm_member_hoas`) ∪ their groups' books
+  (`pm_groups`/`pm_group_members`/`pm_group_hoas`). Access resolves through
+  `services/firms.py` (`_MAY_SEE` / `firm_manages_hoa` / `visible_hoas_sql`) — change it
+  there, not per-endpoint. Groups change what people SEE, never what gets billed. No
+  single fixed `hoa_id` (client-side selection, see `AuthContext`). Firm-level UI: the
+  Firm Console at /admin/firm (Associations registry + firm-side add-association, People
+  Users/Groups, Billing, Settings); the firm-level dashboard (KPIs + worst-compliance,
+  GET /pm/overview) renders on /admin/dashboard's all-associations view for PMs.
 - `super_user` — Randy + dad only. Admin-equivalent access across all HOAs, plus `/admin/feedback`.
 - `tenant` — unit owner. No `hoa_id` in JWT; fetched from `/tenant/me`. Sees tenant routes.
 
@@ -156,11 +162,16 @@ alert_log     id, tenant_id, alert_type, sent_at
 pm_firms          id, name, stripe_customer_id, cab_number, open_visibility,
                   billing_mode ('firm' = consolidated sub | 'association' = each HOA
                   subscribes itself at the firm's blended bulk rate)   # PM company
-pm_firm_members   firm_id, supabase_user_id (unique — one firm per login), is_owner
+pm_firm_members   firm_id, supabase_user_id (unique — one firm per login),
+                  role ('owner'|'manager'|'member'; is_owner kept in sync, legacy)
 pm_firm_hoas      firm_id, hoa_id                # associations the firm manages (billing scope)
-pm_member_hoas    firm_id, supabase_user_id, hoa_id   # per-PM assignments (visibility scope when
-                  # open_visibility=false); composite FKs onto members + firm portfolio, cascade
-admin_invites     also carries firm_id (nullable) for teammate invites; hoa_id nullable
+pm_member_hoas    firm_id, supabase_user_id, hoa_id   # per-PM direct assignments (visibility scope
+                  # when open_visibility=false); composite FKs onto members + portfolio, cascade
+pm_groups         id, firm_id, name, color            # AD-style groups: membership grants the
+pm_group_members  group_id, firm_id, supabase_user_id # group's whole book (additive with direct
+pm_group_hoas     group_id, firm_id, hoa_id           # assignments); flat, no nesting
+admin_invites     firm_id (nullable, teammate invites) + preassign_hoa_ids uuid[] (assigned on
+                  acceptance); hoa_id nullable
 # property_manager_hoas and pm_billing are LEGACY (superseded by the pm_firm_* tables); kept only so
 # pre-firm deploys keep working — drop both in a later cleanup.
 ```

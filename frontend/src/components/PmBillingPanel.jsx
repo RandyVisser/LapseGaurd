@@ -70,6 +70,9 @@ export default function PmBillingPanel() {
           ? 'Each association pays its own bill — at your firm’s bulk rate.'
           : 'One subscription covering your whole portfolio, billed on the combined unit count.'}
       </p>
+      {data?.is_owner === false && (
+        <p className="text-xs text-[#8493A8] mb-3">Read-only — only the firm owner can change billing.</p>
+      )}
       {data?.is_owner && (
         <div className="flex flex-col gap-1.5 mb-4">
           <label className="flex items-start gap-2 text-sm text-[#54627A]">
