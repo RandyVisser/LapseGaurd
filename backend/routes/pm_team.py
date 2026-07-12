@@ -188,7 +188,7 @@ async def list_firms(
     """Staff directory of PM firms: who's in each, which associations they
     manage, and a billing snapshot (combined units, monthly total, status).
     Powers the firm grouping + hover card in the super-user settings view."""
-    from routes.billing import _GOOD_STANDING, _UNITS_SUBQ, _graduated_monthly_cents, _split_portfolio
+    from routes.billing import _GOOD_STANDING, _UNITS_SUBQ, _volume_monthly_cents, _split_portfolio
 
     firms = await conn.fetch(
         """SELECT f.id, f.name, f.stripe_customer_id,
@@ -228,7 +228,7 @@ async def list_firms(
             "hoas": [{"id": str(h["id"]), "name": h["name"], "units": h["units"]} for h in hoas],
             "billing": {
                 "units": units,
-                "monthly_cents": _graduated_monthly_cents(units),
+                "monthly_cents": _volume_monthly_cents(units),
                 "status": status,
                 "has_subscription": bool(sub_row),
                 "in_good_standing": status in _GOOD_STANDING,

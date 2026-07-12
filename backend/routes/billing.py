@@ -90,26 +90,23 @@ async def _billable_units(conn: asyncpg.Connection, hoa_id: str) -> int:
     ) or 0
 
 
-def _graduated_monthly_cents(units: int) -> int:
-    """Mirror of the Stripe graduated price AND frontend/src/pricing.js — the
-    three must agree. First 750 @ $1.00, next to 10,000 @ $0.50, beyond @
-    $0.25, $50/mo minimum (modeled in Stripe as a $50 flat fee on units 1-50)."""
+def _volume_monthly_cents(units: int) -> int:
+    """VOLUME pricing (since 2026-07-12): every unit is billed at the rate of
+    the tier the TOTAL lands in — ≤750 @ $1.00, 751–10,000 @ $0.50, 10,000+ @
+    $0.25, $50/mo minimum. Mirror of the Stripe volume price AND
+    frontend/src/pricing.js — the three must agree. (In Stripe: volume tiers
+    with the minimum modeled as a $50 flat fee on the 1–50 tier.)"""
     if units <= 0:
         return 0
-    if units <= 750:
-        cost = units * 100
-    elif units <= 10000:
-        cost = 750 * 100 + (units - 750) * 50
-    else:
-        cost = 750 * 100 + 9250 * 50 + (units - 10000) * 25
-    return max(cost, 5000)
+    rate = 100 if units <= 750 else 50 if units <= 10000 else 25
+    return max(units * rate, 5000)
 
 
 async def _firm_rate_for_hoa(conn: asyncpg.Connection, hoa_id: str):
     """If a firm manages this association and passes billing through
     ('association' mode), the association pays its own bill at the firm's BULK
-    rate: the blended per-unit price of the firm's whole portfolio on the
-    graduated tiers. Returns (firm_row, rate_cents) or None. Note: no $50
+    rate: the volume-tier rate of the firm's whole portfolio (blended only
+    when the $50 minimum dominates). Returns (firm_row, rate_cents) or None. Note: no $50
     minimum on the bulk rate — that's the firm-deal incentive."""
     firm = await conn.fetchrow(
         """SELECT f.id, f.name, f.billing_mode FROM pm_firms f
@@ -127,7 +124,7 @@ async def _firm_rate_for_hoa(conn: asyncpg.Connection, hoa_id: str):
     ) or 0
     if total_units <= 0:
         return None
-    rate = max(round(_graduated_monthly_cents(total_units) / total_units), 1)
+    rate = max(round(_volume_monthly_cents(total_units) / total_units), 1)
     return firm, rate
 
 
@@ -147,9 +144,9 @@ async def get_billing(
         rate = firm_rate[1]
         monthly = units * rate
     else:
-        monthly = _graduated_monthly_cents(units)
-        # Effective blended rate for display; graduated tiers mean big
-        # portfolios pay less per unit than the headline $1.
+        monthly = _volume_monthly_cents(units)
+        # Effective per-unit rate for display; under volume pricing this IS
+        # the tier rate unless the $50 minimum dominates.
         rate = round(monthly / units) if units else DEFAULT_UNIT_RATE_CENTS
     trial_ends_at = hoa["trial_ends_at"]
     trial_days_left = None
@@ -380,13 +377,13 @@ async def get_pm_billing(
     cancel_at = sub_row["billing_cancel_at"] if sub_row else None
 
     units = sum(h["units"] for h in included)
-    monthly = _graduated_monthly_cents(units)
-    separate = sum(_graduated_monthly_cents(h["units"]) for h in included)
+    monthly = _volume_monthly_cents(units)
+    separate = sum(_volume_monthly_cents(h["units"]) for h in included)
     # Bulk rate for pass-through mode: blended over the WHOLE portfolio
     # (including self-subscribed associations — they're part of the deal).
     portfolio_units = sum(h["units"] for h in hoas)
     firm_unit_rate = (
-        max(round(_graduated_monthly_cents(portfolio_units) / portfolio_units), 1)
+        max(round(_volume_monthly_cents(portfolio_units) / portfolio_units), 1)
         if portfolio_units else DEFAULT_UNIT_RATE_CENTS
     )
     trial_ends_at = _latest_trial_end(included)
