@@ -5,3 +5,7 @@ node_modules/
 dist/
 .DS_Store
 .venv/
+
+# Claude Code local state (settings.local.json, worktrees) — never commit
+.claude/
+*.swp

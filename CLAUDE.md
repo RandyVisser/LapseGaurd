@@ -107,6 +107,7 @@ frontend/src/
     FeedbackWidget.jsx
 
 migrations/            # numbered SQL — CANONICAL schema history (see Database)
+docs/                  # design docs (firm-console-spec.html — the Firm Console design spec)
 demo/                  # sales-demo assets (dec-page generator) — not product code
 .github/workflows/     # ci.yml (build+import checks), scheduled-jobs.yml (THE cron),
                        # backup-docs.yml (append-only B2 doc backup — never make it sync)
@@ -169,7 +170,9 @@ Frontend (Railway, baked at build time via Vite):
 
 ## Local dev
 
-Copy `.env.example` to `.env` and fill in values, then:
+Copy `.env.example` to `.env` and fill in values — the values live in the
+Railway service dashboards (plus the Stripe/Resend/Supabase consoles); get
+them from Randy/Troy, never from the repo. Then:
 
 ```bash
 # backend

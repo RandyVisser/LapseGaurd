@@ -1,0 +1,373 @@
+<title>Firm Console — Design Spec</title>
+<style>
+  :root{
+    --navy:#001842; --navy2:#06245C; --blue:#014AC5; --ink:#0B1B33;
+    --muted:#54627A; --muted2:#8493A8; --line:#E8ECF2; --line2:#DCE3EC;
+    --bg:#F6F8FB; --card:#FFFFFF;
+    --green:#0E8E68; --green-bg:#E2F4EC; --amber:#946410; --amber-bg:#FAEDD2;
+    --coral:#C0492F; --coral-bg:#F9E1DA; --blue-bg:#EEF3FB;
+    --shadow:0 1px 3px rgba(11,27,51,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --navy:#E9EEF7; --navy2:#C9D6F0; --blue:#7FA8F2; --ink:#E9EEF7;
+      --muted:#9FB0D6; --muted2:#6E82AC; --line:#1E3055; --line2:#28406E;
+      --bg:#080F21; --card:#0F1B38;
+      --green:#6FE3B6; --green-bg:#0E2E24; --amber:#E9C36A; --amber-bg:#332708;
+      --coral:#F09A86; --coral-bg:#3A1710; --blue-bg:#152548;
+      --shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --navy:#E9EEF7; --navy2:#C9D6F0; --blue:#7FA8F2; --ink:#E9EEF7;
+    --muted:#9FB0D6; --muted2:#6E82AC; --line:#1E3055; --line2:#28406E;
+    --bg:#080F21; --card:#0F1B38;
+    --green:#6FE3B6; --green-bg:#0E2E24; --amber:#E9C36A; --amber-bg:#332708;
+    --coral:#F09A86; --coral-bg:#3A1710; --blue-bg:#152548;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  :root[data-theme="light"]{
+    --navy:#001842; --navy2:#06245C; --blue:#014AC5; --ink:#0B1B33;
+    --muted:#54627A; --muted2:#8493A8; --line:#E8ECF2; --line2:#DCE3EC;
+    --bg:#F6F8FB; --card:#FFFFFF;
+    --green:#0E8E68; --green-bg:#E2F4EC; --amber:#946410; --amber-bg:#FAEDD2;
+    --coral:#C0492F; --coral-bg:#F9E1DA; --blue-bg:#EEF3FB;
+    --shadow:0 1px 3px rgba(11,27,51,.07);
+  }
+  *{box-sizing:border-box;margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Hanken Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.55; padding:0 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  h1,h2,h3{font-family:"Bricolage Grotesque","Hanken Grotesk",-apple-system,sans-serif;
+    letter-spacing:-.02em; color:var(--ink); text-wrap:balance}
+  h1{font-size:32px;font-weight:800;line-height:1.15}
+  h2{font-size:21px;font-weight:700;margin:56px 0 6px}
+  h3{font-size:16px;font-weight:700;margin:28px 0 6px}
+  p{max-width:68ch;color:var(--muted);margin:8px 0}
+  p strong, li strong{color:var(--ink)}
+  ul,ol{color:var(--muted);padding-left:22px;max-width:68ch}
+  li{margin:4px 0}
+  .mono, code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  code{font-size:.85em;background:var(--blue-bg);color:var(--blue);padding:1px 5px;border-radius:4px}
+  .eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.14em;color:var(--blue)}
+  header.doc{padding:56px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;
+    font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted2)}
+  .meta b{color:var(--muted);font-weight:500}
+
+  /* ── mockup chrome ─────────────────────────────── */
+  .mock{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);margin:18px 0 8px;overflow:hidden}
+  .mock-cap{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted2);
+    margin:6px 2px 26px;letter-spacing:.02em}
+  .mock-nav{background:#001842;color:#fff;padding:10px 16px;display:flex;gap:14px;
+    align-items:center;font-size:13px}
+  :root[data-theme="dark"] .mock-nav, .dm .mock-nav{background:#001842}
+  .mock-nav .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;margin-right:auto}
+  .mock-nav span{opacity:.75}
+  .mock-nav .on{background:#fff;color:#001842;font-weight:600;padding:2px 9px;border-radius:5px;opacity:1}
+  .mock-body{padding:18px}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 18px;background:var(--card)}
+  .tab{padding:11px 14px;font-size:13.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
+  .tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+  .tab .lock{font-size:10px;color:var(--muted2);margin-left:4px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .kpi .l{font-size:11px;color:var(--muted2)}
+  .kpi .v{font-family:"JetBrains Mono",monospace;font-size:20px;font-weight:700;
+    font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:12px;font-weight:500;color:var(--muted2)}
+  .kpi.good .v{color:var(--green)} .kpi.warn .v{color:var(--coral)}
+
+  .strip{background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);
+    border-radius:10px;padding:9px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .strip .sl{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}
+  .pillb{background:var(--card);border:1px solid color-mix(in srgb,var(--amber) 35%,transparent);
+    border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
+  .pillb b{font-family:"JetBrains Mono",monospace;color:var(--coral)}
+
+  table.ui{width:100%;border-collapse:collapse;font-size:13px}
+  table.ui th{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);text-align:left;
+    padding:8px 10px;border-bottom:1px solid var(--line)}
+  table.ui td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  table.ui tr:last-child td{border-bottom:none}
+  table.ui .num{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;text-align:right}
+  .tblwrap{overflow-x:auto}
+
+  .bar{display:inline-flex;align-items:center;gap:7px;min-width:120px}
+  .bar .track{flex:1;height:6px;border-radius:4px;background:var(--line);min-width:60px}
+  .bar .fill{height:6px;border-radius:4px;background:var(--green)}
+  .bar.mid .fill{background:var(--amber)} .bar.low .fill{background:var(--coral)}
+  .bar .pc{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;width:36px;text-align:right}
+
+  .pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap}
+  .pill.g{background:var(--green-bg);color:var(--green)}
+  .pill.a{background:var(--amber-bg);color:var(--amber)}
+  .pill.c{background:var(--coral-bg);color:var(--coral)}
+  .pill.b{background:var(--blue-bg);color:var(--blue)}
+  .pill.n{background:var(--line);color:var(--muted)}
+
+  .avs{display:inline-flex}
+  .av{width:22px;height:22px;border-radius:50%;background:var(--navy2);color:#fff;
+    font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;
+    border:2px solid var(--card);margin-left:-6px}
+  .av:first-child{margin-left:0}
+  :root[data-theme="dark"] .av{color:#0B1B33}
+  .av.g1{background:#0E8E68}.av.g2{background:#946410}.av.g3{background:#C0492F}.av.g4{background:#014AC5}
+
+  .btn{display:inline-block;background:#001842;color:#fff;font-weight:600;font-size:12.5px;
+    border-radius:8px;padding:7px 13px}
+  :root[data-theme="dark"] .btn{background:#7FA8F2;color:#0B1B33}
+  .btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--line2)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.cols{grid-template-columns:1fr}}
+  .gcard{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .gcard .gh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .dot{width:10px;height:10px;border-radius:3px}
+  .gcard .gname{font-weight:700;font-size:14px}
+  .gcard .gmeta{font-size:12px;color:var(--muted2);margin-left:auto;
+    font-family:"JetBrains Mono",monospace}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{background:var(--blue-bg);color:var(--blue);font-size:11.5px;font-weight:600;
+    border-radius:6px;padding:2px 8px}
+  .chip.person{background:var(--line);color:var(--muted)}
+
+  /* matrix */
+  table.mx{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0}
+  table.mx th,table.mx td{border:1px solid var(--line);padding:7px 10px;text-align:center}
+  table.mx th{background:var(--blue-bg);font-size:12px;color:var(--ink)}
+  table.mx td:first-child,table.mx th:first-child{text-align:left}
+  table.mx td:first-child{color:var(--muted);font-size:12.5px}
+  .y{color:var(--green);font-weight:700}.n2{color:var(--muted2)}.ro{color:var(--amber);font-weight:600;font-size:11px}
+
+  .phase{border:1px solid var(--line);border-left:3px solid var(--blue);background:var(--card);
+    border-radius:10px;padding:14px 16px;margin:12px 0}
+  .phase h3{margin:0 0 4px}
+  .phase .ef{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted2);float:right}
+  .decide{background:var(--blue-bg);border:1px solid color-mix(in srgb,var(--blue) 25%,transparent);
+    border-radius:10px;padding:14px 16px;margin:12px 0}
+  .decide b{color:var(--blue)}
+  .note{font-size:12.5px;color:var(--muted2);border-left:2px solid var(--line2);padding-left:10px;margin:10px 0}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;
+    font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.6;overflow-x:auto;color:var(--ink)}
+  .rule{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--card);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink)}
+  .rule b{color:var(--blue)}
+</style>
+
+<div class="wrap">
+<header class="doc">
+  <div class="eyebrow">condo.insure · design spec · for review</div>
+  <h1>Firm Console</h1>
+  <p style="font-size:16.5px">One place where a property-management firm runs its whole book:
+  the associations it manages, the people who manage them, and how it all gets billed.
+  Scales from a one-person shop to a 1,000-PM company without changing shape.</p>
+  <div class="meta">
+    <span><b>Route</b> /admin/firm (replaces current page)</span>
+    <span><b>Audience</b> firm owners · managers · super users</span>
+    <span><b>Status</b> proposal — Randy &amp; Troy to review</span>
+    <span><b>Date</b> 2026-07-12</span>
+  </div>
+</header>
+
+<h2>The shape: five tabs, three roles</h2>
+<p>Everything firm-level lives under one console with tabs. What you can <em>see and do</em> is
+decided by your role in the firm — the Active-Directory idea: <strong>users</strong> and
+<strong>groups</strong> are managed in one place, and access to <strong>resources</strong>
+(associations) flows from membership.</p>
+
+<div class="mock">
+  <div class="mock-nav"><span class="brand">⛨ condo.insure</span><span>Dashboard</span><span>Documents</span><span class="on">Firm</span><span>Settings</span></div>
+  <div class="tabs">
+    <div class="tab on">Overview</div>
+    <div class="tab">Associations</div>
+    <div class="tab">People<span class="lock">owner · mgr</span></div>
+    <div class="tab">Billing<span class="lock">owner</span></div>
+    <div class="tab">Settings<span class="lock">owner</span></div>
+  </div>
+  <div class="mock-body">
+    <div class="kpis">
+      <div class="kpi"><div class="l">Associations</div><div class="v">31</div></div>
+      <div class="kpi"><div class="l">Units</div><div class="v">4,180</div></div>
+      <div class="kpi good"><div class="l">Portfolio compliance</div><div class="v">86<small>%</small></div></div>
+      <div class="kpi warn"><div class="l">Need attention</div><div class="v">118</div></div>
+      <div class="kpi"><div class="l">Team</div><div class="v">14 <small>PMs</small></div></div>
+    </div>
+    <div class="strip">
+      <span class="sl">Needs attention</span>
+      <span class="pillb"><b>41</b> Expired</span>
+      <span class="pillb"><b>27</b> Non-compliant</span>
+      <span class="pillb"><b>38</b> Missing policy</span>
+      <span class="pillb"><b>12</b> Email bouncing</span>
+    </div>
+    <div class="tblwrap"><table class="ui">
+      <tr><th>Lowest compliance</th><th style="width:190px">Compliance</th><th class="num">Units</th><th>Assigned</th></tr>
+      <tr><td>Seagrass Commons</td><td><span class="bar low"><span class="track"><span class="fill" style="width:58%"></span></span><span class="pc">58%</span></span></td><td class="num">204</td><td><span class="avs"><span class="av g3">DB</span></span></td></tr>
+      <tr><td>Harbor Pointe Towers</td><td><span class="bar mid"><span class="track"><span class="fill" style="width:71%"></span></span><span class="pc">71%</span></span></td><td class="num">612</td><td><span class="avs"><span class="av g1">MG</span><span class="av g4">KT</span></span></td></tr>
+      <tr><td>Palm Vista South</td><td><span class="bar mid"><span class="track"><span class="fill" style="width:79%"></span></span><span class="pc">79%</span></span></td><td class="num">148</td><td><span class="avs"><span class="av g2">JR</span></span></td></tr>
+    </table></div>
+  </div>
+</div>
+<div class="mock-cap">TAB 1 · OVERVIEW — the portfolio at a glance. KPI row, the same needs-attention language as the association dashboard, and a “lowest compliance first” list, because the worst building is the one a managing member acts on. Every number click-throughs to the filtered view that produced it.</div>
+
+<p><strong>Scoping rule:</strong> the console shows you what your role can see. An owner or manager
+sees the whole firm; a member in an assignment-based firm sees the same tabs computed over
+<em>their</em> book only. One design, no special cases.</p>
+
+<div class="mock">
+  <div class="tabs">
+    <div class="tab">Overview</div><div class="tab on">Associations</div><div class="tab">People</div><div class="tab">Billing</div><div class="tab">Settings</div>
+  </div>
+  <div class="mock-body">
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <span class="btn ghost" style="flex:1;text-align:left;color:var(--muted2);font-weight:400">🔎 Search 31 associations…</span>
+      <span class="btn">+ Add association</span>
+    </div>
+    <div class="tblwrap"><table class="ui">
+      <tr><th>Association</th><th style="width:170px">Compliance</th><th class="num">Units</th><th>Assigned PMs</th><th>Billing</th><th></th></tr>
+      <tr><td><b>3 Island Condominium</b></td><td><span class="bar"><span class="track"><span class="fill" style="width:92%"></span></span><span class="pc">92%</span></span></td><td class="num">144</td><td><span class="avs"><span class="av g1">MG</span></span></td><td><span class="pill g">Firm-paid</span></td><td><span class="pill b">Open ▸</span></td></tr>
+      <tr><td><b>Harbor Pointe Towers</b></td><td><span class="bar mid"><span class="track"><span class="fill" style="width:71%"></span></span><span class="pc">71%</span></span></td><td class="num">612</td><td><span class="avs"><span class="av g1">MG</span><span class="av g4">KT</span></span></td><td><span class="pill g">Firm-paid</span></td><td><span class="pill b">Open ▸</span></td></tr>
+      <tr><td><b>Seagrass Commons</b></td><td><span class="bar low"><span class="track"><span class="fill" style="width:58%"></span></span><span class="pc">58%</span></span></td><td class="num">204</td><td><span class="avs"><span class="av g3">DB</span></span></td><td><span class="pill a">Trial · 41d</span></td><td><span class="pill b">Open ▸</span></td></tr>
+      <tr><td><b>Vista Royale</b></td><td><span class="bar"><span class="track"><span class="fill" style="width:88%"></span></span><span class="pc">88%</span></span></td><td class="num">96</td><td><span class="pill n">Unassigned</span></td><td><span class="pill c">Past due</span></td><td><span class="pill b">Open ▸</span></td></tr>
+    </table></div>
+  </div>
+</div>
+<div class="mock-cap">TAB 2 · ASSOCIATIONS — the registry. Sortable, searchable, paginated past ~25 rows. Avatar chips are editable in place (owners/managers): click to assign PMs to that association — the inverse of editing a person. “Unassigned” renders as a warning state because in an assignment-based firm it means nobody is watching that building. “Open ▸” jumps into the existing per-association dashboard.</div>
+
+<h3>Add association — the firm front door</h3>
+<p>The button on this tab is the missing self-serve flow: the firm creates the association
+(name + address), imports units with the existing wizard, and the association lands in the
+portfolio <strong>assigned to whoever added it</strong> — a new PM literally brings their book.
+Optionally invite a board contact by email; the board logging in is optional, exactly how a
+PM-run association works in practice. Billing follows the firm's mode automatically:
+firm-paid associations fold into the next quantity sync, pass-through ones get the firm rate.</p>
+
+<div class="mock">
+  <div class="tabs">
+    <div class="tab">Overview</div><div class="tab">Associations</div><div class="tab on">People</div><div class="tab">Billing</div><div class="tab">Settings</div>
+  </div>
+  <div class="mock-body">
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <span class="pill b" style="padding:5px 14px">Users</span>
+      <span class="pill n" style="padding:5px 14px">Groups</span>
+      <span style="margin-left:auto" class="btn">+ Invite PM</span>
+    </div>
+    <div class="tblwrap"><table class="ui">
+      <tr><th>Person</th><th>Role</th><th class="num">Assigned</th><th>Groups</th><th>Last sign-in</th><th></th></tr>
+      <tr><td><b>Maria Gonzalez</b><br><span style="color:var(--muted2);font-size:11.5px">maria@castlegroup.com</span></td><td><span class="pill b">Owner</span></td><td class="num">all</td><td>—</td><td class="num">today</td><td></td></tr>
+      <tr><td><b>Ken Torres</b><br><span style="color:var(--muted2);font-size:11.5px">ken@castlegroup.com</span></td><td><span class="pill b">Manager ▾</span></td><td class="num">all</td><td><span class="chip">Green</span></td><td class="num">yesterday</td><td><span class="pill n">Edit ▸</span></td></tr>
+      <tr><td><b>Dana Brooks</b><br><span style="color:var(--muted2);font-size:11.5px">dana@castlegroup.com</span></td><td><span class="pill n">Member ▾</span></td><td class="num">6</td><td><span class="chip">Green</span> <span class="chip">Red</span></td><td class="num">3d ago</td><td><span class="pill n">Edit ▸</span></td></tr>
+      <tr><td><b>Jim Reyes</b><br><span style="color:var(--muted2);font-size:11.5px">jim@castlegroup.com</span></td><td><span class="pill n">Member ▾</span></td><td class="num">2</td><td>—</td><td class="num">invite pending</td><td><span class="pill n">Resend</span></td></tr>
+    </table></div>
+  </div>
+</div>
+<div class="mock-cap">TAB 3 · PEOPLE / USERS — the roster. Role is a dropdown (owner-only control); “Edit ▸” opens a side panel with the person's association checklist plus “copy assignments from…” and group membership. Invite PM optionally pre-assigns associations so a new hire lands seeing their book on day one.</div>
+
+<div class="mock">
+  <div class="mock-body">
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <span class="pill n" style="padding:5px 14px">Users</span>
+      <span class="pill b" style="padding:5px 14px">Groups</span>
+      <span style="margin-left:auto" class="btn">+ New group</span>
+    </div>
+    <div class="cols">
+      <div class="gcard">
+        <div class="gh"><span class="dot" style="background:#0E8E68"></span><span class="gname">Green Team</span><span class="gmeta">4 PMs · 11 assoc</span></div>
+        <div class="chips" style="margin-bottom:7px"><span class="chip person">Ken T</span><span class="chip person">Dana B</span><span class="chip person">+2</span></div>
+        <div class="chips"><span class="chip">Harbor Pointe</span><span class="chip">3 Island</span><span class="chip">Palm Vista S</span><span class="chip">+8</span></div>
+      </div>
+      <div class="gcard">
+        <div class="gh"><span class="dot" style="background:#C0492F"></span><span class="gname">Red Team</span><span class="gmeta">3 PMs · 9 assoc</span></div>
+        <div class="chips" style="margin-bottom:7px"><span class="chip person">Dana B</span><span class="chip person">+2</span></div>
+        <div class="chips"><span class="chip">Seagrass Commons</span><span class="chip">Vista Royale</span><span class="chip">+7</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mock-cap">TAB 3 · PEOPLE / GROUPS — Troy's Green/Yellow/Red sketch, literally. A group is a named set of PMs and a set of associations; putting a person in a group grants them the group's whole book. “Moving someone around” = changing group chips, one click, instead of re-ticking 30 checkboxes. A person can be in several groups (Dana covers Green and Red), and direct assignments still work for one-off coverage.</div>
+
+<h2>Who sees what: the permission matrix</h2>
+<div class="tblwrap"><table class="mx">
+  <tr><th style="width:44%">Capability</th><th>Owner</th><th>Manager</th><th>Member</th></tr>
+  <tr><td>See every association (regardless of assignment)</td><td class="y">✓</td><td class="y">✓</td><td class="n2">assigned only*</td></tr>
+  <tr><td>Invite / remove PMs</td><td class="y">✓</td><td class="y">✓</td><td class="n2">—</td></tr>
+  <tr><td>Edit assignments &amp; groups (“move people around”)</td><td class="y">✓</td><td class="y">✓</td><td class="n2">—</td></tr>
+  <tr><td>Add an association (bring their book)</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓ <span class="ro">auto-assigned to self</span></td></tr>
+  <tr><td>Remove / reassign an association</td><td class="y">✓</td><td class="y">✓</td><td class="n2">—</td></tr>
+  <tr><td>Promote / demote managers</td><td class="y">✓</td><td class="n2">—</td><td class="n2">—</td></tr>
+  <tr><td>Billing: view</td><td class="y">✓</td><td class="ro">read-only</td><td class="n2">—</td></tr>
+  <tr><td>Billing: subscribe / cancel / switch mode</td><td class="y">✓</td><td class="n2">—</td><td class="n2">—</td></tr>
+  <tr><td>Firm settings (name, CAB#, visibility mode)</td><td class="y">✓</td><td class="n2">—</td><td class="n2">—</td></tr>
+</table></div>
+<p class="note">* In an open-visibility firm every member sees everything — the small-firm default,
+unchanged. The matrix's “assigned only” column applies once the owner turns on assignment-based
+visibility. Both of Randy's open calls are taken as the recommendation here: members <em>can</em>
+add associations (self-assigned), and managers get <em>read-only</em> billing.</p>
+
+<h2>One access rule, extended once</h2>
+<p>All of this resolves through the single chokepoint that already exists
+(<code>services/firms.py</code>). The rule grows one clause for groups and one for managers:</p>
+<div class="rule">member may access association <b>⇔</b> firm manages it <b>AND</b> (
+  firm is open-visibility <b>OR</b> role ∈ {owner, manager} <b>OR</b> directly assigned
+  <b>OR</b> shares a group that includes it )</div>
+
+<h2>Data &amp; API deltas</h2>
+<pre>pm_firm_members.role        text: 'owner' | 'manager' | 'member'   (migrate is_owner → role)
+pm_groups                   id, firm_id, name, color
+pm_group_members            group_id, supabase_user_id     (FK → pm_firm_members, cascade)
+pm_group_hoas               group_id, hoa_id               (FK → pm_firm_hoas, cascade)
+
+GET  /pm/overview           aggregated KPIs + worst-compliance list (ONE server-side
+                            query pass — this finally builds the at-scale aggregation)
+GET  /pm/associations       registry rows: units, status counts, assigned PMs, billing
+POST /pm/associations       firm-side “Add association” (create + map + assign creator)
+PATCH /pm/team/members/{id} role changes (owner only)
+CRUD /pm/groups             groups + membership + association sets (owner/manager)</pre>
+<p class="note">Billing scope is untouched: subscriptions, webhook fan-out, and the nightly
+quantity sync keep reading the firm portfolio (<code>pm_firm_hoas</code>), never assignments
+or groups. Groups change what people <em>see</em>, never what gets <em>billed</em>.</p>
+
+<h2>Build order</h2>
+<div class="phase"><span class="ef">~1 day</span><h3>Phase 1 — Console + roles + registry</h3>
+<ul>
+  <li>Tab shell at /admin/firm; current Team/Billing panels become the People and Billing tabs</li>
+  <li><code>role</code> migration (owner/manager/member) + permission matrix enforcement</li>
+  <li>Associations tab with <code>GET /pm/associations</code>; Overview tab with <code>GET /pm/overview</code></li>
+  <li>Super users get the same console per firm from their directory (read-only)</li>
+</ul></div>
+<div class="phase"><span class="ef">~half day</span><h3>Phase 2 — Add association + invite polish</h3>
+<ul>
+  <li>Firm-side “Add association” (create → import wizard → auto-assign → optional board invite)</li>
+  <li>Invite PM with pre-assigned associations</li>
+</ul></div>
+<div class="phase"><span class="ef">~1 day</span><h3>Phase 3 — Groups</h3>
+<ul>
+  <li>Groups schema + the one-clause access-rule extension + Groups sub-tab</li>
+  <li>Assignment side panel gains “add to group” and “copy from person”</li>
+</ul></div>
+
+<h2>Decisions locked in this spec (veto anytime)</h2>
+<div class="decide">
+  <b>1 · Members can add associations, self-assigned.</b> The “bring your book” flow beats
+  funneling everything through managers; managers can always reassign after.<br><br>
+  <b>2 · Managers get read-only billing.</b> A regional director should see what the portfolio
+  costs without being able to cancel the firm's subscription.<br><br>
+  <b>3 · Groups are additive, not exclusive.</b> Effective access = direct assignments ∪ group
+  books. No “primary group”, no hierarchy of groups — flat, like AD security groups, because
+  hierarchy is where these systems go to die.<br><br>
+  <b>4 · The console replaces the current /admin/firm page</b> rather than adding a second
+  place. Settings keeps only per-association concerns.
+</div>
+
+<p style="margin-top:40px;font-size:13px;color:var(--muted2)">Mockups use the app's design
+system (navy/blue/green-amber-coral status palette; Bricolage Grotesque / Hanken Grotesk /
+JetBrains Mono when available). Data shown is illustrative.</p>
+</div>
