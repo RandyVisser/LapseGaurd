@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track } from '../analytics'
-import { monthlyCost, fmtUSD } from '../pricing'
 import './landing.css'
 
 const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
@@ -10,7 +9,6 @@ const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
 export default function Landing() {
   const rootRef = useRef(null)
   const [tourOpen, setTourOpen] = useState(false)
-  const [calcUnits, setCalcUnits] = useState('')
 
   // Deep-link scroll: when arriving at /#features, /#how, /#pricing (e.g. from
   // the Vista Royale page or the /pricing redirect), the browser can't scroll to
@@ -433,29 +431,7 @@ export default function Landing() {
               </ul>
             </div>
             <div className="pf-right">
-              <div style={{ marginBottom: 16 }}>
-                <label htmlFor="unit-calc" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-                  Estimate your monthly cost
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <input
-                    id="unit-calc"
-                    type="number" min="1" inputMode="numeric"
-                    value={calcUnits}
-                    onChange={e => setCalcUnits(e.target.value)}
-                    placeholder="120"
-                    aria-label="Number of units"
-                    style={{ width: 96, padding: '9px 12px', border: '1px solid var(--line-2)', borderRadius: 10, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}
-                  />
-                  <span style={{ color: 'var(--muted)', fontSize: 14 }}>units</span>
-                  <span aria-hidden="true" style={{ color: 'var(--muted-2)' }}>→</span>
-                  <span style={{ fontWeight: 800, fontSize: 24, color: 'var(--navy)', lineHeight: 1 }}>
-                    {calcUnits && parseInt(calcUnits, 10) > 0
-                      ? <>{fmtUSD(monthlyCost(parseInt(calcUnits, 10)))}<span style={{ fontWeight: 600, fontSize: 14, color: 'var(--muted)' }}>/mo</span></>
-                      : <span style={{ color: 'var(--muted-2)', fontWeight: 600, fontSize: 16 }}>—</span>}
-                  </span>
-                </div>
-              </div>
+              <div className="price-eg">A 120-unit association pays <b>$120/month</b>.</div>
               <Link className="btn btn-primary btn-block" to="/signup">Start free</Link>
               <div className="price-mini">$50/mo minimum · no setup fee · cancel anytime</div>
             </div>
