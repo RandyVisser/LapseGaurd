@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
+import usePageTitle from '../usePageTitle'
 import { apiGet, apiPut, apiPost, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import BillingPanel from '../components/BillingPanel'
@@ -43,6 +44,7 @@ const PREVIEW_ROWS = [
 const ALL_HOAS = '__all__'
 
 export default function AdminSettings() {
+  usePageTitle('Settings')
   const { hoaId: globalHoaId, role, availableHoas, setSelectedHoaId: setGlobalHoaId } = useAuth()
   // Super users open Settings on the all-associations overview (firm/association
   // directory — cheap to render), regardless of the dashboard's Sandbox default.
@@ -261,17 +263,18 @@ export default function AdminSettings() {
 
         {loading && <div className="bg-white rounded-xl border border-[#E8ECF2] h-40 animate-pulse" />}
 
-        {!loading && hoaId === ALL_HOAS && (role === 'super_user' || role === 'property_manager') && (
-          <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6 text-sm text-[#54627A]">
-            Firm-level settings — team, assignments, and portfolio billing — moved to the{' '}
-            <Link to="/admin/firm" className="text-[#014AC5] hover:underline font-medium">Firm page</Link>.
-          </div>
-        )}
-
         {!loading && hoaId === ALL_HOAS && (
-          <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-8 text-center text-[#54627A]">
-            Select a single association above to view and edit its settings.
-          </div>
+          (role === 'super_user' || role === 'property_manager') ? (
+            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6 text-sm text-[#54627A]">
+              Firm-level settings — team, assignments, and portfolio billing — moved to the{' '}
+              <Link to="/admin/firm" className="text-[#014AC5] hover:underline font-medium">Firm page</Link>.
+              {' '}Select a single association above to view and edit its settings.
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-8 text-center text-[#54627A]">
+              Select a single association above to view and edit its settings.
+            </div>
+          )
         )}
 
         {showAddUnit && (
@@ -736,7 +739,7 @@ export default function AdminSettings() {
                       onChange={e => setForm(f => ({ ...f, ho4_required: e.target.checked }))}
                       className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]"
                     />
-                    Require Tenant to carry an HO-4 policy
+                    Require renters to carry an HO-4 policy
                   </label>
 
                   <div>

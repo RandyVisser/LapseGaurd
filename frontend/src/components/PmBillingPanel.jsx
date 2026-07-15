@@ -65,11 +65,15 @@ export default function PmBillingPanel() {
   return (
     <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-6">
       <p className="font-semibold text-[#0B1B33]">Billing — all associations</p>
-      <p className="text-xs text-[#54627A] mt-1 mb-3">
-        {passThrough
-          ? 'Each association pays its own bill — at your firm’s bulk rate.'
-          : 'One subscription covering your whole portfolio, billed on the combined unit count.'}
-      </p>
+      {/* Mode-dependent copy waits for /pm/billing — rendering it from optionals
+          flashed consolidated-mode text at pass-through firms. */}
+      {data && (
+        <p className="text-xs text-[#54627A] mt-1 mb-3">
+          {passThrough
+            ? 'Each association pays its own bill — at your firm’s bulk rate.'
+            : 'One subscription covering your whole portfolio, billed on the combined unit count.'}
+        </p>
+      )}
       {data?.is_owner === false && (
         <p className="text-xs text-[#8493A8] mb-3">Read-only — only the firm owner can change billing.</p>
       )}
@@ -77,12 +81,14 @@ export default function PmBillingPanel() {
         <div className="flex flex-col gap-1.5 mb-4">
           <label className="flex items-start gap-2 text-sm text-[#54627A]">
             <input type="radio" name="pm-billing-mode" disabled={busy} checked={!passThrough}
-              onChange={() => setMode('firm')} className="mt-0.5 border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
+              onChange={() => window.confirm('Switch to Firm-pays? Your firm will carry one consolidated subscription for the whole portfolio.')
+                && setMode('firm')} className="mt-0.5 border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
             <span><span className="font-medium text-[#0B1B33]">Firm pays</span> — one consolidated subscription for the whole portfolio</span>
           </label>
           <label className="flex items-start gap-2 text-sm text-[#54627A]">
             <input type="radio" name="pm-billing-mode" disabled={busy} checked={passThrough}
-              onChange={() => setMode('association')} className="mt-0.5 border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
+              onChange={() => window.confirm("Switch to Associations-pay? Each association will be billed separately at your firm's bulk rate from now on.")
+                && setMode('association')} className="mt-0.5 border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
             <span><span className="font-medium text-[#0B1B33]">Associations pay</span> — each association subscribes itself at your firm's bulk rate</span>
           </label>
         </div>

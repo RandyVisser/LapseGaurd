@@ -22,19 +22,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // In production: set VITE_API_URL to the Railway backend URL (no trailing slash).
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
-async function _handleResponse(res, path) {
-  if (res.ok) return res.json()
-  const text = await res.text()
-  const prefix = `[${res.status} ${res.url.replace(/^https?:\/\/[^/]+/, '')}]`
+function _raiseApiError(res, text) {
+  let detail = text
   try {
     const data = JSON.parse(text)
-    const detail = data.detail || data.message || text
-    const msg = typeof detail === 'string' ? detail : JSON.stringify(detail)
-    throw new Error(`${prefix} ${msg}`)
-  } catch (e) {
-    if (e instanceof SyntaxError) throw new Error(`${prefix} ${text}`)
-    throw e
-  }
+    const d = data.detail || data.message || text
+    detail = typeof d === 'string' ? d : JSON.stringify(d)
+  } catch { /* non-JSON body — keep raw text */ }
+  // Full technical string goes to the console for debugging; the thrown message
+  // is what pages render to users.
+  console.error(`[${res.status} ${res.url.replace(/^https?:\/\/[^/]+/, '')}] ${detail}`)
+  // 4xx detail stays VERBATIM — flows string-match on backend detail text
+  // (e.g. "already been registered", forgot-password hints, billing 400s).
+  throw new Error(res.status >= 500
+    ? 'Something went wrong on our end — please try again.'
+    : detail || `Request failed (${res.status}) — please try again.`)
+}
+
+async function _handleResponse(res) {
+  if (res.ok) return res.json()
+  _raiseApiError(res, await res.text())
 }
 
 export async function apiGet(path) {
@@ -105,12 +112,7 @@ export async function apiDownload(path) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) {
-    const prefix = `[${res.status} ${res.url.replace(/^https?:\/\/[^/]+/, '')}]`
-    let detail = await res.text()
-    try { detail = JSON.parse(detail).detail || detail } catch { /* keep text */ }
-    throw new Error(`${prefix} ${detail}`)
-  }
+  if (!res.ok) _raiseApiError(res, await res.text())
   return res.blob()
 }
 

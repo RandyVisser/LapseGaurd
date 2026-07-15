@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
+import usePageTitle from '../usePageTitle'
 import { apiGet, apiPatch } from '../supabase'
 
 const TYPE_META = {
@@ -67,6 +68,7 @@ function FunnelCard() {
 }
 
 export default function AdminFeedback() {
+  usePageTitle('Feedback')
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('new') // new | all

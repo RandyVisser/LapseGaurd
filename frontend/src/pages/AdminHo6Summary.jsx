@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { apiGet, apiPost } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import usePageTitle from '../usePageTitle'
 
 const ALL_HOAS = '__all__'
 
@@ -93,6 +94,7 @@ function CarrierTable({ rows, valueLabel, valueFn, countKey }) {
 export default function AdminHo6Summary() {
   const { hoaId, availableHoas } = useAuth()
   const navigate = useNavigate()
+  usePageTitle('HO-6 Summary')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -121,6 +123,7 @@ export default function AdminHo6Summary() {
   // a run-start timestamp so the loop still terminates.
   async function handleReparse(force = false) {
     if (!singleHoa || reparsing) return
+    if (force && !window.confirm('Re-parse ALL dec pages? This re-runs AI extraction on every policy and can take a while.')) return
     setReparsing(true); setError('')
     const qs = force ? `?force_since=${encodeURIComponent(new Date().toISOString())}` : ''
     let done = 0
@@ -148,8 +151,10 @@ export default function AdminHo6Summary() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <button onClick={() => navigate('/admin/dashboard')} className="text-sm text-[#54627A] hover:text-[#001842] mb-4 inline-block">
-          &larr; Back to dashboard
+        <button
+          onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/dashboard')}
+          className="text-sm text-[#54627A] hover:text-[#001842] mb-4 inline-block">
+          &larr; Back
         </button>
 
         <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">

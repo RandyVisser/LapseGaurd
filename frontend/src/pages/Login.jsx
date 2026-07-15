@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import usePageTitle from '../usePageTitle'
 
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
@@ -24,6 +25,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const welcome = params.get('welcome')
+  usePageTitle('Sign in')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -48,7 +50,7 @@ export default function Login() {
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Sign in to condo.insure
           </h1>
-          <p className="text-sm text-[#54627A] mb-6">Sign in to manage unit-owner insurance compliance.</p>
+          <p className="text-sm text-[#54627A] mb-6">Sign in to your condo.insure account.</p>
 
           {welcome === '1' && (
             <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">

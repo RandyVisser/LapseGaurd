@@ -5,6 +5,7 @@ import PmBillingPanel from '../components/PmBillingPanel'
 import FirmDirectory from '../components/FirmDirectory'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import usePageTitle from '../usePageTitle'
 
 const BILLING_ENABLED = import.meta.env.VITE_BILLING_ENABLED === 'true'
 const GROUP_COLORS = ['#0E8E68', '#946410', '#C0492F', '#014AC5', '#54627A', '#06245C']
@@ -95,7 +96,9 @@ function PeopleTab({ view, onGoSettings }) {
                     </span>
                     {isOwner && !m.you && m.role !== 'owner' && (
                       <select value={m.role} disabled={busy}
-                        onChange={e => run(() => apiPatch(`/pm/team/members/${m.user_id}`, { role: e.target.value }))}
+                        onChange={e => { const role = e.target.value
+                          if (role === 'manager' && !window.confirm(`Make ${m.email} a manager? Managers see the whole portfolio and can manage people.`)) return
+                          run(() => apiPatch(`/pm/team/members/${m.user_id}`, { role }), `${m.email} is now a ${role}.`) }}
                         className="border border-[#DCE3EC] rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#014AC5]">
                         <option value="member">Member</option>
                         <option value="manager">Manager</option>
@@ -135,12 +138,23 @@ function PeopleTab({ view, onGoSettings }) {
               </div>
             ))}
             {team.pending.map(p => (
-              <div key={p.id} className="flex items-center justify-between px-3 py-2.5 text-sm">
-                <span className="text-[#8493A8]">{p.email} — invite pending</span>
+              <div key={p.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                <span className="text-[#8493A8]">
+                  {p.email} — invite pending
+                  {p.sent_at && <> · sent {new Date(p.sent_at).toLocaleDateString()}</>}
+                </span>
                 {canManage && (
-                  <button type="button" disabled={busy}
-                    onClick={() => run(() => apiDelete(`/pm/team/invites/${p.id}`))}
-                    className="text-xs text-[#C0492F] hover:underline">Revoke</button>
+                  <span className="flex items-center gap-3 flex-shrink-0">
+                    {/* Re-inviting replaces the pending link — pass its pre-assignments
+                        back through or the backend would wipe them. */}
+                    <button type="button" disabled={busy}
+                      onClick={() => run(() => apiPost('/pm/team/invite', { email: p.email, hoa_ids: p.hoa_ids || [] }),
+                        `Invite re-sent to ${p.email}.`)}
+                      className="text-xs text-[#014AC5] hover:underline">Resend</button>
+                    <button type="button" disabled={busy}
+                      onClick={() => run(() => apiDelete(`/pm/team/invites/${p.id}`))}
+                      className="text-xs text-[#C0492F] hover:underline">Revoke</button>
+                  </span>
                 )}
               </div>
             ))}
@@ -159,7 +173,9 @@ function PeopleTab({ view, onGoSettings }) {
                   {busy ? 'Sending…' : 'Invite PM'}
                 </button>
               </div>
-              {team.hoas.length > 0 && inviteEmail.trim() && (
+              {/* Under open visibility pre-assignment changes nothing — the new
+                  PM sees everything anyway, so the block would be a no-op. */}
+              {!openVis && team.hoas.length > 0 && inviteEmail.trim() && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1">
                   <span className="text-xs text-[#8493A8] w-full">Pre-assign associations (they'll see these on day one):</span>
                   {team.hoas.map(h => (
@@ -232,12 +248,20 @@ function GroupCard({ group, team, busy, canManage, run }) {
       <p className="text-[10.5px] uppercase text-[#8493A8] mb-1" style={{ fontFamily: 'JetBrains Mono, monospace', letterSpacing: '.08em' }}>People</p>
       <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
         {team.members.filter(m => m.role !== 'owner').map(m => (
-          <label key={m.user_id} className="flex items-center gap-1 text-xs text-[#54627A]">
-            <input type="checkbox" disabled={busy || !canManage} checked={group.member_ids.includes(m.user_id)}
-              onChange={() => run(() => apiPatch(`/pm/groups/${group.id}`, { member_ids: toggle(group.member_ids, m.user_id) }))}
-              className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
-            {m.email}
-          </label>
+          // Managers always see the whole portfolio, so group membership is
+          // inert for them — shown (rosters shouldn't hide people) but disabled.
+          m.role === 'manager'
+            ? <span key={m.user_id} className="flex items-center gap-1 text-xs text-[#8493A8]">
+                <input type="checkbox" disabled checked={group.member_ids.includes(m.user_id)}
+                  className="rounded border-[#DCE3EC]" />
+                {m.email} <span className="italic">(sees all)</span>
+              </span>
+            : <label key={m.user_id} className="flex items-center gap-1 text-xs text-[#54627A]">
+                <input type="checkbox" disabled={busy || !canManage} checked={group.member_ids.includes(m.user_id)}
+                  onChange={() => run(() => apiPatch(`/pm/groups/${group.id}`, { member_ids: toggle(group.member_ids, m.user_id) }))}
+                  className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]" />
+                {m.email}
+              </label>
         ))}
         {team.members.filter(m => m.role !== 'owner').length === 0 && (
           <span className="text-xs text-[#8493A8]">No teammates yet — invite PMs on the Users tab.</span>
@@ -307,6 +331,7 @@ function SettingsTab() {
 
 // ── Page shell ───────────────────────────────────────────────────────────────
 export default function AdminFirm() {
+  usePageTitle('Firm')
   const { role, availableHoas, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
   const [firms, setFirms] = useState([])

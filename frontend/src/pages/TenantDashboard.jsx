@@ -5,6 +5,7 @@ import { apiGet, apiPost, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
 import { track } from '../analytics'
+import usePageTitle from '../usePageTitle'
 
 // Owner-facing quote link (revenue lead). Falls back to the same URL the admin
 // page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
@@ -53,6 +54,14 @@ function fmtDate(d) {
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
+// Upload/save failures surface raw Supabase storage errors ("new row violates
+// row-level security policy…") — owners get calm copy; the raw error stays in
+// the console for debugging.
+function friendlyUploadError(e) {
+  console.error(e)
+  return "We couldn't upload that file. Please try again — or email it to your association manager instead."
+}
+
 // Shown to the OWNER of a unit the association has flagged as a rental: upload
 // the lease (AI pulls the renter name) then invite the renter to add their HO-4.
 function RentalOwnerSection({ unitId, hasLease }) {
@@ -78,7 +87,7 @@ function RentalOwnerSection({ unitId, hasLease }) {
       const res = await apiPost(`/unit/${unitId}/lease`, { document_url: data.publicUrl })
       setResult(res); setLeaseDone(true)
       if (res.renter_names?.[0]) setRenterName(res.renter_names[0])
-    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+    } catch (e) { setErr(friendlyUploadError(e)) } finally { setBusy(false) }
   }
 
   async function sendInvite(e) {
@@ -88,7 +97,10 @@ function RentalOwnerSection({ unitId, hasLease }) {
     try {
       await apiPost(`/unit/${unitId}/rental/invite`, { email: renterEmail, name: renterName || null })
       setInvited(true)
-    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+    } catch (e) {
+      console.error(e)
+      setErr("We couldn't send that invite. Please check the email address and try again.")
+    } finally { setBusy(false) }
   }
 
   return (
@@ -117,7 +129,12 @@ function RentalOwnerSection({ unitId, hasLease }) {
       <div>
         <p className="text-sm font-semibold text-[#0B1B33] mb-2">2. Invite your renter</p>
         {invited ? (
-          <p className="text-sm text-[#0E8E68]">✓ Invite sent to {renterEmail}.</p>
+          <div>
+            <p className="text-sm text-[#0E8E68]">✓ Invite sent to {renterEmail}.</p>
+            <p className="text-xs text-[#54627A] mt-1">
+              We've emailed them a link — they'll create a login and upload their HO-4 policy.
+            </p>
+          </div>
         ) : (
           <form onSubmit={sendInvite} className="space-y-2 max-w-sm">
             <input value={renterName} onChange={e => setRenterName(e.target.value)} placeholder="Renter name"
@@ -146,6 +163,8 @@ export default function TenantDashboard() {
   const [fileInputKey, setFileInputKey] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [parsing, setParsing] = useState(false)
+  const [parseTimedOut, setParseTimedOut] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [dragOver, setDragOver] = useState(false)
@@ -153,12 +172,18 @@ export default function TenantDashboard() {
   const isMobile = useIsMobile()
   // Collapses to a corner pill on mobile so it doesn't cover the page
   const [helperExpanded, setHelperExpanded] = useState(false)
+  usePageTitle('My Policy')
 
-  useEffect(() => {
+  function loadPolicy() {
     if (!unitId) return
+    // Kill any in-flight parse poll from the previously selected unit — its
+    // closure captured the old unitId and would overwrite this unit's view.
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; setParsing(false) }
     setPolicyLoading(true)
     setPolicy(null)
     setError(''); setSuccess('')
+    setLoadFailed(false)
+    setParseTimedOut(false)
     Promise.all([
       apiGet(`/unit/${unitId}/policy`),
       apiGet(`/tenant/me/policies?unit_id=${unitId}`),
@@ -167,14 +192,17 @@ export default function TenantDashboard() {
         setPolicy(current)
         setAllPolicies(all || [])
       })
-      .catch(e => setError(e.message))
+      .catch(e => { setError(e.message); setLoadFailed(true) })
       .finally(() => setPolicyLoading(false))
-  }, [unitId])
+  }
+
+  useEffect(loadPolicy, [unitId])
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   function startParsingPoll() {
     setParsing(true)
+    setParseTimedOut(false)
     let attempts = 0
     pollRef.current = setInterval(async () => {
       attempts++
@@ -184,6 +212,7 @@ export default function TenantDashboard() {
           clearInterval(pollRef.current)
           pollRef.current = null
           setParsing(false)
+          setParseTimedOut(!current.parsed_at)
           setPolicy(current)
           setAllPolicies(prev => [current, ...prev.filter(p => p.id !== current.id)])
         }
@@ -238,7 +267,7 @@ export default function TenantDashboard() {
       setFileInputKey(k => k + 1)
       if (file) { track('owner_upload'); startParsingPoll() }
     } catch (e) {
-      setError(e.message)
+      setError(friendlyUploadError(e))
     } finally {
       setUploading(false)
     }
@@ -264,6 +293,8 @@ export default function TenantDashboard() {
   })}`
   const history = allPolicies.filter(p => p.id !== policy?.id)
   const activeUnit = tenantUnits.find(u => u.unit_id === unitId)
+  // Renters carry an HO-4, not an HO-6 — the upload card copy follows suit.
+  const isRenter = RENTALS_ENABLED && activeUnit?.is_renter
 
   if (!unitId) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -284,6 +315,8 @@ export default function TenantDashboard() {
   if (!policyLoading) {
     if (parsing) {
       nextSteps.push({ icon: '⏳', text: 'We\'re reading your document — this usually takes 10–20 seconds…', wait: true })
+    } else if (parseTimedOut) {
+      nextSteps.push({ icon: '⏳', text: 'Still reviewing your document — this can take a few minutes. You can safely leave this page; the status above will update once it\'s done.', wait: true })
     } else if (!policy || status === 'missing') {
       nextSteps.push({ icon: '📄', text: 'Click the YELLOW box to upload your DEC PAGE.' })
     } else if (status === 'lapsed') {
@@ -392,7 +425,19 @@ export default function TenantDashboard() {
           </div>
         )}
 
-        {error && !uploading && <p className="text-sm text-[#C0492F] mb-4">{error}</p>}
+        {error && !uploading && (
+          <p className="text-sm text-[#C0492F] mb-4">
+            {error}
+            {loadFailed && (
+              <button
+                onClick={loadPolicy}
+                className="ml-2 text-xs font-semibold text-[#014AC5] border border-[#C7DBF5] bg-white hover:bg-[#E7EEFA] px-3 py-1 rounded-lg"
+              >
+                Retry
+              </button>
+            )}
+          </p>
+        )}
 
         {/* ── Status hero ─────────────────────────────────────────────── */}
         {policyLoading ? (
@@ -468,10 +513,14 @@ export default function TenantDashboard() {
         {/* ── Upload card ─────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-[#E8ECF2] shadow-sm p-6 mb-5">
           <h2 className="font-semibold text-[#0B1B33]">
-            {policy ? 'Upload a new or renewed policy' : 'Upload your proof of insurance'}
+            {policy ? 'Upload a new or renewed policy'
+              : isRenter ? 'Upload your HO-4 (renters) policy'
+              : 'Upload your proof of insurance'}
           </h2>
           <p className="text-sm text-[#54627A] mt-1 mb-4">
-            Attach your declaration page — we'll read the details automatically.
+            {isRenter
+              ? "Attach your HO-4 policy's declaration page — we'll read the details automatically."
+              : "Attach your declaration page — we'll read the details automatically."}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -504,10 +553,12 @@ export default function TenantDashboard() {
                 <div>
                   <p className="text-2xl mb-1.5">📄</p>
                   <p className="text-sm text-[#54627A] font-medium hidden sm:block">
-                    {dragOver ? 'Drop to upload' : 'Drag & drop your dec page'}
+                    {dragOver ? 'Drop to upload' : isRenter ? 'Drag & drop your HO-4 policy' : 'Drag & drop your dec page'}
                   </p>
                   <p className="text-xs text-[#8493A8] mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
-                  <p className="text-sm text-[#54627A] font-medium sm:hidden">Tap to upload your dec page</p>
+                  <p className="text-sm text-[#54627A] font-medium sm:hidden">
+                    {isRenter ? 'Tap to upload your HO-4 policy' : 'Tap to upload your dec page'}
+                  </p>
                   <p className="text-xs text-[#8493A8] mt-1 sm:hidden">A PDF works best · a clear, full-page photo is OK too</p>
                 </div>
               )}
@@ -570,7 +621,7 @@ export default function TenantDashboard() {
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-xs text-[#8493A8]">
-                        {p.expiration_date ? `Exp ${p.expiration_date}` : 'No expiration'}
+                        {p.expiration_date ? `Exp ${fmtDate(p.expiration_date)}` : 'No expiration'}
                       </span>
                       <StatusBadge status={p.status} />
                       {p.document_url && (

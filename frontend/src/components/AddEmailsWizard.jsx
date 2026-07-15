@@ -73,13 +73,14 @@ export default function AddEmailsWizard({ hoaId, existingUnits = [], onClose, on
   }, [rows, mapping, existingKeys])
 
   const counts = useMemo(() => {
-    let willUpdate = 0, noMatch = 0, noEmail = 0
+    let willUpdate = 0, invalid = 0, noMatch = 0, noEmail = 0
     for (const a of analysis) {
       if (!a.hasEmail) noEmail++
       else if (!a.matches) noMatch++
+      else if (!a.validEmail) invalid++
       else willUpdate++
     }
-    return { willUpdate, noMatch, noEmail }
+    return { willUpdate, invalid, noMatch, noEmail }
   }, [analysis])
 
   const ready = !!mapping.unit_number && !!mapping.email_primary && counts.willUpdate > 0
@@ -87,7 +88,13 @@ export default function AddEmailsWizard({ hoaId, existingUnits = [], onClose, on
   async function handleCommit() {
     setBusy(true); setError(''); setStage('committing')
     try {
-      const res = await apiPost(`/hoa/${hoaId}/units/emails/commit`, { mapping, rows })
+      // Matched rows with an invalid email stay out of the payload — the
+      // button promises N adds, so exactly N rows go to the backend.
+      const commitRows = rows.filter((_, i) => {
+        const a = analysis[i]
+        return !(a.hasEmail && a.matches && !a.validEmail)
+      })
+      const res = await apiPost(`/hoa/${hoaId}/units/emails/commit`, { mapping, rows: commitRows })
       setResult(res); setStage('done'); onDone?.()
     } catch (err) {
       setError(err.message); setStage('preview')
@@ -102,8 +109,19 @@ export default function AddEmailsWizard({ hoaId, existingUnits = [], onClose, on
     { key: 'email_secondary', label: 'Secondary email', required: false },
   ]
 
+  // Backdrop click: safe to close before a file is chosen (and after commit),
+  // but during preview the admin may have fixed the column matchup — confirm
+  // before throwing that away. Ignore entirely while the commit is in flight.
+  function handleBackdrop() {
+    if (stage === 'committing') return
+    if (stage === 'preview') {
+      if (!window.confirm('Discard this import and your edits?')) return
+    }
+    onClose()
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={handleBackdrop}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8ECF2]">
           <div>
@@ -139,6 +157,11 @@ export default function AddEmailsWizard({ hoaId, existingUnits = [], onClose, on
                 <span className="px-3 py-1.5 rounded-lg bg-[#E2F4EC] text-[#0E8E68] font-medium border border-[#BFE3D2]">
                   {counts.willUpdate} email{counts.willUpdate !== 1 ? 's' : ''} will be added
                 </span>
+                {counts.invalid > 0 && (
+                  <span className="px-3 py-1.5 rounded-lg bg-[#FAEDD2] text-[#946410] border border-[#F0DDAE]">
+                    {counts.invalid} skipped — email{counts.invalid !== 1 ? 's' : ''} look{counts.invalid === 1 ? 's' : ''} invalid
+                  </span>
+                )}
                 {counts.noMatch > 0 && (
                   <span className="px-3 py-1.5 rounded-lg bg-[#FAEDD2] text-[#946410] border border-[#F0DDAE]">
                     {counts.noMatch} no matching unit
@@ -197,7 +220,7 @@ export default function AddEmailsWizard({ hoaId, existingUnits = [], onClose, on
                               ? <span className="text-[#946410]">no matching unit — skipped</span>
                               : a.validEmail
                               ? <span className="text-[#0E8E68]">✓ will add</span>
-                              : <span className="text-[#946410]">⚠ email looks invalid</span>}
+                              : <span className="text-[#946410]">⚠ email looks invalid — skipped</span>}
                           </td>
                         </tr>
                       ))}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
 import useIsMobile from '../hooks/useIsMobile'
+import usePageTitle from '../usePageTitle'
 
 // Quote button points at the agency quote page (HO-4 page for renters).
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
@@ -767,6 +768,9 @@ export default function AdminTenantDetail() {
       await apiPost(`/unit/${tenant.renter_unit_id}/policy`, { document_url: data.publicUrl })
       setHo4Msg('HO-4 uploaded for the renter — we\'re reading it now.')
       setHo4TenantId(t?.id || null)
+      // Refresh so renter_has_ho4 and the compliance checks update
+      const fresh = await apiGet(`/tenant/${tenantId}`)
+      initFromTenant(fresh)
     } catch (err) { setHo4Err(err.message) }
     finally { setHo4Uploading(false) }
   }
@@ -846,7 +850,10 @@ export default function AdminTenantDetail() {
           initFromTenant(fresh)
           break
         }
-        if (i === 19) initFromTenant(fresh)
+        if (i === 19) {
+          initFromTenant(fresh)
+          setError('AI extraction is taking longer than expected — the fields may still fill in shortly; you can re-run Extract if not.')
+        }
       }
     } catch (e) { setError(e.message) }
     finally { setRunningAiId(null) }
@@ -1012,7 +1019,8 @@ export default function AdminTenantDetail() {
       setSaveMsg('Saved successfully.')
       setTimeout(() => setSaveMsg(''), 3000)
     } catch (e) {
-      setSaveMsg('Save failed: ' + e.message)
+      // Strip the internal "[tenant] / [policy <id>]" tag prefix — it's for debugging, not the admin
+      setSaveMsg('Save failed: ' + e.message.replace(/^\[[^\]]*\]\s*/, ''))
     } finally {
       setSaving(false)
     }
@@ -1065,6 +1073,7 @@ export default function AdminTenantDetail() {
 
   const headerName = form.name || tenant?.name || ''
   const headerUnit = tenant?.unit_number ? `Unit ${tenant.unit_number}` : ''
+  usePageTitle(headerUnit)
 
   // ── Next-steps panel ────────────────────────────────────────────────────────
   const unparsedPolicies = (tenant?.policies || []).filter(p => p.document_url && !p.parsed_at && p.is_current)
@@ -1155,9 +1164,10 @@ export default function AdminTenantDetail() {
         {/* ── Top nav ──────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between flex-wrap gap-3 pb-5">
           <div className="flex items-start gap-4">
-            <button type="button" onClick={() => navigate('/admin/dashboard')}
+            <button type="button"
+              onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/dashboard')}
               className="flex items-center gap-1.5 text-sm font-medium text-[#54627A] border border-[#E8ECF2] bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 mt-0.5">
-              ← Dashboard
+              ← Back
             </button>
             <div>
               <h1 className="text-xl font-bold text-[#0B1B33]">
@@ -1202,7 +1212,9 @@ export default function AdminTenantDetail() {
                   <span className="font-semibold text-[#0E8E68]">✓ Approved</span> by {approval.by}
                   {approval.at && <> on {new Date(approval.at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</>}
                   {approval.reason && <div className="mt-1 text-[#54627A]">Reason: {approval.reason}</div>}
-                  <button type="button" onClick={() => submitApproval(false)} disabled={savingApproval}
+                  <button type="button"
+                    onClick={() => { if (window.confirm('Withdraw manual approval? This unit will return to its failing status.')) submitApproval(false) }}
+                    disabled={savingApproval}
                     className="mt-2 text-xs font-semibold text-[#C0492F] hover:underline disabled:opacity-60">
                     {savingApproval ? 'Working…' : 'Withdraw approval'}
                   </button>
@@ -1467,6 +1479,10 @@ export default function AdminTenantDetail() {
                 {saveMsg && (
                   <p className={`text-sm font-medium ${saveMsg.startsWith('Save failed') ? 'text-[#C0492F]' : 'text-[#0E8E68]'}`}>
                     {saveMsg}
+                    {saveMsg.startsWith('Save failed') && (
+                      <button type="button" onClick={() => setSaveMsg('')} aria-label="Dismiss"
+                        className="ml-2 text-[#C0492F]/60 hover:text-[#C0492F] font-semibold">×</button>
+                    )}
                   </p>
                 )}
                 {!saveMsg && lastUpdated && (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../supabase'
+import usePageTitle from '../usePageTitle'
 
 // The multi-association PM's dashboard: a summary row and the firm's
 // association list (scoped to what this login may see). Clicking a row opens
@@ -43,6 +44,10 @@ export default function FirmDashboard({ openHoa }) {
   const [addForm, setAddForm] = useState({ name: '', address: '', board_email: '' })
   const [busy, setBusy] = useState(false)
 
+  // Falsy until loaded so this wins over the host page's title effect
+  // (AdminDashboard's runs after ours on mount).
+  usePageTitle(overview ? 'Portfolio' : '')
+
   function load() {
     apiGet('/pm/overview').then(setOverview).catch(e => setError(e.message))
     apiGet('/pm/associations').then(setRegistry).catch(e => setError(e.message))
@@ -58,7 +63,17 @@ export default function FirmDashboard({ openHoa }) {
     } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
-  if (error && !registry) return <p className="text-sm text-[#C0492F]">{error}</p>
+  if (error && (!overview || !registry)) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-[#C0492F]">{error}</p>
+        <button type="button" onClick={() => { setError(''); load() }}
+          className="border border-[#DCE3EC] text-[#54627A] font-semibold py-1.5 px-4 rounded-lg text-sm hover:bg-slate-50">
+          Retry
+        </button>
+      </div>
+    )
+  }
   if (!overview || !registry) {
     return <div className="bg-white rounded-xl border border-[#E8ECF2] h-40 animate-pulse" />
   }
@@ -77,12 +92,17 @@ export default function FirmDashboard({ openHoa }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Kpi label="Associations" value={overview.associations} />
-        <Kpi label="Units" value={overview.units.toLocaleString()} />
-        <Kpi label="Portfolio compliance" value={overview.compliance_pct != null ? `${overview.compliance_pct}%` : '—'}
-          tone={overview.compliance_pct >= 85 ? 'good' : undefined} />
-        <Kpi label="Need attention" value={attTotal} tone={attTotal > 0 ? 'warn' : 'good'} />
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Kpi label="Associations" value={overview.associations} />
+          <Kpi label="Units" value={overview.units.toLocaleString()} />
+          <Kpi label="Portfolio compliance" value={overview.compliance_pct != null ? `${overview.compliance_pct}%` : '—'}
+            tone={overview.compliance_pct >= 85 ? 'good' : undefined} />
+          <Kpi label="Need attention" value={attTotal} tone={attTotal > 0 ? 'warn' : 'good'} />
+        </div>
+        {overview.role === 'member' && overview.open_visibility === false && (
+          <p className="text-[11px] text-[#8493A8] mt-1.5">Showing the associations assigned to you.</p>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E8ECF2] shadow-sm overflow-hidden">
@@ -127,7 +147,11 @@ export default function FirmDashboard({ openHoa }) {
                   <td className="py-3 px-3">
                     {h.assigned.length
                       ? <span className="text-xs text-[#54627A]">{h.assigned.join(', ')}</span>
-                      : <span className="text-[11px] font-bold rounded-full px-2.5 py-0.5 bg-[#FAEDD2] text-[#946410]">Unassigned</span>}
+                      : registry.open_visibility
+                        // Open visibility: everyone sees everything, so an empty
+                        // assignment list isn't a problem worth an amber pill.
+                        ? <span className="text-xs text-[#8493A8]">—</span>
+                        : <span className="text-[11px] font-bold rounded-full px-2.5 py-0.5 bg-[#FAEDD2] text-[#946410]">Unassigned</span>}
                   </td>
                   <td className="py-3 px-4">{billPill(h)}</td>
                 </tr>

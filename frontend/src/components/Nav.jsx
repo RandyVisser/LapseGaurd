@@ -32,6 +32,13 @@ export default function Nav({ role, title }) {
         ]
       : []
 
+  // Prefix match so detail pages keep their section lit; /admin/tenant/:id is a
+  // dashboard drill-down, so it counts as Dashboard.
+  function isActive(to) {
+    if (location.pathname === to || location.pathname.startsWith(to + '/')) return true
+    return to === '/admin/dashboard' && location.pathname.startsWith('/admin/tenant/')
+  }
+
   return (
     <nav className="bg-[#001842] text-white px-4 sm:px-6 py-3 relative">
       <div className="flex items-center justify-between">
@@ -45,7 +52,7 @@ export default function Nav({ role, title }) {
         <div className="hidden sm:flex items-center gap-4 text-sm">
           {links.map(l => (
             <Link key={l.to} to={l.to}
-              className={location.pathname === l.to
+              className={isActive(l.to)
                 ? 'bg-white text-[#001842] font-semibold px-3 py-1 rounded'
                 : 'hover:underline'}>
               {l.label}
@@ -75,7 +82,7 @@ export default function Nav({ role, title }) {
         <div className="sm:hidden mt-3 pb-1 flex flex-col gap-1 text-sm border-t border-[#06245C] pt-3">
           {links.map(l => (
             <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-              className={`px-2 py-2 rounded ${location.pathname === l.to ? 'bg-white text-[#001842] font-semibold' : 'hover:bg-[#06245C]'}`}>
+              className={`px-2 py-2 rounded ${isActive(l.to) ? 'bg-white text-[#001842] font-semibold' : 'hover:bg-[#06245C]'}`}>
               {l.label}
             </Link>
           ))}

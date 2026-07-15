@@ -47,6 +47,9 @@ export default function FeedbackWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
+          // Bottom-LEFT on purpose: the Next Steps helper owns the bottom-right
+          // corner on TenantDashboard + AdminTenantDetail (mobile pill AND the
+          // persistent w-80 desktop panel) — moving right would bury this button.
           className="fixed bottom-4 left-4 z-40 flex items-center gap-2 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg"
           aria-label="Send feedback"
         >

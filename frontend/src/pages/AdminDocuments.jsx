@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import { apiGet, apiPost, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import usePageTitle from '../usePageTitle'
 
 const DOC_TYPES = [
   'Wind Mitigation',
@@ -49,6 +50,7 @@ const ALL_HOAS = '__all__'
 
 export default function AdminDocuments() {
   const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
+  usePageTitle('Documents')
   const [docs, setDocs] = useState([])
   const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
@@ -212,7 +214,9 @@ export default function AdminDocuments() {
 
   // ── Next-steps helper box ─────────────────────────────────────────────
   const nextSteps = []
-  if (uploading) {
+  if (hoaId === ALL_HOAS) {
+    nextSteps.push({ icon: '🏢', text: 'Select a single association above to view or upload its documents.' })
+  } else if (uploading) {
     nextSteps.push({ icon: '⏳', text: 'Uploading your document…', wait: true })
   } else if (success) {
     nextSteps.push({ icon: '🎉', text: 'Document uploaded and shared with all unit owners.', success: true })
@@ -307,6 +311,8 @@ export default function AdminDocuments() {
           </header>
         ) })()}
 
+        {/* Uploads need a single association — hidden in the all-associations view */}
+        {hoaId !== ALL_HOAS && (
         <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 mb-8">
           <h2 className="font-semibold text-[#0B1B33] mb-4">Upload New Document</h2>
           <form onSubmit={handleUpload} className="space-y-3">
@@ -508,6 +514,7 @@ export default function AdminDocuments() {
             </button>
           </form>
         </div>
+        )}
 
         <div className="bg-white rounded-xl border-2 border-[#C7DBF5] shadow-sm overflow-x-auto">
           <div className="px-4 py-3 bg-[#001842]">
@@ -575,7 +582,11 @@ export default function AdminDocuments() {
               )})}
               {docs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-[#8493A8] italic">No documents yet</td>
+                  <td colSpan={8} className="px-4 py-6 text-center text-[#8493A8] italic">
+                    {hoaId === ALL_HOAS
+                      ? 'Select a single association above to view or upload its documents.'
+                      : 'No documents yet'}
+                  </td>
                 </tr>
               )}
             </tbody>

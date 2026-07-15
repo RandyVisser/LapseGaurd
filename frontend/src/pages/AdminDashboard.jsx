@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import useIsMobile from '../hooks/useIsMobile'
+import usePageTitle from '../usePageTitle'
 import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 import TrialBanner from '../components/TrialBanner'
@@ -464,7 +465,7 @@ function RowActionsMenu({ items }) {
             {items.map(item => (
               <button
                 key={item.label}
-                onClick={e => { e.stopPropagation(); setOpen(false); item.onClick() }}
+                onClick={e => { e.stopPropagation(); setOpen(false); item.onClick(e) }}
                 disabled={item.disabled}
                 className={`block w-full text-left whitespace-nowrap px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 ${item.danger ? 'text-[#C0492F]' : 'text-[#0B1B33]'}`}
               >
@@ -576,6 +577,9 @@ export default function AdminDashboard() {
   const [summary, setSummary] = useState(null)
   const [units, setUnits] = useState([])
   const [trendData, setTrendData] = useState([])
+  // True until the first refreshDashboard settles (success or failure) — drives
+  // the skeleton placeholders so a real association never flashes "No units found".
+  const [initialLoad, setInitialLoad] = useState(true)
   const [error, setError] = useState('')
   const [notifying, setNotifying] = useState(null)
   const [notifySuccess, setNotifySuccess] = useState(null)
@@ -622,6 +626,11 @@ export default function AdminDashboard() {
   const scopeHoas = activeFirm
     ? availableHoas.filter(h => activeFirm.hoas.some(fh => fh.id === h.id))
     : availableHoas
+  const selectedHoa = availableHoas.find(h => h.id === hoaId)
+
+  usePageTitle(hoaId === ALL_HOAS
+    ? (activeFirm ? `${activeFirm.name} — portfolio` : 'All Associations')
+    : (selectedHoa?.name || 'Dashboard'))
 
   function chooseFromSwitcher(value) {
     setHoaFieldValue('')
@@ -684,6 +693,7 @@ export default function AdminDashboard() {
   const [savingPmLicense, setSavingPmLicense] = useState(false)
 
   async function openPmLicense(u) {
+    setError('')
     setPmLicenseUnit(u)
     setPmLicenseForm({})
     try {
@@ -769,7 +779,7 @@ export default function AdminDashboard() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `compliance-export.csv`
+      a.download = `${(selectedHoa?.name || 'compliance').replace(/[^\w-]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -814,6 +824,7 @@ export default function AdminDashboard() {
   }
 
   function openEditOwner(u, isPm = false) {
+    setError('')
     setEditUnit(u)
     setEditIsPm(isPm)
     setEditForm({
@@ -853,7 +864,7 @@ export default function AdminDashboard() {
             status: 'missing', invite_sent: false, expiration_date: null }
         : u))
       if (hoaId && hoaId !== ALL_HOAS) {
-        apiGet(`/hoa/${hoaId}/compliance`).then(setSummary).catch(() => {})
+        apiGet(`/hoa/${hoaId}/compliance`).then(setSummary).catch(e => setError(e.message))
       }
       setSoldUnit(null)
     } catch (err) { setError(err.message) }
@@ -990,6 +1001,7 @@ export default function AdminDashboard() {
 
   function openInviteContact() {
     if (!hoaId || hoaId === ALL_HOAS) return
+    setError('')
     const h = availableHoas.find(x => x.id === hoaId)
     setInviteName(h?.admin_name || '')
     setInviteAdminEmail(h?.admin_email || '')
@@ -1046,6 +1058,7 @@ export default function AdminDashboard() {
 
   async function handleSendBoardReport() {
     if (!hoaId || hoaId === '__all__') return
+    if (!window.confirm("Email this compliance report to the association's board contact now?")) return
     setSendingReport(true)
     setReportSent(false)
     try {
@@ -1068,6 +1081,7 @@ export default function AdminDashboard() {
       // own aggregates) — never fan out per-HOA summary/unit calls for it.
       if (firmListView) {
         setSummary(null); setUnits([]); setTrendData([])
+        setInitialLoad(false)
         return
       }
       Promise.all(
@@ -1089,6 +1103,7 @@ export default function AdminDashboard() {
           setTrendData([])
         })
         .catch(e => setError(e.message))
+        .finally(() => setInitialLoad(false))
       return
     }
 
@@ -1099,10 +1114,13 @@ export default function AdminDashboard() {
     ])
       .then(([s, u, trend]) => { setSummary(s); setUnits(u); setTrendData(trend || []) })
       .catch(e => setError(e.message))
+      .finally(() => setInitialLoad(false))
   }
 
   useEffect(() => {
-    if (!hoaId) return
+    // No association resolved (no hoa_id on the account, or /hoas failed):
+    // show the empty state, not an endless skeleton.
+    if (!hoaId) { setInitialLoad(false); return }
     setSelectedTenantIds(new Set())
     setAddressFilter('')
     refreshDashboard()
@@ -1160,8 +1178,6 @@ export default function AdminDashboard() {
     }
     return filtered
   })()
-
-  const selectedHoa = availableHoas.find(h => h.id === hoaId)
 
   return (
     <div className="min-h-screen bg-[#F7F9FC]">
@@ -1251,6 +1267,10 @@ export default function AdminDashboard() {
         {/* Multi-association PMs: summary KPIs + the association list; a row
             click opens that association's classic dashboard. */}
         {firmListView && <FirmDashboard openHoa={id => setSelectedHoaId(id)} />}
+
+        {initialLoad && !firmListView && (
+          <div className="rounded-2xl bg-[#E8ECF2] animate-pulse h-44 mb-4" aria-hidden />
+        )}
 
         {summary && !firmListView && (
           <ComplianceHero
@@ -1373,7 +1393,7 @@ export default function AdminDashboard() {
             onDone={() => {
               Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
                 .then(([s, u]) => { setSummary(s); setUnits(u) })
-                .catch(() => {})
+                .catch(e => setError(e.message))
             }}
           />
         )}
@@ -1387,7 +1407,7 @@ export default function AdminDashboard() {
             onDone={() => {
               Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
                 .then(([s, u]) => { setSummary(s); setUnits(u) })
-                .catch(() => {})
+                .catch(e => setError(e.message))
             }}
           />
         )}
@@ -1410,6 +1430,7 @@ export default function AdminDashboard() {
                   placeholder="manager@email.com"
                   className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                 />
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2">
                   <button type="submit" disabled={invitingPmLogin}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1465,6 +1486,7 @@ export default function AdminDashboard() {
                     placeholder="name@email.com"
                     className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2">
                   <button type="submit" disabled={invitingAdmin}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1599,6 +1621,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2">
                   <button type="submit" disabled={savingPmLicense}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1631,6 +1654,7 @@ export default function AdminDashboard() {
                   className="text-sm text-[#014AC5] hover:text-[#0139a3] hover:underline font-medium">
                   Preview the email that will be sent
                 </button>
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2">
                   <button type="submit" disabled={inviting}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1712,6 +1736,7 @@ export default function AdminDashboard() {
                   </div>
                   )}
                 </div>
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingOwner}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1774,6 +1799,7 @@ export default function AdminDashboard() {
                       className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                   </div>
                 </div>
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={savingSold}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1808,6 +1834,7 @@ export default function AdminDashboard() {
                     placeholder="admin@email.com"
                     className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
                 </div>
+                {error && <p className="text-sm text-[#C0492F]">{error}</p>}
                 <div className="flex gap-2 pt-1">
                   <button type="submit" disabled={addingAdmin}
                     className="flex-1 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-60">
@@ -1947,7 +1974,7 @@ export default function AdminDashboard() {
                         <span className="text-xs text-[#0E8E68] font-medium py-1">Invite sent ✓</span>
                       ) : (
                         <button
-                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') }}
+                          onClick={() => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') }}
                           className="text-xs bg-[#001842] active:bg-[#0A2A63] text-white px-3 py-1.5 rounded-full"
                         >
                           Invite Primary
@@ -1957,7 +1984,7 @@ export default function AdminDashboard() {
                         <span className="text-xs text-[#0E8E68] font-medium py-1">Invite sent ✓</span>
                       ) : (
                         <button
-                          onClick={() => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
+                          onClick={() => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') }}
                           className="text-xs bg-[#014AC5] active:bg-[#0139a3] text-white px-3 py-1.5 rounded-full"
                         >
                           Invite Secondary
@@ -1976,8 +2003,27 @@ export default function AdminDashboard() {
               </div>
               )
             })}
-            {filteredUnits.length === 0 && !error && (
-              <p className="px-4 py-6 text-center text-[#8493A8] italic">No units found</p>
+            {initialLoad && filteredUnits.length === 0 && [1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm px-4 py-3 animate-pulse">
+                <div className="h-4 w-24 bg-[#E8ECF2] rounded mb-2" />
+                <div className="h-3 w-40 bg-[#E8ECF2] rounded" />
+              </div>
+            ))}
+            {!initialLoad && filteredUnits.length === 0 && !error && (
+              units.length === 0 ? (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-[#8493A8] italic mb-3">No units yet</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setImportOpen(true)} disabled={!hoaId || hoaId === '__all__'} className={TOOLBAR_BTN}>Import units</button>
+                    <button onClick={() => setAddEmailsOpen(true)} disabled={!hoaId || hoaId === '__all__'} className={TOOLBAR_BTN}>Add emails</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-[#8493A8] italic mb-3">No units match your filter</p>
+                  <button onClick={() => { setActiveFilter('all'); setSearch(''); setAddressFilter('') }} className={TOOLBAR_BTN}>Clear filters</button>
+                </div>
+              )
             )}
           </div>
         ) : (
@@ -1987,7 +2033,7 @@ export default function AdminDashboard() {
             <thead className="bg-[#FAFBFD] border-b border-[#E8ECF2] sticky top-0 z-10">
               <tr>
                 {(() => {
-                  const filteredForHeader = units.filter(u => u.tenant_id && u.assoc_title !== 'Property Manager')
+                  const filteredForHeader = units.filter(u => u.tenant_id && (u.assoc_title || '').trim().toLowerCase() !== 'property manager')
                   const allSelected = filteredForHeader.length > 0 && filteredForHeader.every(u => selectedTenantIds.has(String(u.tenant_id)))
                   return (
                     <th className="px-4 py-3 w-8">
@@ -2040,13 +2086,19 @@ export default function AdminDashboard() {
                       {(inviteSuccess === u.unit_id + '-primary' || inviteSuccess === u.unit_id + '-secondary') && (
                         <span className="text-xs text-[#0E8E68] font-medium whitespace-nowrap">Invite sent ✓</span>
                       )}
+                      {u.tenant_id && notifying === u.tenant_id && (
+                        <span className="text-xs text-[#8493A8] whitespace-nowrap">Sending…</span>
+                      )}
+                      {u.tenant_id && notifySuccess === u.tenant_id && (
+                        <span className="text-xs text-[#0E8E68] font-medium whitespace-nowrap">Sent ✓</span>
+                      )}
                       <RowActionsMenu
                         items={isPm ? [
                           // PM name/email are fixed once created (audit/ToS). To
                           // change a PM, add a new one and delete this row.
                           {
                             label: 'Invite to log in',
-                            onClick: () => { setPmInviteUnit(u.unit_id); setPmInviteEmail(u.email_primary || '') },
+                            onClick: () => { setError(''); setPmInviteUnit(u.unit_id); setPmInviteEmail(u.email_primary || '') },
                           },
                           {
                             // Invite either a Property Manager or an Admin (role
@@ -2074,11 +2126,17 @@ export default function AdminDashboard() {
                           // removed by unflagging the rental on the owner row).
                           {
                             label: 'Invite Primary Renter',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                            onClick: () => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
                           },
                           {
                             label: 'Invite Secondary Renter',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                            onClick: () => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                          },
+                          {
+                            // Reminder emails go to signed-up renters only — Invite covers the rest
+                            label: u.tenant_id && notifying === u.tenant_id ? 'Sending…' : 'Send reminder',
+                            disabled: !u.tenant_id || notifying === u.tenant_id,
+                            onClick: e => handleNotify(e, u.tenant_id),
                           },
                           {
                             label: 'Edit Renter Info…',
@@ -2086,16 +2144,22 @@ export default function AdminDashboard() {
                           },
                           {
                             label: 'New Renter…',
-                            onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
+                            onClick: () => { setError(''); setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
                         ] : [
                           {
                             label: 'Invite Primary Owner',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
+                            onClick: () => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_primary || ''); setInviteType('primary') },
                           },
                           {
                             label: 'Invite Secondary Owner',
-                            onClick: () => { setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                            onClick: () => { setError(''); setInviteUnit(u.unit_id); setInviteEmail(u.email_secondary || ''); setInviteType('secondary') },
+                          },
+                          {
+                            // Reminder emails go to signed-up owners only — Invite covers the rest
+                            label: u.tenant_id && notifying === u.tenant_id ? 'Sending…' : 'Send reminder',
+                            disabled: !u.tenant_id || notifying === u.tenant_id,
+                            onClick: e => handleNotify(e, u.tenant_id),
                           },
                           {
                             label: 'Edit Owner Info…',
@@ -2103,7 +2167,7 @@ export default function AdminDashboard() {
                           },
                           {
                             label: 'Unit Sold / New Owner…',
-                            onClick: () => { setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
+                            onClick: () => { setError(''); setSoldUnit(u); setSoldForm({ owner_primary: '', email_primary: '', owner_secondary: '', email_secondary: '' }) },
                           },
                           ...(RENTALS_ENABLED && !u.is_renter ? [{
                             label: u.is_rental ? 'Unflag RENTED' : 'Flag as RENTED',
@@ -2122,9 +2186,33 @@ export default function AdminDashboard() {
                 </tr>
                 )
               })}
-              {filteredUnits.length === 0 && !error && (
+              {initialLoad && filteredUnits.length === 0 && [1, 2, 3, 4, 5].map(i => (
+                <tr key={i} className="animate-pulse">
+                  <td className="px-4 py-3"><div className="h-4 w-4 bg-[#E8ECF2] rounded" /></td>
+                  {activeColumns.map(c => (
+                    <td key={c.key} className="px-4 py-3"><div className="h-4 w-24 bg-[#E8ECF2] rounded" /></td>
+                  ))}
+                  <td className="px-4 py-3"><div className="h-4 w-7 bg-[#E8ECF2] rounded" /></td>
+                </tr>
+              ))}
+              {!initialLoad && filteredUnits.length === 0 && !error && (
                 <tr>
-                  <td colSpan={activeColumns.length + 2} className="px-4 py-6 text-center text-[#8493A8] italic">No units found</td>
+                  <td colSpan={activeColumns.length + 2} className="px-4 py-8 text-center">
+                    {units.length === 0 ? (
+                      <>
+                        <p className="text-[#8493A8] italic mb-3">No units yet</p>
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => setImportOpen(true)} disabled={!hoaId || hoaId === '__all__'} className={TOOLBAR_BTN}>Import units</button>
+                          <button onClick={() => setAddEmailsOpen(true)} disabled={!hoaId || hoaId === '__all__'} className={TOOLBAR_BTN}>Add emails</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[#8493A8] italic mb-3">No units match your filter</p>
+                        <button onClick={() => { setActiveFilter('all'); setSearch(''); setAddressFilter('') }} className={TOOLBAR_BTN}>Clear filters</button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               )}
             </tbody>

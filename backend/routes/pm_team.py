@@ -59,7 +59,7 @@ async def get_team(
         firm["id"],
     )
     pending = await conn.fetch(
-        """SELECT id, email, created_at FROM admin_invites
+        """SELECT id, email, created_at, preassign_hoa_ids FROM admin_invites
            WHERE firm_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL
            ORDER BY created_at""",
         firm["id"],
@@ -100,7 +100,10 @@ async def get_team(
             for m in members
         ],
         "pending": [
-            {"id": str(p["id"]), "email": p["email"], "sent_at": p["created_at"].isoformat()}
+            {"id": str(p["id"]), "email": p["email"], "sent_at": p["created_at"].isoformat(),
+             # For resend: re-inviting replaces the pending row, so the caller
+             # passes these back or the pre-assignments would be wiped.
+             "hoa_ids": [str(h) for h in (p["preassign_hoa_ids"] or [])]}
             for p in pending
         ],
     }
@@ -267,6 +270,7 @@ async def pm_overview(
     return {
         "firm": {"id": str(firm["id"]), "name": firm["name"]},
         "role": firm["role"],
+        "open_visibility": firm["open_visibility"],
         "associations": len(hoas),
         "units": totals["units"],
         "compliance_pct": round(covered / totals["units"] * 100) if totals["units"] else None,
@@ -319,7 +323,8 @@ async def pm_associations(
             "trial_days_left": max((h["trial_ends_at"] - datetime.now(timezone.utc)).days, 0)
                                if trial_active else None,
         })
-    return {"firm_billing_mode": firm["billing_mode"], "role": firm["role"], "hoas": out}
+    return {"firm_billing_mode": firm["billing_mode"], "role": firm["role"],
+            "open_visibility": firm["open_visibility"], "hoas": out}
 
 
 class FirmAddAssociation(BaseModel):

@@ -35,17 +35,35 @@ function PageLoader() {
   )
 }
 
+// Unrecognized roles fall back to the public landing page — sending them to a
+// guarded dashboard would redirect-loop (both dashboards reject unknown roles).
+const ADMIN_ROLES = ['hoa_admin', 'super_user', 'property_manager']
+function homeFor(role) {
+  if (role === 'tenant') return '/tenant/dashboard'
+  return ADMIN_ROLES.includes(role) ? '/admin/dashboard' : '/'
+}
+
 function RequireAuth({ role: requiredRole, children }) {
   const { loading, session, role } = useAuth()
   if (loading) return <PageLoader />
   if (!session) return <Navigate to="/login" replace />
-  if (requiredRole === 'hoa_admin' && !['hoa_admin', 'super_user', 'property_manager'].includes(role)) {
-    return <Navigate to="/login" replace />
+  // Wrong role → their own home, never the login page (they're already logged in)
+  const home = homeFor(role)
+  if (requiredRole === 'hoa_admin' && !ADMIN_ROLES.includes(role)) {
+    return <Navigate to={home} replace />
   }
   if (requiredRole && requiredRole !== 'hoa_admin' && role !== requiredRole) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={home} replace />
   }
   return children
+}
+
+// Unknown URL: logged-in users go to their dashboard, visitors to the landing page
+function CatchAll() {
+  const { loading, session, role } = useAuth()
+  if (loading) return <PageLoader />
+  if (!session) return <Navigate to="/" replace />
+  return <Navigate to={homeFor(role)} replace />
 }
 
 export default function App() {
@@ -78,7 +96,7 @@ export default function App() {
             <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />
             <Route path="/tenant/dashboard" element={<RequireAuth role="tenant"><TenantDashboard /></RequireAuth>} />
             <Route path="/tenant/documents" element={<RequireAuth role="tenant"><TenantDocuments /></RequireAuth>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<CatchAll />} />
           </Routes>
         </Suspense>
         <FeedbackWidget />

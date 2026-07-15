@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import { apiGet, apiDownload } from '../supabase'
 import { useAuth } from '../context/AuthContext'
+import usePageTitle from '../usePageTitle'
 
 // Shared documents posted by the association (bylaws, master policy, notices).
 // Scoped to the selected unit's association for multi-unit owners.
@@ -10,6 +11,7 @@ export default function TenantDocuments() {
   const [docs, setDocs] = useState(null)
   const [error, setError] = useState('')
   const [downloadingDoc, setDownloadingDoc] = useState(null)
+  usePageTitle('Building Documents')
 
   const activeUnit = tenantUnits.find(u => u.unit_id === unitId)
 
@@ -138,8 +140,8 @@ export default function TenantDocuments() {
                 <thead className="bg-slate-50 border-b border-[#E8ECF2]">
                   <tr>
                     <th className="text-left px-5 py-3 font-semibold text-[#54627A]">Document</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Address</th>
-                    <th className="text-left px-4 py-3 font-semibold text-[#54627A]">Building # or Name</th>
+                    <th className="text-left px-4 py-3 font-semibold text-[#54627A] hidden sm:table-cell">Address</th>
+                    <th className="text-left px-4 py-3 font-semibold text-[#54627A] hidden sm:table-cell">Building # or Name</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -152,8 +154,8 @@ export default function TenantDocuments() {
                           {d.name}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-[#54627A]">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
-                      <td className="px-4 py-3 text-[#54627A]">{d.metadata?.building || 'ALL'}</td>
+                      <td className="px-4 py-3 text-[#54627A] hidden sm:table-cell">{d.metadata?.address || d.metadata?.building_address || '—'}</td>
+                      <td className="px-4 py-3 text-[#54627A] hidden sm:table-cell">{d.metadata?.building || 'ALL'}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <span className="inline-flex items-center gap-2">
                           <button

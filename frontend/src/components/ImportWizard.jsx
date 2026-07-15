@@ -141,6 +141,17 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
 
   const shownFields = fields.filter(f => mapping[f.key])
 
+  // Backdrop click: safe to close before a file is chosen (and after commit),
+  // but during preview the admin may have hand-corrected rows — confirm before
+  // throwing that away. Ignore entirely while the commit is in flight.
+  function handleBackdrop() {
+    if (stage === 'committing') return
+    if (stage === 'preview') {
+      if (!window.confirm('Discard this import and your edits?')) return
+    }
+    onClose()
+  }
+
   function cellClass(fieldKey, a) {
     if (hoverIssue === 'unit' && fieldKey === 'unit_number' && a.missingUnit)
       return 'bg-[#F9E1DA] ring-2 ring-inset ring-[#E0876B]'
@@ -159,7 +170,7 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={handleBackdrop}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8ECF2]">
@@ -300,7 +311,12 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
               <p className="text-4xl mb-3">🎉</p>
               <p className="text-lg font-semibold text-[#0B1B33]">{result.inserted} unit{result.inserted !== 1 ? 's' : ''} imported</p>
               {result.skipped > 0 && (
-                <p className="text-sm text-[#54627A] mt-1">{result.skipped} skipped</p>
+                <>
+                  <p className="text-sm text-[#54627A] mt-1">{result.skipped} skipped</p>
+                  <p className="text-xs text-[#8493A8] mt-1 max-w-sm mx-auto">
+                    Skipped rows are usually missing a unit number — fix them in your spreadsheet and re-import; existing units are never duplicated.
+                  </p>
+                </>
               )}
               {result.errors?.length > 0 && (
                 <ul className="text-xs text-[#54627A] mt-4 text-left max-w-sm mx-auto bg-slate-50 border border-[#E8ECF2] rounded-lg px-3 py-2 space-y-1 max-h-32 overflow-y-auto">
