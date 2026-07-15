@@ -146,6 +146,50 @@ def _addressed_to_intake(data: dict, intake: str) -> bool:
     return intake.lower() in joined
 
 
+def _strip_plus_tag(email: str) -> str:
+    """owner+tag@example.com → owner@example.com. Plus-addressing is a standard
+    local-part convention (RFC 5233 subaddressing), not a Gmail-ism — strip on
+    any domain. Returns the input unchanged when there's nothing to strip."""
+    local, sep, domain = email.partition("@")
+    if not sep or "+" not in local:
+        return email
+    base = local.split("+", 1)[0]
+    return f"{base}@{domain}" if base else email
+
+
+def _sender_auth_failed(data: dict) -> bool:
+    """True ONLY when the payload carries an EXPLICIT failing sender-auth
+    verdict — dmarc=fail, or spf=fail AND dkim=fail — in an
+    Authentication-Results header.
+
+    STRICTLY FAIL-OPEN: Resend's email.received payload isn't guaranteed to
+    include headers (or auth results) at all. A missing headers collection, a
+    missing Authentication-Results header, or any non-"fail" verdict (pass,
+    none, neutral, softfail, temperror, permerror, ...) must NEVER block
+    mail — absence of the field is never a reason to reject, and legitimate
+    submissions behave exactly as before this check existed."""
+    headers = data.get("headers")
+    values = []
+    if isinstance(headers, dict):
+        values = [v for k, v in headers.items()
+                  if str(k).strip().lower() == "authentication-results" and v]
+    elif isinstance(headers, list):
+        for h in headers:
+            if isinstance(h, dict) and str(h.get("name") or "").strip().lower() == "authentication-results":
+                if h.get("value"):
+                    values.append(h["value"])
+    if not values:
+        return False  # no verdict present → never block (fail-open)
+    # Trust only the FIRST (topmost) Authentication-Results header — that's the
+    # one the receiving server added. Older ones embedded deeper in a forwarded
+    # message must not get legitimate mail rejected.
+    results = str(values[0]).lower()
+    if re.search(r"\bdmarc\s*=\s*fail\b", results):
+        return True
+    return bool(re.search(r"\bspf\s*=\s*fail\b", results)
+                and re.search(r"\bdkim\s*=\s*fail\b", results))
+
+
 def _pick_attachment(attachments: list) -> dict | None:
     """Prefer the first PDF, fall back to the first image."""
     pdfs = [a for a in attachments if (a.get("content_type") or "").startswith("application/pdf")
@@ -389,6 +433,29 @@ async def _ingest_task(sender: str, match: dict, content: bytes, content_type: s
         logger.exception("Inbound email ingest failed for %s", sender)
 
 
+# Recognize a sender as someone the association has on file for a unit:
+#   - a tenant (has an account), or
+#   - an owner email on the unit, or
+#   - an invited email (unit_invites) — so an invited owner who never made
+#     an account can still email their dec page in.
+# tenant_id is nullable (an invited person may have no tenant row yet);
+# _ingest creates one on demand.
+_SENDER_MATCH_SQL = """SELECT u.id AS unit_id, u.hoa_id, u.unit_number, u.street_address,
+                  u.city, u.state, u.zip, u.owner_primary, u.owner_secondary, u.assoc_title,
+                  tt.id AS tenant_id, tt.name AS tenant_name, tt.email AS tenant_email
+           FROM units u
+           LEFT JOIN LATERAL (
+               SELECT t.id, t.name, t.email FROM tenants t
+               WHERE t.unit_id = u.id
+               ORDER BY (lower(coalesce(t.email, '')) = lower($1)) DESC, t.id
+               LIMIT 1
+           ) tt ON true
+           WHERE lower(coalesce(u.email_primary, '')) = lower($1)
+              OR lower(coalesce(u.email_secondary, '')) = lower($1)
+              OR EXISTS (SELECT 1 FROM tenants t2 WHERE t2.unit_id = u.id AND lower(coalesce(t2.email, '')) = lower($1))
+              OR EXISTS (SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id AND lower(i.email) = lower($1))"""
+
+
 async def _disambiguate_task(sender: str, candidates: list, content: bytes, content_type: str):
     """Owner has multiple units and the subject didn't name one — parse the
     dec page and match its property address against their units."""
@@ -443,30 +510,27 @@ async def receive_inbound_email(
     if not sender:
         return {"handled": False, "reason": "no sender"}
 
-    # Recognize the sender as someone the association has on file for a unit:
-    #   - a tenant (has an account), or
-    #   - an owner email on the unit, or
-    #   - an invited email (unit_invites) — so an invited owner who never made
-    #     an account can still email their dec page in.
-    # tenant_id is nullable (an invited person may have no tenant row yet);
-    # _ingest creates one on demand.
-    match_rows = await conn.fetch(
-        """SELECT u.id AS unit_id, u.hoa_id, u.unit_number, u.street_address,
-                  u.city, u.state, u.zip, u.owner_primary, u.owner_secondary, u.assoc_title,
-                  tt.id AS tenant_id, tt.name AS tenant_name, tt.email AS tenant_email
-           FROM units u
-           LEFT JOIN LATERAL (
-               SELECT t.id, t.name, t.email FROM tenants t
-               WHERE t.unit_id = u.id
-               ORDER BY (lower(coalesce(t.email, '')) = lower($1)) DESC, t.id
-               LIMIT 1
-           ) tt ON true
-           WHERE lower(coalesce(u.email_primary, '')) = lower($1)
-              OR lower(coalesce(u.email_secondary, '')) = lower($1)
-              OR EXISTS (SELECT 1 FROM tenants t2 WHERE t2.unit_id = u.id AND lower(coalesce(t2.email, '')) = lower($1))
-              OR EXISTS (SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id AND lower(i.email) = lower($1))""",
-        sender,
-    )
+    # Everything below trusts the From address, so a spoofed From could file a
+    # document onto someone else's unit. When the payload carries an EXPLICIT
+    # failing auth verdict, treat the sender as unrecognized (polite pointer
+    # email, nothing filed). STRICTLY fail-open — absent/pass/ambiguous
+    # verdicts change nothing (see _sender_auth_failed).
+    if _sender_auth_failed(data):
+        logger.info("Inbound from %s failed sender authentication — treating as unrecognized", sender)
+        subject, html = _unrecognized_sender_email()
+        background_tasks.add_task(send_email, sender, subject, html)
+        return {"handled": False, "reason": "sender authentication failed"}
+
+    match_rows = await conn.fetch(_SENDER_MATCH_SQL, sender)
+    if not match_rows:
+        # Plus-addressing fallback: an owner forwarding from owner+tag@example.com
+        # never exact-matches the owner@example.com on file. Strip the +tag from
+        # the SENDER only and retry — stored addresses stay matched exactly (a
+        # stored owner+x@ must never match a sender owner+y@). Exact match always
+        # takes precedence; this runs only when it found nothing.
+        stripped = _strip_plus_tag(sender)
+        if stripped.lower() != sender.lower():
+            match_rows = await conn.fetch(_SENDER_MATCH_SQL, stripped)
     # Plain dicts with string ids — these cross into background tasks
     all_matches = [
         {**dict(r),

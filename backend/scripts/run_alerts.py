@@ -14,6 +14,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from services.audit import log_audit
 from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, trial_ending_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
@@ -386,11 +387,21 @@ async def process_noncompliant_reminders(conn: asyncpg.Connection) -> int:
     return count
 
 
+# Trial-reminder stages, ascending (a SMALLER milestone is a LATER stage).
+_TRIAL_MILESTONES = (0, 1, 3, 14)
+
+
 async def process_trial_reminders(conn) -> int:
     """Email the association admin as their free trial runs out (14/3/1 days
     before, plus the day it ends). Runs only when BILLING_ENABLED=true in the
-    cron service env. Fires on exact day marks, so the daily cadence sends each
-    reminder exactly once; associations with a subscription are skipped."""
+    cron service env; associations with a subscription are skipped.
+
+    Catch-up semantics: a milestone is due once days_left has fallen to or
+    below it, and admin_audit_log rows (action 'trial_reminder_sent', details
+    {"milestone": N} — same table/pattern as the board-report cooldown) record
+    what already went out. A late or dropped cron run therefore sends the
+    reminder on the NEXT run instead of never, and because an equal-or-later
+    stage on record suppresses the send, no milestone ever double-sends."""
     if os.environ.get("BILLING_ENABLED", "").lower() != "true":
         return 0
     rows = await conn.fetch(
@@ -400,11 +411,29 @@ async def process_trial_reminders(conn) -> int:
            WHERE trial_ends_at IS NOT NULL
              AND stripe_subscription_id IS NULL
              AND coalesce(admin_email, '') <> ''
-             AND (trial_ends_at::date - CURRENT_DATE) IN (14, 3, 1, 0)"""
+             AND (trial_ends_at::date - CURRENT_DATE) BETWEEN 0 AND 14"""
     )
+    if not rows:
+        return 0
+    # Latest stage already sent per HOA (min = latest, see _TRIAL_MILESTONES).
+    sent_rows = await conn.fetch(
+        """SELECT hoa_id, min((details->>'milestone')::int) AS milestone
+           FROM admin_audit_log
+           WHERE action = 'trial_reminder_sent'
+             AND hoa_id = ANY($1::uuid[])
+           GROUP BY hoa_id""",
+        [str(r["id"]) for r in rows],
+    )
+    latest_sent = {str(r["hoa_id"]): r["milestone"] for r in sent_rows}
     bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
+        days_left = int(row["days_left"])
+        # The stage this HOA is in: the smallest milestone days_left fits under.
+        milestone = min(m for m in _TRIAL_MILESTONES if m >= days_left)
+        already = latest_sent.get(str(row["id"]))
+        if already is not None and already <= milestone:
+            continue  # this stage (or a later one) already went out
         addr = (row["admin_email"] or "").strip().lower()
         if addr in bounced:
             print(f"[alerts] Skipped trial reminder for {row['name']} — admin address has bounced")
@@ -412,12 +441,14 @@ async def process_trial_reminders(conn) -> int:
         if addr.endswith("@condo.insure"):
             continue  # placeholder address — same guard as the other processors
         subject, html = trial_ending_html(
-            row["name"], int(row["days_left"]), row["trial_ends_at"],
+            row["name"], days_left, row["trial_ends_at"],
             f"{APP_URL}/admin/settings",
         )
         if await send_email(row["admin_email"], subject, html):
+            await log_audit(conn, str(row["id"]), None, None,
+                            "trial_reminder_sent", {"milestone": milestone})
             count += 1
-            print(f"[alerts] Sent trial reminder ({row['days_left']}d) to {row['admin_email']} for {row['name']}")
+            print(f"[alerts] Sent trial reminder ({days_left}d, stage {milestone}) to {row['admin_email']} for {row['name']}")
     return count
 
 

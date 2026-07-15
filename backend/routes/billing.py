@@ -251,6 +251,21 @@ async def create_portal(
     return {"url": session.url}
 
 
+def _sub_billing_state(sub) -> tuple:
+    """Map a Stripe subscription object to (billing_status, billing_cancel_at).
+    THE status mapping — the webhook and the daily sync both use it; fork it
+    and a row healed by one gets re-broken by the other. Portal cancels
+    default to "at period end": status stays active/trialing but
+    cancel_at(_period_end) is set, so we track the date for the UI."""
+    status = sub.get("status")
+    cancel_at = None
+    if status != "canceled" and sub.get("cancel_at_period_end"):
+        ts = sub.get("cancel_at") or sub.get("current_period_end")
+        if ts:
+            cancel_at = datetime.fromtimestamp(ts, tz=timezone.utc)
+    return status, cancel_at
+
+
 # ── Webhook: Stripe → our billing_status (signature-verified, public) ────────
 @router.post("/billing/webhook")
 async def stripe_webhook(
@@ -271,14 +286,9 @@ async def stripe_webhook(
     customer_id = obj.get("customer")
 
     if etype in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"):
-        status = "canceled" if etype.endswith("deleted") else obj.get("status")
-        # Portal cancels default to "at period end": status stays active/trialing
-        # but cancel_at(_period_end) is set. Track the date so the UI can say so.
-        cancel_at = None
-        if not etype.endswith("deleted") and obj.get("cancel_at_period_end"):
-            ts = obj.get("cancel_at") or obj.get("current_period_end")
-            if ts:
-                cancel_at = datetime.fromtimestamp(ts, tz=timezone.utc)
+        status, cancel_at = _sub_billing_state(obj)
+        if etype.endswith("deleted"):
+            status, cancel_at = "canceled", None
         await conn.execute(
             "UPDATE hoas SET billing_status = $1, stripe_subscription_id = $2, billing_cancel_at = $3 "
             "WHERE stripe_customer_id = $4",
@@ -521,6 +531,10 @@ async def create_pm_portal(
 #     stamped (start showing paid, start being billed) and ones that left get
 #     detached (firm stops paying; they drop back to unsubscribed)
 #   - self-paying associations: quantity = today's billable unit count
+#   - both paths refresh hoas.billing_status/billing_cancel_at from each
+#     subscription's CURRENT Stripe status (webhooks can land out of order —
+#     e.g. a stale invoice.payment_failed after subscription.updated=active —
+#     and would otherwise leave rows stale forever)
 # Quantity changes use proration_behavior='none' — the new count just applies
 # from the next invoice, no surprise mid-cycle charges or credits.
 
@@ -552,7 +566,7 @@ async def sync_billing_quantities(conn: asyncpg.Connection, stripe_mod=None) -> 
     if stripe_mod is None and not (stripe and STRIPE_SECRET_KEY):
         return {"skipped": "billing dormant"}
     summary = {"firm_subs": 0, "hoa_subs": 0, "stamped": 0, "detached": 0,
-               "quantity_updates": 0, "warnings": []}
+               "quantity_updates": 0, "status_refreshes": 0, "warnings": []}
 
     firms = await conn.fetch(
         "SELECT id, name, stripe_customer_id FROM pm_firms WHERE stripe_customer_id IS NOT NULL",
@@ -562,8 +576,23 @@ async def sync_billing_quantities(conn: asyncpg.Connection, stripe_mod=None) -> 
     for firm in firms:
         cust = firm["stripe_customer_id"]
         try:
-            subs = [x for x in s.Subscription.list(customer=cust, status="all", limit=100)["data"]
-                    if x["status"] in _GOOD_STANDING]
+            all_subs = s.Subscription.list(customer=cust, status="all", limit=100)["data"]
+            # Self-heal billing_status: webhooks can land out of order (a stale
+            # invoice.payment_failed after subscription.updated=active would
+            # otherwise leave rows past_due forever). Refresh every row stamped
+            # with one of these subscriptions from the subscription's CURRENT
+            # status — same mapping the webhook uses.
+            for x in all_subs:
+                status, cancel_at = _sub_billing_state(x)
+                refreshed = await conn.fetch(
+                    "UPDATE hoas SET billing_status = $1, billing_cancel_at = $2 "
+                    "WHERE stripe_customer_id = $3 AND stripe_subscription_id = $4 "
+                    "AND (billing_status IS DISTINCT FROM $1 OR billing_cancel_at IS DISTINCT FROM $2) "
+                    "RETURNING id",
+                    status, cancel_at, cust, x["id"],
+                )
+                summary["status_refreshes"] += len(refreshed)
+            subs = [x for x in all_subs if x["status"] in _GOOD_STANDING]
             if not subs:
                 continue
             if len(subs) > 1:
@@ -584,13 +613,11 @@ async def sync_billing_quantities(conn: asyncpg.Connection, stripe_mod=None) -> 
             # Associations added to the firm since checkout: cover them.
             to_stamp = [h["id"] for h in included if h["stripe_customer_id"] != cust]
             if to_stamp:
-                cancel_at = None
-                if sub.get("cancel_at_period_end") and sub.get("cancel_at"):
-                    cancel_at = datetime.fromtimestamp(sub["cancel_at"], tz=timezone.utc)
+                status, cancel_at = _sub_billing_state(sub)
                 await conn.execute(
                     "UPDATE hoas SET stripe_customer_id = $1, stripe_subscription_id = $2, "
                     "billing_status = $3, billing_cancel_at = $4 WHERE id = ANY($5::uuid[])",
-                    cust, sub["id"], sub["status"], cancel_at, to_stamp,
+                    cust, sub["id"], status, cancel_at, to_stamp,
                 )
                 summary["stamped"] += len(to_stamp)
 
@@ -618,17 +645,30 @@ async def sync_billing_quantities(conn: asyncpg.Connection, stripe_mod=None) -> 
             summary["warnings"].append(f"firm {firm['name']}: {e}")
 
     # Self-paying associations (their customer isn't any firm's customer).
+    # No billing_status filter: a row stuck on a stale webhook status (e.g.
+    # past_due after the subscription recovered) must still be visited so the
+    # refresh below can heal it.
     rows = await conn.fetch(
         f"""SELECT h.id, h.name, h.stripe_subscription_id, {_UNITS_SUBQ} AS units
             FROM hoas h
             WHERE h.stripe_subscription_id IS NOT NULL
-              AND coalesce(h.billing_status, '') = ANY($1::text[])
-              AND (h.stripe_customer_id IS NULL OR NOT (h.stripe_customer_id = ANY($2::text[])))""",
-        list(_GOOD_STANDING), firm_customers,
+              AND (h.stripe_customer_id IS NULL OR NOT (h.stripe_customer_id = ANY($1::text[])))""",
+        firm_customers,
     )
     for h in rows:
         try:
             sub = s.Subscription.retrieve(h["stripe_subscription_id"])
+            # Same self-heal as the firm loop: refresh from the subscription's
+            # current status via the shared webhook mapping (read-only).
+            status, cancel_at = _sub_billing_state(sub)
+            refreshed = await conn.fetch(
+                "UPDATE hoas SET billing_status = $1, billing_cancel_at = $2 "
+                "WHERE id = $3 "
+                "AND (billing_status IS DISTINCT FROM $1 OR billing_cancel_at IS DISTINCT FROM $2) "
+                "RETURNING id",
+                status, cancel_at, h["id"],
+            )
+            summary["status_refreshes"] += len(refreshed)
             if sub["status"] not in _GOOD_STANDING:
                 continue
             summary["hoa_subs"] += 1

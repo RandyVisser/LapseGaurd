@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Nav from '../components/Nav'
 import StatusBadge from '../components/StatusBadge'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, supabase } from '../supabase'
@@ -223,26 +222,15 @@ function countOwnerEmails(list) {
   return list.reduce((n, u) => n + (displayEmail(u.email_primary) ? 1 : 0) + (displayEmail(u.email_secondary) ? 1 : 0), 0)
 }
 
-function TrendChart({ data }) {
-  if (!data || data.length === 0) return null
-  return (
-    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-4 mb-4">
-      <p className="text-xs font-semibold text-[#54627A] uppercase tracking-wide mb-3">Compliance Trend (6 months)</p>
-      <ResponsiveContainer width="100%" height={110}>
-        <LineChart data={data} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-          <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-          <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
-            formatter={(val, name) => [val, name === 'compliant' ? 'Compliant' : name === 'expiring' ? 'Expiring' : 'Lapsed']}
-          />
-          <Line type="monotone" dataKey="compliant" stroke="#16a34a" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="expiring" stroke="#ca8a04" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="lapsed" stroke="#dc2626" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  )
+// TrendChart is lazy so recharts (the bulk of this page's old bundle) only
+// downloads on the first "VIEW TREND" expand. React.lazy caches the module —
+// collapsing and re-expanding never refetches or flickers.
+const TrendChart = lazy(() => import('../components/TrendChart'))
+
+// Suspense fallback sized to the loaded chart's container (p-4 + label row
+// [16px line + 12px mb-3] + 110px chart = 170px) so the hero doesn't jump.
+function TrendChartFallback() {
+  return <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm h-[170px] mb-4 animate-pulse" aria-hidden />
 }
 
 function TitlePill({ title }) {
@@ -1498,7 +1486,11 @@ export default function AdminDashboard() {
 
         {summary && <ActionStrip summary={summary} activeFilter={activeFilter} setActiveFilter={setActiveFilter} />}
 
-        {trendOpen && trendData.length > 0 && <TrendChart data={trendData} />}
+        {trendOpen && trendData.length > 0 && (
+          <Suspense fallback={<TrendChartFallback />}>
+            <TrendChart data={trendData} />
+          </Suspense>
+        )}
 
         {!firmListView && !isMobile && (
           <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
