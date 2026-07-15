@@ -13,9 +13,9 @@ import usePageTitle from '../usePageTitle'
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
 // Subrental owner steps — hidden until the rentals feature is switched on.
 const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
-// Email-in intake address — the "forward your dec page" line only renders
-// when this is configured (the inbound subdomain may not be live yet).
-const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
+// Email-in intake address — docs@condo.insure is live (Workspace forwards to
+// the Resend inbound subdomain). Env var overrides.
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || 'docs@condo.insure'
 
 // One unambiguous answer per status — the page leads with this.
 const STATUS_HERO = {

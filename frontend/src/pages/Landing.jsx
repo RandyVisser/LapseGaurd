@@ -5,9 +5,9 @@ import './landing.css'
 
 const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
-// Email-in intake address; unset until the inbound subdomain is live, so the
-// phone mock falls back to a neutral visual prop instead of a dead address.
-const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
+// Email-in intake address — docs@condo.insure is live (Workspace forwards the
+// apex mailbox to the Resend inbound subdomain). Env var overrides.
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || 'docs@condo.insure'
 
 export default function Landing() {
   const rootRef = useRef(null)

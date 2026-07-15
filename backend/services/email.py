@@ -17,10 +17,11 @@ QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 HO4_QUOTE_URL = "https://www.universalcondo.com/ho4quote.html"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # Dec-page email-in intake address shown to owners who'd rather email their
-# document than upload it. Unset by default: templates only mention email-in
-# when INBOUND_ADDRESS is configured in Railway (the apex docs@condo.insure
-# cannot receive mail — MX points at Google Workspace; see routes/inbound.py).
-INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "")
+# document than upload it. docs@condo.insure IS live: Google Workspace holds
+# the apex MX and forwards docs@ to the inbound subdomain that Resend
+# receives (see routes/inbound.py). Set INBOUND_ADDRESS in Railway to
+# override; set it to "" to hide email-in from templates entirely.
+INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
 
 
 # Our Resend account is limited to 10 requests/second account-wide; every caller

@@ -16,8 +16,9 @@ const SQUARES = {
   maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
 }
 const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
-// Email-in intake address; shown in the brand panel only when configured.
-const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
+// Email-in intake address — docs@condo.insure is live (Workspace forwards to
+// the Resend inbound subdomain). Env var overrides.
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || 'docs@condo.insure'
 
 export default function Login() {
   const [email, setEmail] = useState('')
