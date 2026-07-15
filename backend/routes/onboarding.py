@@ -1,6 +1,7 @@
 """
 Public onboarding routes — no auth required.
   POST /onboard/association  — association manager signup
+  POST /onboard/firm         — PM-firm self-serve signup (login + empty firm)
   GET  /invite/{token}       — fetch invite info (for the join page)
   POST /invite/{token}       — tenant accepts invite, creates account
 """
@@ -13,7 +14,7 @@ from datetime import datetime, timedelta
 import asyncpg
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from auth.jwt import AuthUser, require_hoa_admin, require_super_user
 from models.db import get_conn
@@ -42,9 +43,11 @@ TOS_VERSION = "2025-06-23"
 
 
 def _client_ip(request: Request) -> str:
+    # Rightmost X-Forwarded-For entry: appended by Railway's edge proxy, so the
+    # client can't spoof it (the leftmost values are attacker-controlled).
     return (request.headers.get("X-Forwarded-For")
             or (request.client.host if request.client else None)
-            or "unknown").split(",")[0].strip()
+            or "unknown").split(",")[-1].strip()
 
 router = APIRouter()
 
@@ -55,7 +58,7 @@ _SIGNUP_WINDOW = timedelta(hours=1)
 
 
 def _check_signup_rate_limit(request: Request) -> None:
-    ip = (request.headers.get("X-Forwarded-For") or request.client.host or "unknown").split(",")[0].strip()
+    ip = _client_ip(request)
     now = datetime.utcnow()
     cutoff = now - _SIGNUP_WINDOW
     attempts = [t for t in _signup_attempts[ip] if t > cutoff]
@@ -96,7 +99,17 @@ class InviteAccept(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-async def _create_supabase_user(email: str, password: str, app_metadata: dict, *, email_confirm: bool = False) -> str:
+async def _create_supabase_user(email: str, password: str, app_metadata: dict, *,
+                                email_confirm: bool = False,
+                                user_metadata: dict | None = None) -> str:
+    payload = {
+        "email": email,
+        "password": password,
+        "email_confirm": email_confirm,
+        "app_metadata": app_metadata,
+    }
+    if user_metadata:
+        payload["user_metadata"] = user_metadata
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{SUPABASE_URL}/auth/v1/admin/users",
@@ -104,12 +117,7 @@ async def _create_supabase_user(email: str, password: str, app_metadata: dict, *
                 "apikey": SERVICE_ROLE_KEY,
                 "Authorization": f"Bearer {SERVICE_ROLE_KEY}",
             },
-            json={
-                "email": email,
-                "password": password,
-                "email_confirm": email_confirm,
-                "app_metadata": app_metadata,
-            },
+            json=payload,
         )
     if resp.status_code not in (200, 201):
         data = resp.json()
@@ -428,6 +436,73 @@ async def signup_association(
     )
 
     return {"hoa_id": hoa_id, "user_id": user_id}
+
+
+class FirmSignup(BaseModel):
+    firm_name: str = Field(min_length=1, max_length=120)
+    contact_name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+    cab_number: str | None = Field(default=None, max_length=40)
+    agree_tos: bool = False
+
+
+@router.post("/onboard/firm", status_code=201)
+async def signup_firm(
+    request: Request,
+    body: FirmSignup,
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Public self-serve signup for a property-management firm: creates the
+    login (role property_manager, NO hoa_id — PM access always resolves through
+    the firm tables) plus an empty single-owner firm. Deliberately nothing
+    else: no association, no trial, no Stripe, no email — associations added
+    later via the firm console's add-association flow carry their own standard
+    trials. Firm names are not unique anywhere in the model (ensure_firm
+    creates email-named firms freely), so duplicates are allowed here too."""
+    _check_signup_rate_limit(request)
+    if not body.agree_tos:
+        raise HTTPException(status_code=400, detail="You must agree to the Terms of Service to continue.")
+    firm_name = (body.firm_name or "").strip()
+    contact_name = (body.contact_name or "").strip()
+    if not firm_name:
+        raise HTTPException(status_code=400, detail="Firm name is required.")
+    if not contact_name:
+        raise HTTPException(status_code=400, detail="Your name is required.")
+    if not body.password or len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Please choose a password of at least 8 characters.")
+    cab_number = (body.cab_number or "").strip()[:40] or None
+
+    # Create the login first — an already-registered email surfaces Supabase's
+    # "already been registered" 400 verbatim, which the signup page maps to a
+    # sign-in prompt (same contract as the invite flows).
+    user_id = await _create_supabase_user(
+        body.email,
+        body.password,
+        {"role": "property_manager"},
+        email_confirm=True,
+        user_metadata={"name": contact_name},
+    )
+    try:
+        async with conn.transaction():
+            # open_visibility / billing_mode stay on their schema defaults
+            # (true / 'firm'); is_owner mirrors role per the legacy-sync rule.
+            firm_id = await conn.fetchval(
+                "INSERT INTO pm_firms (name, cab_number) VALUES ($1, $2) RETURNING id",
+                firm_name[:120], cab_number,
+            )
+            await conn.execute(
+                "INSERT INTO pm_firm_members (firm_id, supabase_user_id, is_owner, role) "
+                "VALUES ($1, $2::uuid, true, 'owner')",
+                firm_id, user_id,
+            )
+    except Exception:
+        # Don't strand a half-provisioned account: a PM login with no firm row
+        # can't use the app. Undo the user, then surface the failure.
+        await _delete_supabase_user(user_id)
+        raise
+
+    return {"ok": True, "firm_id": str(firm_id), "user_id": user_id}
 
 
 class SuperuserAssociationCreate(BaseModel):

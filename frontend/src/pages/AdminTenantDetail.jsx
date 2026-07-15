@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { apiGet, apiPost, apiPatch, apiDelete, supabase } from '../supabase'
@@ -8,6 +8,11 @@ import usePageTitle from '../usePageTitle'
 // Quote button points at the agency quote page (HO-4 page for renters).
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
 const HO4_QUOTE_URL = 'https://www.universalcondo.com/ho4quote.html'
+
+// Review queue written by AdminDashboard's openUnit when a unit is opened from
+// a filtered view — lets the admin step Prev/Next through the filtered rows
+// without bouncing back to the table between each one.
+const REVIEW_QUEUE_KEY = 'lapseguard.reviewQueue'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -613,6 +618,22 @@ export default function AdminTenantDetail() {
   const { tenantId } = useParams()
   const navigate = useNavigate()
 
+  // Review queue (see REVIEW_QUEUE_KEY) — null when absent, unreadable, or
+  // stale (this unit isn't in it), in which case no queue bar renders.
+  const reviewQueue = useMemo(() => {
+    try {
+      const q = JSON.parse(sessionStorage.getItem(REVIEW_QUEUE_KEY))
+      if (q && Array.isArray(q.ids) && q.ids.length > 1) {
+        const ids = q.ids.map(String)
+        if (ids.includes(String(tenantId))) return { ...q, ids }
+      }
+    } catch { /* corrupted/blocked storage — no queue bar */ }
+    return null
+  }, [tenantId])
+  const queueIdx = reviewQueue ? reviewQueue.ids.indexOf(String(tenantId)) : -1
+  const queuePrevId = queueIdx > 0 ? reviewQueue.ids[queueIdx - 1] : null
+  const queueNextId = reviewQueue && queueIdx < reviewQueue.ids.length - 1 ? reviewQueue.ids[queueIdx + 1] : null
+
   const [tenant, setTenant] = useState(null)
   const [error, setError] = useState('')
 
@@ -1161,6 +1182,27 @@ export default function AdminTenantDetail() {
       )}
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-1">
 
+        {/* ── Review queue bar (only when this unit was opened from a
+               filtered dashboard view — see REVIEW_QUEUE_KEY) ─────────────── */}
+        {reviewQueue && (
+          <div className="flex items-center gap-2 pb-3 text-[13px] text-[#54627A]">
+            <span>Reviewing <span className="font-semibold text-[#0B1B33]">{queueIdx + 1}</span> of {reviewQueue.ids.length}</span>
+            <span className="text-[#8493A8]">·</span>
+            <button type="button"
+              disabled={!queuePrevId}
+              onClick={() => navigate(`/admin/tenant/${queuePrevId}`)}
+              className="text-[13px] font-medium text-[#54627A] border border-[#E8ECF2] bg-white rounded-lg px-2.5 py-1 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white">
+              ← Prev
+            </button>
+            <button type="button"
+              disabled={!queueNextId}
+              onClick={() => navigate(`/admin/tenant/${queueNextId}`)}
+              className="text-[13px] font-medium text-[#54627A] border border-[#E8ECF2] bg-white rounded-lg px-2.5 py-1 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white">
+              Next →
+            </button>
+          </div>
+        )}
+
         {/* ── Top nav ──────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between flex-wrap gap-3 pb-5">
           <div className="flex items-start gap-4">
@@ -1439,7 +1481,7 @@ export default function AdminTenantDetail() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 flex-shrink-0">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E8ECF2] text-[#54627A]">{p.superseded_by ? 'Superseded' : 'Expired'}</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E8ECF2] text-[#54627A]" title={p.superseded_by ? 'Replaced by a newer policy on file' : undefined}>{p.superseded_by ? 'Superseded' : 'Expired'}</span>
                             {p.document_url && (
                               <a href={p.document_url} target="_blank" rel="noopener noreferrer"
                                 className="text-[#014AC5] hover:underline text-xs">View</a>

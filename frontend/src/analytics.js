@@ -1,7 +1,9 @@
 // Anonymous funnel beacons — no PII. Sends an allow-listed event name + the page
 // path + a random session id (localStorage) so the super-user funnel can count
-// unique-ish visitors. Sent as text/plain so navigator.sendBeacon works
-// cross-origin with no CORS preflight. Must never throw / break the page.
+// unique-ish visitors, plus first-touch campaign attribution (utm/referrer) so
+// outbound-campaign clicks are distinguishable from bots. Sent as text/plain so
+// navigator.sendBeacon works cross-origin with no CORS preflight. Must never
+// throw / break the page.
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 function sessionId() {
@@ -46,6 +48,43 @@ export function excludeIfInternal(email) {
   } catch { /* analytics is best-effort; never break the page */ }
 }
 
+// First-touch campaign attribution: the first time this browser arrives with a
+// recognized tag (utm_* on Apollo outbound links, or a short src/ref), remember
+// the compact tag string forever (localStorage 'ci.utm') so every later beacon
+// carries the ORIGINAL source — even after navigation strips the query string.
+// Later visits with different tags never overwrite it (first touch wins).
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'src', 'ref']
+
+function utmFirstTouch() {
+  try {
+    const saved = localStorage.getItem('ci.utm')
+    if (saved) return saved
+    const params = new URLSearchParams(location.search)
+    const parts = []
+    for (const k of UTM_KEYS) {
+      const v = params.get(k)
+      if (v) parts.push(`${k}=${v.slice(0, 80)}`)
+    }
+    if (!parts.length) return null
+    const utm = parts.join('&')
+    localStorage.setItem('ci.utm', utm)
+    return utm
+  } catch {
+    return null
+  }
+}
+
+// Cross-origin referrer only — same-origin navigation referrers are noise.
+function externalReferrer() {
+  try {
+    const ref = document.referrer
+    if (!ref || new URL(ref).origin === location.origin) return null
+    return ref.slice(0, 200)
+  } catch {
+    return null
+  }
+}
+
 // A real signup prospect is logged OUT through landing → pricing → signup, so a
 // persisted Supabase session means it's us (founders) or an existing user —
 // exclude them from the funnel. (Supabase stores the session under
@@ -67,7 +106,13 @@ export function track(name) {
     // check; every other funnel event should only count logged-out prospects.
     if (name !== 'owner_upload' && hasSession()) return
 
-    const body = JSON.stringify({ name, path: location.pathname, session_id: sessionId() })
+    const body = JSON.stringify({
+      name,
+      path: location.pathname,
+      session_id: sessionId(),
+      utm: utmFirstTouch(),
+      referrer: externalReferrer(),
+    })
     const url = `${API_BASE}/analytics/event`
     if (navigator.sendBeacon) {
       navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))

@@ -16,6 +16,8 @@ const SQUARES = {
   maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
 }
 const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+// Email-in intake address; shown in the brand panel only when configured.
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -133,7 +135,7 @@ export default function Login() {
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Instantly see which units are compliant&mdash;and which need follow-up.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>AI extracts coverage details from each declaration page automatically.</span></li>
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Owners simply email their declaration page&mdash;no account required.</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>{INBOUND ? <>Owners simply email their declaration page to {INBOUND}&mdash;no account required.</> : <>Owners simply email their declaration page&mdash;no account required.</>}</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Automatic renewal reminders keep policies up to date.</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">✓</span><span>Private &amp; secure. Each association only sees its own data.</span></li>
           </ul>

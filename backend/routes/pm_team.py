@@ -327,6 +327,57 @@ async def pm_associations(
             "open_visibility": firm["open_visibility"], "hoas": out}
 
 
+@router.post("/pm/reports/board/run")
+async def firm_board_reports(
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Firm-level board reports: email each visible association's compliance
+    report to its board contact in one click. Reuses build_board_report — the
+    exact email the per-association "Email Report" button and the monthly cron
+    send (delivery via services/email.send_email inside). Any firm member may
+    run it for their visible book (mirrors the per-association send any admin
+    can trigger); visibility resolves through visible_hoas_sql via
+    _visible_portfolio — no per-endpoint permission logic."""
+    if user.role != "property_manager":
+        raise HTTPException(status_code=403, detail="Property-manager account required")
+    from routes.hoa import build_board_report
+    from services.audit import log_audit
+    firm, hoas = await _visible_portfolio(conn, user.sub)
+    if not firm:
+        raise HTTPException(status_code=400, detail="No firm found for this account yet.")
+
+    # Cooldown: an association gets at most one board report per day from ANY
+    # trigger (this button, the per-association button, the monthly cron) —
+    # bounds repeat clicks so board contacts can't be flooded.
+    recent = await conn.fetch(
+        """SELECT DISTINCT hoa_id FROM admin_audit_log
+           WHERE action = 'board_report_sent'
+             AND created_at > now() - interval '20 hours'
+             AND hoa_id = ANY($1::uuid[])""",
+        [str(h["id"]) for h in hoas],
+    )
+    recently_sent = {str(r["hoa_id"]) for r in recent}
+
+    sent = skipped = failed = 0
+    for h in hoas:
+        hoa_id = str(h["id"])
+        if hoa_id in recently_sent:
+            skipped += 1  # already got a report in the last day
+            continue
+        report = await build_board_report(conn, hoa_id)
+        if not report or not report["to_email"]:
+            skipped += 1  # no board/admin contact on file
+            continue
+        if await send_email(report["to_email"], report["subject"], report["html"]):
+            await log_audit(conn, hoa_id, user.sub, user.email, "board_report_sent",
+                            {"to": report["to_email"], "trigger": "firm"})
+            sent += 1
+        else:
+            failed += 1
+    return {"sent": sent, "skipped": skipped, "failed": failed}
+
+
 class FirmAddAssociation(BaseModel):
     name: str
     address: str

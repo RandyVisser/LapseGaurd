@@ -10,6 +10,7 @@ import Landing from './pages/Landing'
 // whole admin dashboard (and vice versa)
 const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
+const SignupFirm = lazy(() => import('./pages/SignupFirm'))
 const VistaRoyale = lazy(() => import('./pages/VistaRoyale'))
 const Join = lazy(() => import('./pages/Join'))
 const AdminSetup = lazy(() => import('./pages/AdminSetup'))
@@ -24,6 +25,7 @@ const TenantDashboard = lazy(() => import('./pages/TenantDashboard'))
 const TenantDocuments = lazy(() => import('./pages/TenantDocuments'))
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
 const AdminHo6Summary = lazy(() => import('./pages/AdminHo6Summary'))
+const AdminLeads = lazy(() => import('./pages/AdminLeads'))
 const Privacy = lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Legal').then(m => ({ default: m.Terms })))
 
@@ -75,6 +77,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/signup/firm" element={<SignupFirm />} />
             {/* /pricing was retired in favor of the landing pricing section */}
             <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
             {/* Postcard campaign landing page for the Vista Royale board.
@@ -93,6 +96,7 @@ export default function App() {
             <Route path="/admin/firm" element={<RequireAuth role="hoa_admin"><AdminFirm /></RequireAuth>} />
             <Route path="/admin/feedback" element={<RequireAuth role="super_user"><AdminFeedback /></RequireAuth>} />
             <Route path="/admin/ho6-summary" element={<RequireAuth role="super_user"><AdminHo6Summary /></RequireAuth>} />
+            <Route path="/admin/leads" element={<RequireAuth role="super_user"><AdminLeads /></RequireAuth>} />
             <Route path="/admin/tenant/:tenantId" element={<RequireAuth role="hoa_admin"><AdminTenantDetail /></RequireAuth>} />
             <Route path="/tenant/dashboard" element={<RequireAuth role="tenant"><TenantDashboard /></RequireAuth>} />
             <Route path="/tenant/documents" element={<RequireAuth role="tenant"><TenantDocuments /></RequireAuth>} />

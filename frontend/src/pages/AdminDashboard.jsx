@@ -10,7 +10,7 @@ import usePageTitle from '../usePageTitle'
 import ImportWizard from '../components/ImportWizard'
 import AddEmailsWizard from '../components/AddEmailsWizard'
 import TrialBanner from '../components/TrialBanner'
-import HoaOptions from '../components/HoaOptions'
+import HoaOptions, { buildSwitcherOptions } from '../components/HoaOptions'
 import FirmDashboard from '../components/FirmDashboard'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -50,7 +50,8 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
   const chips = [
     { filter: 'all', value: total, label: 'Total units' },
     { filter: 'active', value: summary.compliant ?? 0, label: 'Approved' },
-    { filter: 'manual', value: summary.manually_approved ?? 0, label: 'Manual approval' },
+    { filter: 'manual', value: summary.manually_approved ?? 0, label: 'Manual approval',
+      title: 'Units a manager marked compliant by override, despite a failing or missing check' },
     { filter: 'board', value: summary.board_members ?? 0, label: 'Board members' },
     { filter: 'staff', value: (summary.admins ?? 0) + (summary.property_managers ?? 0), label: 'Dashboard users', onClick: onStaffClick },
     ...(rentalsEnabled ? [{ filter: 'rented', value: summary.rented_units ?? 0, label: 'Rented units' }] : []),
@@ -102,6 +103,7 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
           {chips.map(c => (
             <button
               key={c.filter}
+              title={c.title}
               onClick={c.onClick || (() => setActiveFilter(c.filter))}
               className={`flex flex-col gap-0.5 rounded-lg border px-3 py-3 text-left transition-colors ${
                 activeFilter === c.filter ? 'bg-white/10 border-white/20' : 'border-transparent hover:bg-white/[.06]'
@@ -214,6 +216,13 @@ function displayEmail(email) {
   return email && !email.toLowerCase().endsWith('@condo.insure') ? email : null
 }
 
+// Count of real (non-placeholder) owner emails across the unit list — the
+// Add-Emails wizard's onDone passes no result, so the post-wizard success
+// banner infers "N emails added" from the delta across the refetch.
+function countOwnerEmails(list) {
+  return list.reduce((n, u) => n + (displayEmail(u.email_primary) ? 1 : 0) + (displayEmail(u.email_secondary) ? 1 : 0), 0)
+}
+
 function TrendChart({ data }) {
   if (!data || data.length === 0) return null
   return (
@@ -312,6 +321,16 @@ function loadVisibleColumns() {
 }
 
 const GETTING_STARTED_DISMISSED_KEY = 'lapseguard.gettingStarted.dismissed.v1'
+
+// Cross-page handoffs (sessionStorage, consumed/overwritten — never persisted):
+// FirmDashboard writes a filter intent right before opening an association;
+// openUnit writes the review queue AdminTenantDetail steps through.
+const FILTER_INTENT_KEY = 'lapseguard.filterIntent'
+const REVIEW_QUEUE_KEY = 'lapseguard.reviewQueue'
+// Intent value → closest EXISTING table filter. There is no combined
+// lapsed+non_compliant+missing filter, so 'attention' maps to the
+// "Needs attention" pill (non_compliant) — the closest single one.
+const FILTER_INTENT_MAP = { attention: 'non_compliant', pending_review: 'pending_review', bounced: 'bounced' }
 
 // First-run checklist for a brand-new association. Steps check themselves off
 // against live data; the panel disappears once everything is done (or dismissed).
@@ -571,6 +590,121 @@ function ColumnsPicker({ visible, setVisible }) {
   )
 }
 
+// Above this many switcher options the native <select> becomes slow to scan,
+// so the dashboard swaps in the searchable combobox below.
+const SWITCHER_SEARCH_THRESHOLD = 8
+
+// Searchable association switcher — used instead of the native <select> only
+// for large portfolios (see SWITCHER_SEARCH_THRESHOLD). Emits the exact same
+// values the select does (association ids, the '__all__' sentinel, firm:<id>
+// portfolio views) via onChange, from the same buildSwitcherOptions list.
+function SwitcherCombobox({ options, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [highlight, setHighlight] = useState(0)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef(null)
+  const panelRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const q = query.trim().toLowerCase()
+  const filtered = q ? options.filter(o => (o.label || '').toLowerCase().includes(q)) : options
+  const current = options.find(o => o.value === value)
+
+  // The panel is position:fixed (like RowActionsMenu) so the switcher row's
+  // overflow-x-auto container can't clip it — close it when the page scrolls
+  // out from under it (scrolling inside the panel itself is fine).
+  useEffect(() => {
+    if (!open) return
+    const close = e => { if (!panelRef.current || !panelRef.current.contains(e.target)) setOpen(false) }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [open])
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 328)) })
+      setQuery('')
+      setHighlight(0)
+      setTimeout(() => inputRef.current?.focus(), 0)
+    }
+    setOpen(o => !o)
+  }
+
+  function choose(o) {
+    onChange(o.value)
+    setOpen(false)
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus() }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(h => Math.min(h + 1, filtered.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(h => Math.max(h - 1, 0)) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (filtered[highlight]) choose(filtered[highlight]) }
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        title="Switch association — type to search"
+        className="border border-[#DCE3EC] bg-white rounded-lg px-3 py-1.5 text-sm font-medium text-left focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch] truncate"
+      >
+        {current ? current.label : 'Select association…'} <span className="text-[#8493A8]">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div
+            ref={panelRef}
+            onKeyDown={onKeyDown}
+            className="fixed z-40 flex flex-col bg-white border border-[#E8ECF2] rounded-xl shadow-lg p-2"
+            style={{ top: pos.top, left: pos.left, width: 'min(20rem, calc(100vw - 16px))', maxHeight: `min(24rem, calc(100vh - ${pos.top + 12}px))` }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setHighlight(0) }}
+              placeholder="Type to filter associations…"
+              className="w-full border border-[#DCE3EC] rounded-lg px-2.5 py-1.5 text-sm mb-1.5 focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
+            />
+            <div className="overflow-y-auto">
+              {filtered.map((o, i) => (
+                <div key={o.value}>
+                  {o.group && (i === 0 || filtered[i - 1].group !== o.group) && (
+                    <p className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase text-[#8493A8]" style={{ fontFamily: MONO, letterSpacing: '.08em' }}>
+                      {o.group}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => choose(o)}
+                    onMouseEnter={() => setHighlight(i)}
+                    className={`block w-full text-left rounded-lg px-2.5 py-1.5 text-sm truncate ${i === highlight ? 'bg-[#E7EEFA]' : ''} ${o.indent ? 'pl-6' : ''} ${
+                      o.value === value ? 'text-[#014AC5] font-semibold' : o.firm ? 'text-[#0B1B33] font-semibold' : 'text-[#0B1B33]'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                </div>
+              ))}
+              {filtered.length === 0 && <p className="px-2.5 py-2 text-sm text-[#8493A8] italic">No matches</p>}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 export default function AdminDashboard() {
   const { hoaId: globalHoaId, role, availableHoas, refreshHoas, selectedHoaId, setSelectedHoaId } = useAuth()
   const navigate = useNavigate()
@@ -661,6 +795,9 @@ export default function AdminDashboard() {
   const [sortDir, setSortDir] = useState('asc')
   const [importOpen, setImportOpen] = useState(false)
   const [addEmailsOpen, setAddEmailsOpen] = useState(false)
+  // >0 after the Add-Emails wizard adds emails — drives the "invite them now"
+  // banner that closes the add-emails → invite gap.
+  const [emailsAdded, setEmailsAdded] = useState(0)
   // Super-user only: create a new association directly from the dashboard.
   const [addHoaOpen, setAddHoaOpen] = useState(false)
   const [addHoaForm, setAddHoaForm] = useState({ association_name: '', address: '', admin_email: '' })
@@ -750,6 +887,20 @@ export default function AdminDashboard() {
   const activeColumns = showAllInfo ? COLUMNS : COLUMNS.filter(c => visibleCols.includes(c.key))
 
   async function openUnit(u) {
+    // Review queue: opening a row from a filtered view with multiple rows
+    // records the filtered rows (in table order) so the detail page can step
+    // Prev/Next through them. Overwritten on every filtered open; removed on
+    // an unfiltered open so a stale queue never lingers.
+    try {
+      const queueIds = activeFilter !== 'all'
+        ? filteredUnits.filter(x => x.tenant_id).map(x => String(x.tenant_id))
+        : []
+      if (queueIds.length > 1) {
+        sessionStorage.setItem(REVIEW_QUEUE_KEY, JSON.stringify({ ids: queueIds, filter: activeFilter }))
+      } else {
+        sessionStorage.removeItem(REVIEW_QUEUE_KEY)
+      }
+    } catch { /* storage blocked — queue is a nicety, keep navigating */ }
     if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
     if (u.status === 'missing') {
       try {
@@ -1058,7 +1209,8 @@ export default function AdminDashboard() {
 
   async function handleSendBoardReport() {
     if (!hoaId || hoaId === '__all__') return
-    if (!window.confirm("Email this compliance report to the association's board contact now?")) return
+    if (!window.confirm("Email this compliance report to the association's contact on file now? "
+      + "(A report also goes out automatically on the 1st of each month.)")) return
     setSendingReport(true)
     setReportSent(false)
     try {
@@ -1117,12 +1269,27 @@ export default function AdminDashboard() {
       .finally(() => setInitialLoad(false))
   }
 
+  // Consume a filter intent left by FirmDashboard (openHoa writes it right
+  // before switching into an association): apply it once to this
+  // association's table, then remove it so it never survives a manual
+  // association switch.
+  useEffect(() => {
+    if (!hoaId || hoaId === ALL_HOAS) return
+    let intent = null
+    try {
+      intent = sessionStorage.getItem(FILTER_INTENT_KEY)
+      if (intent !== null) sessionStorage.removeItem(FILTER_INTENT_KEY)
+    } catch { /* storage blocked — just land unfiltered */ }
+    if (intent && FILTER_INTENT_MAP[intent]) setActiveFilter(FILTER_INTENT_MAP[intent])
+  }, [hoaId])
+
   useEffect(() => {
     // No association resolved (no hoa_id on the account, or /hoas failed):
     // show the empty state, not an endless skeleton.
     if (!hoaId) { setInitialLoad(false); return }
     setSelectedTenantIds(new Set())
     setAddressFilter('')
+    setEmailsAdded(0)
     refreshDashboard()
   }, [hoaId, availableHoas, firmView, firms])
 
@@ -1142,9 +1309,14 @@ export default function AdminDashboard() {
         else if (activeFilter === 'staff') { if (!['property manager', 'admin'].includes((u.assoc_title || '').trim().toLowerCase())) return false }
         else if (activeFilter === 'admin') { if ((u.assoc_title || '').trim().toLowerCase() !== 'admin') return false }
         else if (activeFilter === 'pm') { if ((u.assoc_title || '').trim().toLowerCase() !== 'property manager') return false }
-        else if (activeFilter === 'active') { if ((u.status !== 'active' && u.status !== 'expiring') || u.manually_approved) return false }
-        else if (activeFilter === 'manual') { if (!u.manually_approved) return false }
-        else if (activeFilter === 'approved') { if (u.status !== 'active' && u.status !== 'expiring') return false }
+        // The compliant filters mirror the /compliance summary counts exactly
+        // (which exclude renter sub-units — parent_unit_id IS NULL):
+        //   'active'   ↔ summary.compliant            (Approved chip)
+        //   'manual'   ↔ summary.manually_approved    (Manual approval chip)
+        //   'approved' ↔ compliant + manually_approved (hero gauge/headline)
+        else if (activeFilter === 'active') { if ((u.status !== 'active' && u.status !== 'expiring') || u.manually_approved || u.is_renter) return false }
+        else if (activeFilter === 'manual') { if (!u.manually_approved || u.is_renter) return false }
+        else if (activeFilter === 'approved') { if ((!u.manually_approved && u.status !== 'active' && u.status !== 'expiring') || u.is_renter) return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
         else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
         else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
@@ -1204,15 +1376,31 @@ export default function AdminDashboard() {
             {(role === 'super_user' || role === 'property_manager') && availableHoas.length > 0 && (
               <div className="flex items-center gap-2 mt-2 flex-nowrap overflow-x-auto">
                 {/* Primary: pick any association by name (works for every HOA,
-                    including signup-created ones with no PropRadar fields) */}
-                <select
-                  value={activeFirm ? `firm:${firmView}` : (globalHoaId || '')}
-                  onChange={e => chooseFromSwitcher(e.target.value)}
-                  className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
-                >
-                  <option value={ALL_HOAS}>All Associations</option>
-                  <HoaOptions role={role} hoas={availableHoas} firms={firms} selectableFirms />
-                </select>
+                    including signup-created ones with no PropRadar fields).
+                    Large portfolios get the searchable combobox instead of the
+                    native select — same values, same firm grouping. */}
+                {(() => {
+                  const switcherOptions = [
+                    { value: ALL_HOAS, label: 'All Associations' },
+                    ...buildSwitcherOptions(role, availableHoas, firms),
+                  ]
+                  return switcherOptions.length > SWITCHER_SEARCH_THRESHOLD ? (
+                    <SwitcherCombobox
+                      options={switcherOptions}
+                      value={activeFirm ? `firm:${firmView}` : (globalHoaId || '')}
+                      onChange={chooseFromSwitcher}
+                    />
+                  ) : (
+                    <select
+                      value={activeFirm ? `firm:${firmView}` : (globalHoaId || '')}
+                      onChange={e => chooseFromSwitcher(e.target.value)}
+                      className="border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#014AC5] flex-shrink-0 max-w-[50ch]"
+                    >
+                      <option value={ALL_HOAS}>All Associations</option>
+                      <HoaOptions role={role} hoas={availableHoas} firms={firms} selectableFirms />
+                    </select>
+                  )
+                })()}
                 <span className="text-xs text-[#8493A8] whitespace-nowrap flex-shrink-0">or search by</span>
                 <select
                   value={hoaFieldType}
@@ -1323,6 +1511,7 @@ export default function AdminDashboard() {
                   onClick={handleSendBoardReport}
                   disabled={sendingReport || !hoaId || hoaId === '__all__'}
                   className={TOOLBAR_BTN}
+                  title="Emails the compliance report to the association's contact on file. One is also sent automatically on the 1st of each month."
                 >
                   {sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report'}
                 </button>
@@ -1356,6 +1545,29 @@ export default function AdminDashboard() {
               title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
             >
               {invitingAll ? 'Inviting…' : 'Invite owners to their unit page'}
+            </button>
+          </div>
+        )}
+        {/* Add-emails follow-through: offer the invite step right away instead
+            of relying on the admin to remember the separate toolbar button.
+            handleInviteAll's own confirm is the single confirmation (it also
+            clarifies the send goes to every not-yet-signed-up owner with an
+            email, not only the newly added ones). */}
+        {emailsAdded > 0 && !firmListView && hoaId && hoaId !== ALL_HOAS && (
+          <div className="flex items-center gap-3 flex-wrap bg-[#E2F4EC] border border-[#BFE3D2] rounded-lg px-4 py-2.5 mb-4">
+            <span className="text-sm font-medium text-[#0E8E68]">
+              {emailsAdded} email{emailsAdded !== 1 ? 's' : ''} added.
+            </span>
+            <button
+              onClick={async () => { await handleInviteAll(); setEmailsAdded(0) }}
+              disabled={invitingAll}
+              className="text-sm bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50"
+              title="Emails each owner a link to their own unit page to upload their insurance — this does not grant dashboard access."
+            >
+              {invitingAll ? 'Inviting…' : 'Invite these owners to their unit page now'}
+            </button>
+            <button onClick={() => setEmailsAdded(0)} className="text-sm text-[#54627A] hover:text-[#0B1B33] font-medium">
+              Not now
             </button>
           </div>
         )}
@@ -1404,9 +1616,18 @@ export default function AdminDashboard() {
             hoaId={hoaId}
             existingUnits={units}
             onClose={() => setAddEmailsOpen(false)}
-            onDone={() => {
+            onDone={res => {
+              // The wizard doesn't pass its commit result today, so fall back
+              // to the delta of real emails across the refetch — it drives the
+              // "invite these owners now" banner (blank-filling only; an
+              // email overwritten in place doesn't change the count).
+              const before = countOwnerEmails(units)
               Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
-                .then(([s, u]) => { setSummary(s); setUnits(u) })
+                .then(([s, u]) => {
+                  setSummary(s); setUnits(u)
+                  const added = res?.updated != null ? Number(res.updated) : Math.max(0, countOwnerEmails(u) - before)
+                  if (added > 0) setEmailsAdded(added)
+                })
                 .catch(e => setError(e.message))
             }}
           />
@@ -1897,6 +2118,27 @@ export default function AdminDashboard() {
               >
                 Import
               </button>
+              {/* Overflow menu — the rest of the desktop toolbar's actions */}
+              <RowActionsMenu
+                items={[
+                  {
+                    label: exporting ? 'Exporting…' : 'Export CSV',
+                    disabled: exporting || !hoaId || hoaId === '__all__',
+                    onClick: handleExport,
+                  },
+                  {
+                    label: 'Add emails',
+                    disabled: !hoaId || hoaId === '__all__',
+                    onClick: () => setAddEmailsOpen(true),
+                  },
+                  {
+                    // handleSendBoardReport confirms before sending
+                    label: sendingReport ? 'Sending…' : reportSent ? 'Report Sent ✓' : 'Email Report',
+                    disabled: sendingReport || !hoaId || hoaId === '__all__',
+                    onClick: handleSendBoardReport,
+                  },
+                ]}
+              />
             </div>
           )}
           {!isMobile && (

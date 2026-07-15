@@ -22,8 +22,10 @@ export default function Nav({ role, title }) {
         ...(actualRole === 'property_manager' || actualRole === 'super_user'
           ? [{ to: '/admin/firm', label: 'Firm' }] : []),
         { to: '/admin/settings', label: 'Settings' },
-        // Feedback inbox — super-users only (Randy + dad)
-        ...(actualRole === 'super_user' ? [{ to: '/admin/feedback', label: 'Feedback' }] : []),
+        // Renewal-lead calendar + feedback inbox — super-users only (Randy + dad)
+        ...(actualRole === 'super_user'
+          ? [{ to: '/admin/leads', label: 'Leads' }, { to: '/admin/feedback', label: 'Feedback' }]
+          : []),
       ]
     : role === 'tenant'
       ? [

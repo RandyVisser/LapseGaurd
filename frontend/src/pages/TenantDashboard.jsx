@@ -13,6 +13,9 @@ import usePageTitle from '../usePageTitle'
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
 // Subrental owner steps — hidden until the rentals feature is switched on.
 const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
+// Email-in intake address — the "forward your dec page" line only renders
+// when this is configured (the inbound subdomain may not be live yet).
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
 
 // One unambiguous answer per status — the page leads with this.
 const STATUS_HERO = {
@@ -318,7 +321,7 @@ export default function TenantDashboard() {
     } else if (parseTimedOut) {
       nextSteps.push({ icon: '⏳', text: 'Still reviewing your document — this can take a few minutes. You can safely leave this page; the status above will update once it\'s done.', wait: true })
     } else if (!policy || status === 'missing') {
-      nextSteps.push({ icon: '📄', text: 'Click the YELLOW box to upload your DEC PAGE.' })
+      nextSteps.push({ icon: '📄', text: 'Click the YELLOW box to upload your declaration page (the one-page summary from your insurer).' })
     } else if (status === 'lapsed') {
       nextSteps.push({ icon: '🔄', text: 'Your policy is expired — upload your renewal declaration page below.' })
     } else if (flags.length > 0) {
@@ -520,7 +523,7 @@ export default function TenantDashboard() {
           <p className="text-sm text-[#54627A] mt-1 mb-4">
             {isRenter
               ? "Attach your HO-4 policy's declaration page — we'll read the details automatically."
-              : "Attach your declaration page — we'll read the details automatically."}
+              : "Attach your declaration page (the one-page summary from your insurer) — we'll read the details automatically."}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -553,11 +556,11 @@ export default function TenantDashboard() {
                 <div>
                   <p className="text-2xl mb-1.5">📄</p>
                   <p className="text-sm text-[#54627A] font-medium hidden sm:block">
-                    {dragOver ? 'Drop to upload' : isRenter ? 'Drag & drop your HO-4 policy' : 'Drag & drop your dec page'}
+                    {dragOver ? 'Drop to upload' : isRenter ? 'Drag & drop your HO-4 policy' : 'Drag & drop your declaration page'}
                   </p>
                   <p className="text-xs text-[#8493A8] mt-1 hidden sm:block">or click to browse · PDF, PNG, JPG</p>
                   <p className="text-sm text-[#54627A] font-medium sm:hidden">
-                    {isRenter ? 'Tap to upload your HO-4 policy' : 'Tap to upload your dec page'}
+                    {isRenter ? 'Tap to upload your HO-4 policy' : 'Tap to upload your declaration page'}
                   </p>
                   <p className="text-xs text-[#8493A8] mt-1 sm:hidden">A PDF works best · a clear, full-page photo is OK too</p>
                 </div>
@@ -571,6 +574,14 @@ export default function TenantDashboard() {
                 className="hidden"
               />
             </div>
+
+            {INBOUND && (
+              <p className="text-xs text-[#8493A8]">
+                Prefer email? Forward your declaration page to{' '}
+                <a href={`mailto:${INBOUND}`} className="text-[#014AC5] hover:underline">{INBOUND}</a>
+                {' '}and we&rsquo;ll file it for you.
+              </p>
+            )}
 
             {success && <p className="text-sm text-[#0E8E68]">{success}</p>}
 
@@ -589,7 +600,7 @@ export default function TenantDashboard() {
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-between bg-white border border-[#E8ECF2] rounded-2xl px-5 py-4 mb-5 hover:border-[#7CA9E8] transition-colors">
             <div>
-              <p className="text-sm font-semibold text-[#0B1B33]">Get a new HO-6 Quote</p>
+              <p className="text-sm font-semibold text-[#0B1B33]">Get a new HO-6 (condo unit-owner insurance) Quote</p>
               <p className="text-xs text-[#8493A8] mt-0.5">Get a free HO-6 insurance quote sent via email</p>
             </div>
             <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>

@@ -1,5 +1,26 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiGet } from '../supabase'
+
+// Flat option descriptors for the dashboard switcher (selectableFirms mode):
+// firm rows (value `firm:<id>`) followed by their associations (indent:true),
+// then unmanaged associations tagged group:'Independent'. Exported so the
+// dashboard's searchable combobox renders exactly the same list (same values,
+// same order) as the native <select> options rendered below.
+export function buildSwitcherOptions(role, hoas, firms) {
+  const sorted = [...hoas].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  if (role !== 'super_user' || firms.length === 0) {
+    return sorted.map(h => ({ value: h.id, label: h.name }))
+  }
+  const inFirm = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
+  const independent = sorted.filter(h => !inFirm.has(h.id))
+  return [
+    ...firms.filter(f => f.hoas.length > 0).flatMap(f => [
+      { value: `firm:${f.id}`, label: f.name, firm: true },
+      ...f.hoas.map(h => ({ value: h.id, label: h.name, indent: true })),
+    ]),
+    ...independent.map(h => ({ value: h.id, label: h.name, group: 'Independent' })),
+  ]
+}
 
 // Option list for the association switcher <select>. Super users get the list
 // grouped by PM firm (plus an Independent group for unmanaged associations);
@@ -23,19 +44,17 @@ export default function HoaOptions({ role, hoas, firms: firmsProp, selectableFir
   if (role !== 'super_user' || firms.length === 0) {
     return sorted.map(h => <option key={h.id} value={h.id}>{h.name}</option>)
   }
-  const inFirm = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
-  const independent = sorted.filter(h => !inFirm.has(h.id))
   if (selectableFirms) {
+    const opts = buildSwitcherOptions(role, hoas, firms)
     return (
       <>
-        {firms.filter(f => f.hoas.length > 0).map(f => (
-          <Fragment key={f.id}>
-            <option value={`firm:${f.id}`}>{f.name}</option>
-            {f.hoas.map(h => <option key={h.id} value={h.id}>{' '}{h.name}</option>)}
-          </Fragment>
+        {opts.filter(o => !o.group).map(o => (
+          <option key={o.value} value={o.value}>{o.indent ? ' ' : ''}{o.label}</option>
         ))}
         <optgroup label="Independent">
-          {independent.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          {opts.filter(o => o.group === 'Independent').map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </optgroup>
       </>
     )
@@ -48,8 +67,13 @@ export default function HoaOptions({ role, hoas, firms: firmsProp, selectableFir
         </optgroup>
       ))}
       <optgroup label="Independent">
-        {independent.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        {independentOf(sorted, firms).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
       </optgroup>
     </>
   )
+}
+
+function independentOf(sorted, firms) {
+  const inFirm = new Set(firms.flatMap(f => f.hoas.map(h => h.id)))
+  return sorted.filter(h => !inFirm.has(h.id))
 }

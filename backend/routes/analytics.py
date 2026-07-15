@@ -3,8 +3,9 @@ Lightweight, privacy-preserving funnel analytics.
   POST /analytics/event   — public anonymous beacon (no auth, no PII)
   GET  /analytics/funnel  — super-user signup funnel for the last N days
 
-The beacon records only an allow-listed event name, the page path, and a random
-client session id (no IP, no names). It powers the super-user funnel card so we
+The beacon records only an allow-listed event name, the page path, a random
+client session id, and campaign attribution (first-touch utm tag + cross-origin
+referrer) — no IP, no UA, no names. It powers the super-user funnel card so we
 can tell a *traffic* problem (no one visiting) from a *conversion* problem
 (visiting but bouncing).
 """
@@ -82,10 +83,15 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
         name = (payload.get("name") or "").strip()
         if name in _ALLOWED:
             await conn.execute(
-                "INSERT INTO events (name, path, session_id) VALUES ($1, $2, $3)",
+                """INSERT INTO events (name, path, session_id, utm, referrer)
+                   VALUES ($1, $2, $3, $4, $5)""",
                 name,
                 (payload.get("path") or "")[:200] or None,
                 (payload.get("session_id") or "")[:64] or None,
+                # First-touch campaign tag + cross-origin referrer (client-side
+                # filtered) — outbound attribution, still no IP/UA/PII.
+                (payload.get("utm") or "")[:200] or None,
+                (payload.get("referrer") or "")[:200] or None,
             )
     except Exception:
         logger.debug("dropped malformed analytics event", exc_info=True)
@@ -130,6 +136,23 @@ async def funnel(
         days, _INTERNAL_EMAILS,
     ) or 0
 
+    # Where landing traffic came from: first-touch utm tag if the beacon carried
+    # one, else the cross-origin referrer, else "direct". Distinct sessions so a
+    # tagged Apollo click counts once, however many pages it views.
+    source_rows = await conn.fetch(
+        """SELECT coalesce(utm, CASE WHEN referrer IS NOT NULL
+                                     THEN 'referral: ' || referrer
+                                     ELSE 'direct' END) AS source,
+                  count(distinct coalesce(session_id, id::text)) AS sessions
+           FROM events
+           WHERE name = 'landing_view'
+             AND created_at > now() - make_interval(days => $1)
+           GROUP BY 1
+           ORDER BY sessions DESC
+           LIMIT 10""",
+        days,
+    )
+
     extra = [{"name": "owners_invited", "label": "Owners invited", "count": owners_invited}]
     extra += [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
     extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
@@ -137,4 +160,5 @@ async def funnel(
         "days": days,
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
         "extra": extra,
+        "sources": [{"source": r["source"], "sessions": r["sessions"]} for r in source_rows],
     }

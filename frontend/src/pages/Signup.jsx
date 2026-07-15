@@ -115,6 +115,15 @@ export default function Signup() {
           </h1>
           <p className="text-sm text-[#54627A] mb-6">Tell us about your association and we&rsquo;ll build it out and email you when it&rsquo;s ready.</p>
 
+          <Link to="/signup/firm"
+            className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-[#014AC5] hover:bg-blue-50 px-4 py-3 mb-6 transition-colors">
+            <span className="text-sm text-[#54627A]">
+              <span className="font-semibold text-[#0B1B33]">Property management firm?</span>{' '}
+              Set up a firm account for your whole portfolio
+            </span>
+            <span className="text-[#014AC5] text-sm font-semibold flex-shrink-0 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+          </Link>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {[
               { label: 'Association Name', key: 'association_name', placeholder: 'Sunset Villas Condo Association' },

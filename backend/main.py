@@ -30,6 +30,7 @@ from routes.billing import router as billing_router
 from routes.pm_team import router as pm_team_router
 from routes.analytics import router as analytics_router
 from routes.rentals import router as rentals_router
+from routes.leads import router as leads_router
 
 
 @asynccontextmanager
@@ -63,6 +64,7 @@ app.include_router(billing_router)
 app.include_router(pm_team_router)
 app.include_router(analytics_router)
 app.include_router(rentals_router)
+app.include_router(leads_router)
 
 
 def _cors_headers(request: Request) -> dict:

@@ -5,6 +5,9 @@ import './landing.css'
 
 const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
 const CAL_URL = 'https://calendar.app.google/FomLtiZGYqtmt8jUA'
+// Email-in intake address; unset until the inbound subdomain is live, so the
+// phone mock falls back to a neutral visual prop instead of a dead address.
+const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || ''
 
 export default function Landing() {
   const rootRef = useRef(null)
@@ -305,7 +308,7 @@ export default function Landing() {
                     <div className="phone-screen">
                       <span className="phone-island"></span>
                       <div className="mc-top"><span>Cancel</span><span className="mc-title">New Message</span><span className="mc-send">↑</span></div>
-                      <div className="mc-row"><span className="mc-lab">To:</span>docs@condo.insure</div>
+                      <div className="mc-row"><span className="mc-lab">To:</span>{INBOUND || 'docs@…'}</div>
                       <div className="mc-row"><span className="mc-lab">Subj:</span>Fwd: Citizens policy</div>
                       <div className="mc-body">Here’s my declaration page for unit 1511.</div>
                       <div className="attach"><span className="fileic"></span>Declaration-Page.pdf</div>

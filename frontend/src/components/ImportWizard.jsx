@@ -310,6 +310,9 @@ export default function ImportWizard({ hoaId, onClose, onDone }) {
             <div className="text-center py-6">
               <p className="text-4xl mb-3">🎉</p>
               <p className="text-lg font-semibold text-[#0B1B33]">{result.inserted} unit{result.inserted !== 1 ? 's' : ''} imported</p>
+              <p className="text-xs text-[#8493A8] mt-1 max-w-sm mx-auto">
+                Owners aren&rsquo;t contacted yet — when you&rsquo;re ready, use &ldquo;Invite owners to their unit page&rdquo; on the dashboard.
+              </p>
               {result.skipped > 0 && (
                 <>
                   <p className="text-sm text-[#54627A] mt-1">{result.skipped} skipped</p>

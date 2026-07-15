@@ -314,6 +314,7 @@ function SettingsTab() {
         <input defaultValue={team.firm.cab_number || ''} placeholder="—" disabled={busy}
           onBlur={e => { const v = e.target.value.trim(); if (v !== (team.firm.cab_number || '')) save({ cab_number: v }) }}
           className="w-40 border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]" />
+        <p className="text-xs text-[#8493A8] mt-1">Your Florida community association management firm license, if you have one.</p>
       </div>
       <label className="flex items-start gap-2 text-sm text-[#54627A]">
         <input type="checkbox" checked={team.firm.open_visibility === false} disabled={busy}

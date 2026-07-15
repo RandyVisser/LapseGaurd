@@ -17,8 +17,10 @@ QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 HO4_QUOTE_URL = "https://www.universalcondo.com/ho4quote.html"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # Dec-page email-in intake address shown to owners who'd rather email their
-# document than upload it. Override in Railway via INBOUND_ADDRESS if needed.
-INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "docs@condo.insure")
+# document than upload it. Unset by default: templates only mention email-in
+# when INBOUND_ADDRESS is configured in Railway (the apex docs@condo.insure
+# cannot receive mail — MX points at Google Workspace; see routes/inbound.py).
+INBOUND_ADDRESS = os.environ.get("INBOUND_ADDRESS", "")
 
 
 # Our Resend account is limited to 10 requests/second account-wide; every caller
@@ -629,6 +631,16 @@ def invite_email_html(
             "Don't have an HO-6 policy yet, or want to compare your current rate? Get a "
             "fast, no-obligation HO-6 quote in minutes:")
         quote_btn_label = "Get a New HO-4 Quote" if is_renter else "Get a New HO-6 Quote"
+        # Email-in option only when an intake address is configured.
+        email_in_para = (f"""
+      <p style="color:#374151">
+        <strong>Prefer not to create an account?</strong> You can simply email your
+        Declaration Page or Certificate of Insurance to
+        <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
+        and we'll add it to your unit's record for you. <strong>Please send it from
+        this same email address ({email})</strong> — that's how we match your document
+        to {match_target}, so a message from a different address won't be routed correctly.
+      </p>""" if INBOUND_ADDRESS else "")
         body = f"""
       {re_line}
       <p style="color:#374151">{greeting},</p>
@@ -661,14 +673,7 @@ def invite_email_html(
         <li>Submit the information at your earliest convenience.</li>
       </ol>
 
-      <p style="color:#374151">
-        <strong>Prefer not to create an account?</strong> You can simply email your
-        Declaration Page or Certificate of Insurance to
-        <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
-        and we'll add it to your unit's record for you. <strong>Please send it from
-        this same email address ({email})</strong> — that's how we match your document
-        to {match_target}, so a message from a different address won't be routed correctly.
-      </p>
+      {email_in_para}
 
       <p style="color:#111827;font-weight:700;margin-top:20px">What information will be requested?</p>
       <ul style="color:#374151;padding-left:20px">
@@ -846,6 +851,15 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
         f"Your account for <strong>{hoa_name}</strong> is ready — you can sign in right now. "
         "Here's the quickest path to a compliance dashboard that keeps itself up to date:"
     )
+    # Email-in option only when an intake address is configured.
+    step3_desc = (
+        f"They can upload through the portal, <strong>or simply email their dec page to "
+        f"<a href='mailto:{INBOUND_ADDRESS}' style='color:#1d4ed8'>{INBOUND_ADDRESS}</a></strong> "
+        "and it files itself. Even forwarding it to you works — you can submit on their behalf."
+        if INBOUND_ADDRESS else
+        "They can upload through the portal in a couple of clicks. Even forwarding it to "
+        "you works — you can submit on their behalf."
+    )
     html = f"""
     <html><body style="margin:0;background:#f1f5f9;
           font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
@@ -863,10 +877,7 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
                  "automatically. (Or add units one at a time.)")}
           {_step("2", "Invite your unit-owners",
                  "Send each owner a secure link to upload their declaration page.")}
-          {_step("3", "Owners send in their dec pages — their way",
-                 f"They can upload through the portal, <strong>or simply email their dec page to "
-                 f"<a href='mailto:{INBOUND_ADDRESS}' style='color:#1d4ed8'>{INBOUND_ADDRESS}</a></strong> "
-                 "and it files itself. Even forwarding it to you works — you can submit on their behalf.")}
+          {_step("3", "Owners send in their dec pages — their way", step3_desc)}
           {_step("4", "Watch compliance update on its own",
                  "We read each policy with AI, check it against your association's requirements, "
                  "and flag anything that's missing, expiring, or non-compliant — automatically.")}
