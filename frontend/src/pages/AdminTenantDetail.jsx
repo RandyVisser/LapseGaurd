@@ -934,11 +934,12 @@ export default function AdminTenantDetail() {
       named_insured: '', additional_insured: '', additional_interests: '',
       association_listed: false, document_url: '', uploaded_at: '',
     }])
+    let tries = 0
     const scrollWhenReady = () => {
       const el = document.getElementById('new-draft-card')
       if (el) {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
-      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else if (++tries < 20) {
         setTimeout(scrollWhenReady, 100)
       }
     }
