@@ -28,6 +28,24 @@ function selfExcluded() {
   }
 }
 
+// Founders/testers: the moment an internal account logs in on a browser, flag
+// that browser permanently (same ci.notrack flag as ?notrack=1) so its
+// logged-OUT browsing stops counting as prospect traffic too. Called from
+// AuthContext whenever a session appears. Mirrors the backend's internal-email
+// exclusions (_INTERNAL_EMAILS in routes/analytics.py).
+const INTERNAL_DOMAINS = ['condo.insure', 'universalcondo.com']
+const INTERNAL_GMAIL_INBOXES = ['troy.visser', 'randy.redfish'] // incl. +aliases
+
+export function excludeIfInternal(email) {
+  try {
+    const [inbox, domain] = (email || '').toLowerCase().split('@')
+    if (!domain) return
+    const internal = INTERNAL_DOMAINS.includes(domain)
+      || (domain === 'gmail.com' && INTERNAL_GMAIL_INBOXES.includes(inbox.split('+')[0]))
+    if (internal) localStorage.setItem('ci.notrack', '1')
+  } catch { /* analytics is best-effort; never break the page */ }
+}
+
 // A real signup prospect is logged OUT through landing → pricing → signup, so a
 // persisted Supabase session means it's us (founders) or an existing user —
 // exclude them from the funnel. (Supabase stores the session under

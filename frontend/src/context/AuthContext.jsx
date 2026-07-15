@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, apiGet } from '../supabase'
+import { excludeIfInternal } from '../analytics'
 
 const AuthContext = createContext(null)
 
@@ -28,6 +29,12 @@ export function AuthProvider({ children }) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Internal logins (founders / sandbox testers) permanently opt this browser
+  // out of the anonymous funnel beacons — see analytics.js.
+  useEffect(() => {
+    if (session?.user?.email) excludeIfInternal(session.user.email)
+  }, [session?.user?.id])
 
   const appMeta = session?.user?.app_metadata || {}
   const userMeta = session?.user?.user_metadata || {}
