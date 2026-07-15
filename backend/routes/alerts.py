@@ -53,18 +53,36 @@ async def run_board_reports(
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     from routes.hoa import build_board_report
+    from scripts.run_alerts import _bounced_emails
     from services.audit import log_audit
     from services.email import send_email
 
     hoas = await conn.fetch("SELECT id FROM hoas WHERE admin_email IS NOT NULL AND admin_email != ''")
-    sent = 0
+    # Same guards as the firm-triggered send (pm_team.py): a re-run of the
+    # monthly workflow must not double-mail boards, and bounced addresses are
+    # never mailed again.
+    recent = await conn.fetch(
+        """SELECT DISTINCT hoa_id FROM admin_audit_log
+           WHERE action = 'board_report_sent'
+             AND created_at > now() - interval '20 hours'""",
+    )
+    recently_sent = {str(r["hoa_id"]) for r in recent}
+    bounced = await _bounced_emails(conn)
+
+    sent = skipped = 0
     for h in hoas:
         hoa_id = str(h["id"])
+        if hoa_id in recently_sent:
+            skipped += 1
+            continue
         report = await build_board_report(conn, hoa_id)
         if not report or not report["to_email"]:
+            continue
+        if report["to_email"].strip().lower() in bounced:
+            skipped += 1
             continue
         if await send_email(report["to_email"], report["subject"], report["html"]):
             await log_audit(conn, hoa_id, None, "system", "board_report_sent",
                             {"to": report["to_email"], "trigger": "cron"})
             sent += 1
-    return {"reports_sent": sent}
+    return {"reports_sent": sent, "skipped": skipped}

@@ -77,9 +77,12 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
-        if (row["email"] or "").strip().lower() in bounced:
+        addr = (row["email"] or "").strip().lower()
+        if addr in bounced:
             print(f"[alerts] Skipped invite reminder to {row['email']} — address has bounced")
             continue
+        if addr.endswith("@condo.insure"):
+            continue  # placeholder address — same guard as the other processors
         is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
         invite_url = f"{APP_URL}/join/{row['token']}"
         em = (row["email"] or "").strip().lower()
@@ -402,9 +405,12 @@ async def process_trial_reminders(conn) -> int:
     bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
-        if (row["admin_email"] or "").strip().lower() in bounced:
+        addr = (row["admin_email"] or "").strip().lower()
+        if addr in bounced:
             print(f"[alerts] Skipped trial reminder for {row['name']} — admin address has bounced")
             continue
+        if addr.endswith("@condo.insure"):
+            continue  # placeholder address — same guard as the other processors
         subject, html = trial_ending_html(
             row["name"], int(row["days_left"]), row["trial_ends_at"],
             f"{APP_URL}/admin/settings",

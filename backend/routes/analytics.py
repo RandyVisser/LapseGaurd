@@ -60,10 +60,16 @@ _LIMIT, _WINDOW = 300, timedelta(hours=1)
 
 
 def _rate_ok(request: Request) -> bool:
+    # Rightmost X-Forwarded-For entry: appended by Railway's edge, so the
+    # client can't spoof its way past the limit (leftmost values are theirs).
     ip = (request.headers.get("X-Forwarded-For")
           or (request.client.host if request.client else "")
-          or "?").split(",")[0].strip()
+          or "?").split(",")[-1].strip()
     now = datetime.utcnow()
+    # Evict idle IPs so the dict doesn't grow forever on public bot traffic
+    # (a public endpoint sees a new IP per bot; empty lists never expired).
+    for stale in [k for k, v in _hits.items() if not v or v[-1] < now - _WINDOW]:
+        del _hits[stale]
     recent = [t for t in _hits[ip] if t > now - _WINDOW]
     if len(recent) >= _LIMIT:
         return False

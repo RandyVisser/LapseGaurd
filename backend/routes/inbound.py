@@ -95,11 +95,14 @@ async def _upload_to_storage(path: str, content: bytes, content_type: str) -> st
                 "apikey": SERVICE_ROLE_KEY,
                 "Authorization": f"Bearer {SERVICE_ROLE_KEY}",
                 "Content-Type": content_type,
-                "x-upsert": "true",
+                # INSERT-only, per the storage invariant (never upsert) — the
+                # timestamped path makes collisions impossible anyway.
+                "x-upsert": "false",
             },
         )
         resp.raise_for_status()
-    return f"{SUPABASE_URL}/storage/v1/object/public/policy-documents/{path}"
+    # Bucket is private; callers store this bare path and mint signed URLs.
+    return path
 
 
 async def _record_bounce(conn, event_type: str, data: dict) -> None:

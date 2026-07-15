@@ -1,8 +1,11 @@
 import asyncio
 import html as _html
+import logging
 import os
 import time
 import httpx
+
+logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "alerts@condo.insure")
@@ -43,7 +46,7 @@ async def _pace_sends():
 
 async def send_email(to_email: str, subject: str, html: str, reply_to: str | None = None) -> bool:
     if not RESEND_API_KEY:
-        print(f"[email] RESEND_API_KEY not set — skipping email to {to_email}")
+        logger.error("[email] RESEND_API_KEY not set — skipping email to %s", to_email)
         return False
     # Don't double-wrap if FROM_EMAIL already carries a display name.
     from_header = FROM_EMAIL if "<" in FROM_EMAIL else f"{FROM_NAME} <{FROM_EMAIL}>"
@@ -60,7 +63,7 @@ async def send_email(to_email: str, subject: str, html: str, reply_to: str | Non
                     json=payload,
                 )
             except httpx.HTTPError as e:
-                print(f"[email] network error sending to {to_email} (attempt {attempt + 1}): {e}")
+                logger.warning("[email] network error sending to %s (attempt %d): %s", to_email, attempt + 1, e)
                 await asyncio.sleep(2 ** attempt)
                 continue
             if resp.status_code == 200:
@@ -70,9 +73,11 @@ async def send_email(to_email: str, subject: str, html: str, reply_to: str | Non
                 await asyncio.sleep(retry_after)
                 continue
             # Non-retryable (bad address, payload error…) — log and give up.
-            print(f"[email] send to {to_email} failed: {resp.status_code} {resp.text[:200]}")
+            # logger.error is Sentry-visible; a systemic failure (bad key,
+            # malformed From) must not look like a healthy zero-alert run.
+            logger.error("[email] send to %s failed: %s %s", to_email, resp.status_code, resp.text[:200])
             return False
-    print(f"[email] send to {to_email} gave up after retries")
+    logger.error("[email] send to %s gave up after retries", to_email)
     return False
 
 

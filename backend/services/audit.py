@@ -1,5 +1,9 @@
 import json
+import logging
+
 import asyncpg
+
+logger = logging.getLogger(__name__)
 
 
 async def log_audit(
@@ -21,4 +25,8 @@ async def log_audit(
             json.dumps(details or {}),
         )
     except Exception:
-        pass
+        # Best-effort by design (an audit hiccup must never fail the action),
+        # but NOT silent: the board-report cooldown reads these rows, so a
+        # quietly failing INSERT would fail that guard open. Sentry captures
+        # logger.exception.
+        logger.exception("audit write failed: %s hoa=%s", action, hoa_id)

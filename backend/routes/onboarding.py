@@ -61,6 +61,9 @@ def _check_signup_rate_limit(request: Request) -> None:
     ip = _client_ip(request)
     now = datetime.utcnow()
     cutoff = now - _SIGNUP_WINDOW
+    # Evict idle IPs — empty lists otherwise accumulate for the process lifetime
+    for stale in [k for k, v in _signup_attempts.items() if not v or v[-1] < cutoff]:
+        del _signup_attempts[stale]
     attempts = [t for t in _signup_attempts[ip] if t > cutoff]
     if len(attempts) >= _SIGNUP_LIMIT:
         raise HTTPException(status_code=429, detail="Too many signup attempts. Please try again in an hour.")
