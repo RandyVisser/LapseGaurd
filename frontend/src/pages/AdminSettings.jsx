@@ -142,6 +142,10 @@ export default function AdminSettings() {
   }
 
   useEffect(() => {
+    // Previews embed the association's sender/contact — drop the cache on
+    // switch or the previous association's emails show under the new one
+    setEmailPreviews(null)
+    setPreviewKind(null)
     if (!hoaId || hoaId === ALL_HOAS) { setForm(null); setLoading(false); return }
     setLoading(true)
     apiGet('/hoas')

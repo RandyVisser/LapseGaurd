@@ -750,7 +750,17 @@ export default function AdminTenantDetail() {
     setPolicyForms(pf)
   }
 
+  // Review-queue Prev/Next changes tenantId WITHOUT remounting this component:
+  // track the live id so in-flight AI polls can bail, and reset the one-shot
+  // scroll refs so each unit gets its own first-visit behavior.
+  const currentTenantIdRef = useRef(String(tenantId))
   useEffect(() => {
+    currentTenantIdRef.current = String(tenantId)
+    scrolledToAddRef.current = false
+    // true = suppress the "just turned compliant" scroll until this unit's own
+    // status has synced (it re-syncs every render); null/false would fire the
+    // scroll on merely LANDING on a compliant unit via Prev/Next
+    wasCompliantRef.current = true
     apiGet(`/tenant/${tenantId}`).then(initFromTenant).catch(e => setError(e.message))
   }, [tenantId])
 
@@ -851,6 +861,11 @@ export default function AdminTenantDetail() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   async function handleRunAi(policyId) {
+    // The poll captures tenantId at call time; if the admin steps to another
+    // unit (review-queue Prev/Next keeps this component mounted) the stale
+    // loop must not write the OLD unit's data over the new one.
+    const polledTenantId = String(tenantId)
+    const stale = () => String(currentTenantIdRef.current) !== polledTenantId
     setRunningAiId(policyId); setError('')
     const beforeParsedAt = tenant.policies.find(p => p.id === policyId)?.parsed_at
     const beforeExt = tenant.policies.find(p => p.id === policyId)?.extracted_data || {}
@@ -858,7 +873,9 @@ export default function AdminTenantDetail() {
       await apiPost(`/policy/${policyId}/run-ai`, {})
       for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 3000))
-        const fresh = await apiGet(`/tenant/${tenantId}`)
+        if (stale()) return
+        const fresh = await apiGet(`/tenant/${polledTenantId}`)
+        if (stale()) return
         const updated = fresh.policies.find(p => p.id === policyId)
         if (updated?.parsed_at !== beforeParsedAt) {
           // Compute which fields changed

@@ -444,11 +444,14 @@ function RowActionsMenu({ items }) {
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
+    const onKey = e => { if (e.key === 'Escape') setOpen(false) }
     window.addEventListener('scroll', close, true)
     window.addEventListener('resize', close)
+    window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('scroll', close, true)
       window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', onKey)
     }
   }, [open])
 
@@ -462,7 +465,10 @@ function RowActionsMenu({ items }) {
       const top = (r.bottom + menuHeight > window.innerHeight - 8)
         ? Math.max(8, r.top - menuHeight - 4)
         : r.bottom + 4
-      setPos({ top, left: Math.max(8, r.right - 176) })
+      // Clamp both edges — long labels can push the 180px-min menu past the
+      // right edge on narrow screens
+      const left = Math.min(Math.max(8, r.right - 176), window.innerWidth - 188)
+      setPos({ top, left })
     }
     setOpen(o => !o)
   }
@@ -813,6 +819,11 @@ export default function AdminDashboard() {
   const [pmInviteEmail, setPmInviteEmail] = useState('')
   const [invitingPmLogin, setInvitingPmLogin] = useState(false)
   const [inviteAllMsg, setInviteAllMsg] = useState('')
+  // Latest auto-clear timer for inviteAllMsg — cancelled on each new message so
+  // an earlier action's timer can't wipe a later message mid-display
+  const inviteAllMsgTimerRef = useRef(null)
+  // In-flight tenant-creation guard (fast double-click on a Missing row)
+  const creatingTenantRef = useRef(null)
   const [exporting, setExporting] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
 
@@ -903,10 +914,14 @@ export default function AdminDashboard() {
     } catch { /* storage blocked — queue is a nicety, keep navigating */ }
     if (u.tenant_id) { navigate(`/admin/tenant/${u.tenant_id}`); return }
     if (u.status === 'missing') {
+      // Guard against a fast double-click firing two tenant-creation POSTs
+      if (creatingTenantRef.current === u.unit_id) return
+      creatingTenantRef.current = u.unit_id
       try {
         const res = await apiPost(`/unit/${u.unit_id}/tenant`, {})
         navigate(`/admin/tenant/${res.id}`)
       } catch (err) { setError(err.message) }
+      finally { creatingTenantRef.current = null }
     }
   }
 
@@ -1046,10 +1061,12 @@ export default function AdminDashboard() {
     setInviting(true)
     try {
       await apiPost(`/unit/${inviteUnit}/invite`, { email: inviteEmail })
-      setInviteSuccess(inviteUnit + '-' + inviteType)
+      const token = inviteUnit + '-' + inviteType
+      setInviteSuccess(token)
       setInviteUnit(null)
       setInviteEmail('')
-      setTimeout(() => setInviteSuccess(null), 4000)
+      // Only clear if a later invite hasn't replaced the badge in the meantime
+      setTimeout(() => setInviteSuccess(s => (s === token ? null : s)), 4000)
     } catch (err) { setError(err.message) }
     finally { setInviting(false) }
   }
@@ -1061,7 +1078,7 @@ export default function AdminDashboard() {
     try {
       await apiPost(`/tenant/${tenantId}/notify`, {})
       setNotifySuccess(tenantId)
-      setTimeout(() => setNotifySuccess(null), 3000)
+      setTimeout(() => setNotifySuccess(s => (s === tenantId ? null : s)), 3000)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -1124,7 +1141,8 @@ export default function AdminDashboard() {
       setInviteAllMsg(parts.join(' · '))
       const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
       setSummary(s); setUnits(u)
-      setTimeout(() => setInviteAllMsg(''), 8000)
+      clearTimeout(inviteAllMsgTimerRef.current)
+      inviteAllMsgTimerRef.current = setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingAll(false) }
   }
@@ -1172,7 +1190,8 @@ export default function AdminDashboard() {
         ? `Property manager invited — ${r.email} already has an account, so they just accept & agree to the terms (no new password).`
         : `Property manager invited — set-up email sent to ${r.email}.`)
       refreshDashboard()  // so the PM's status badge reflects the invite
-      setTimeout(() => setInviteAllMsg(''), 8000)
+      clearTimeout(inviteAllMsgTimerRef.current)
+      inviteAllMsgTimerRef.current = setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingPmLogin(false) }
   }
@@ -1202,7 +1221,8 @@ export default function AdminDashboard() {
       }
       setInviteAdminOpen(false)
       refreshDashboard()
-      setTimeout(() => setInviteAllMsg(''), 8000)
+      clearTimeout(inviteAllMsgTimerRef.current)
+      inviteAllMsgTimerRef.current = setTimeout(() => setInviteAllMsg(''), 8000)
     } catch (e) { setError(e.message) }
     finally { setInvitingAdmin(false) }
   }
@@ -2275,7 +2295,9 @@ export default function AdminDashboard() {
             <thead className="bg-[#FAFBFD] border-b border-[#E8ECF2] sticky top-0 z-10">
               <tr>
                 {(() => {
-                  const filteredForHeader = units.filter(u => u.tenant_id && (u.assoc_title || '').trim().toLowerCase() !== 'property manager')
+                  // Select-all targets the VISIBLE (filtered/searched) rows — selecting
+                  // hidden owners would let "Notify Selected" email people never on screen.
+                  const filteredForHeader = filteredUnits.filter(u => u.tenant_id && (u.assoc_title || '').trim().toLowerCase() !== 'property manager')
                   const allSelected = filteredForHeader.length > 0 && filteredForHeader.every(u => selectedTenantIds.has(String(u.tenant_id)))
                   return (
                     <th className="px-4 py-3 w-8">
