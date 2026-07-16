@@ -27,8 +27,38 @@ logger = logging.getLogger(__name__)
 # endpoint can't be used to write arbitrary rows.
 _ALLOWED = {
     "landing_view", "pricing_view", "signup_started", "signup_completed",
-    "invite_accepted", "owner_upload",
+    "invite_accepted", "owner_upload", "demo_click", "tour_play",
 }
+
+# Crawler/scripted traffic is dropped at ingest — a public beacon otherwise
+# counts every bot hit as a "visit". Substring match on the lowercased UA.
+_BOT_MARKERS = (
+    "bot", "crawler", "spider", "scrape", "headless", "phantom", "slurp",
+    "python", "curl", "wget", "httpx", "go-http", "node-fetch", "axios",
+    "lighthouse", "pingdom", "uptime", "monitor", "preview", "facebookexternalhit",
+)
+
+
+def _classify_ua(ua: str):
+    """None = bot/scripted (drop the event). Otherwise coarse (device, browser)
+    buckets; the raw UA is classified and DISCARDED, never stored."""
+    low = (ua or "").lower()
+    if not low or any(m in low for m in _BOT_MARKERS):
+        return None
+    device = "mobile" if any(m in low for m in ("mobi", "android", "iphone", "ipad")) else "desktop"
+    if "edg/" in low:
+        browser = "edge"
+    elif "opr/" in low or "opera" in low:
+        browser = "opera"
+    elif "firefox/" in low or "fxios/" in low:
+        browser = "firefox"
+    elif "chrome/" in low or "crios/" in low:
+        browser = "chrome"
+    elif "safari/" in low:
+        browser = "safari"
+    else:
+        browser = "other"
+    return device, browser
 
 # The ordered conversion funnel shown in the super-user card.
 _FUNNEL = [
@@ -40,6 +70,11 @@ _FUNNEL = [
 _EXTRA = [
     ("invite_accepted", "Owners accepted invite"),
     ("owner_upload", "Dec pages uploaded"),
+]
+# Prospect-engagement beacons shown above the owner-activation extras.
+_ENGAGEMENT = [
+    ("demo_click", "Demo clicks"),
+    ("tour_play", "Tour plays"),
 ]
 
 # Internal/founder/test accounts excluded from the invited/activated counts.
@@ -87,13 +122,17 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
     without a preflight). Best-effort: a visitor's page must never break."""
     if not _rate_ok(request):
         return Response(status_code=204)
+    classified = _classify_ua(request.headers.get("user-agent", ""))
+    if classified is None:  # bots/scripts never insert a row
+        return Response(status_code=204)
+    device, browser = classified
     try:
         payload = json.loads(await request.body() or b"{}")
         name = (payload.get("name") or "").strip()
         if name in _ALLOWED:
             await conn.execute(
-                """INSERT INTO events (name, path, session_id, utm, referrer)
-                   VALUES ($1, $2, $3, $4, $5)""",
+                """INSERT INTO events (name, path, session_id, utm, referrer, device, browser)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)""",
                 name,
                 (payload.get("path") or "")[:200] or None,
                 (payload.get("session_id") or "")[:64] or None,
@@ -101,6 +140,7 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
                 # filtered) — outbound attribution, still no IP/UA/PII.
                 (payload.get("utm") or "")[:200] or None,
                 (payload.get("referrer") or "")[:200] or None,
+                device, browser,
             )
     except Exception:
         logger.debug("dropped malformed analytics event", exc_info=True)
@@ -162,6 +202,21 @@ async def funnel(
         days,
     )
 
+    # What visitors browse on — coarse buckets derived at ingest (raw UA never
+    # stored). Rows from before migration 043 have NULL device → 'unknown'.
+    device_rows = await conn.fetch(
+        """SELECT CASE WHEN device IS NULL THEN 'unknown'
+                       ELSE device || ' · ' || coalesce(browser, 'other') END AS device,
+                  count(distinct coalesce(session_id, id::text)) AS sessions
+           FROM events
+           WHERE name = 'landing_view'
+             AND created_at > now() - make_interval(days => $1)
+           GROUP BY 1
+           ORDER BY sessions DESC
+           LIMIT 10""",
+        days,
+    )
+
     # Per-day breakdown of the same trackers. Days are Eastern-time calendar
     # days (the audience is Florida) — with a rolling now()-N window, every
     # listed day is fully covered. Distinct sessions are counted per day, so a
@@ -207,7 +262,8 @@ async def funnel(
         for i in range(days)
     ]
 
-    extra = [{"name": "owners_invited", "label": "Owners invited", "count": owners_invited}]
+    extra = [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _ENGAGEMENT]
+    extra.append({"name": "owners_invited", "label": "Owners invited", "count": owners_invited})
     extra += [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
     extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
     return {
@@ -215,5 +271,6 @@ async def funnel(
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
         "extra": extra,
         "sources": [{"source": r["source"], "sessions": r["sessions"]} for r in source_rows],
+        "devices": [{"device": r["device"], "sessions": r["sessions"]} for r in device_rows],
         "daily": daily,
     }

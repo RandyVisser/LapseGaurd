@@ -12,6 +12,7 @@ const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/obje
 // "Start free" + "Book a demo" CTAs.
 export default function VistaRoyale() {
   const [tourOpen, setTourOpen] = useState(false)
+  const openTour = () => { track('tour_play'); setTourOpen(true) }
   useEffect(() => track('vista_royale_view'), [])
 
   // Postalytics page-click tracking. Reads the _bn_d token Postalytics appends
@@ -86,8 +87,8 @@ export default function VistaRoyale() {
             </p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
-              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
-              <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)}>
+              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
+              <button type="button" className="btn btn-ghost" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
             </div>
@@ -144,8 +145,8 @@ export default function VistaRoyale() {
           <p>Set up your association in minutes. 90 days free — no credit card required.</p>
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Start free</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
-            <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)}>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
+            <button type="button" className="btn btn-ghost" onClick={openTour}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
             </button>
           </div>

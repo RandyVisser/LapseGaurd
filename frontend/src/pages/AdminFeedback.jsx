@@ -21,6 +21,8 @@ const DAILY_COLS = [
   ['invite_accepted', 'Accepted'],
   ['owner_upload', 'Uploads'],
   ['staff_activated', 'Staff'],
+  ['demo_click', 'Demo'],
+  ['tour_play', 'Tour'],
 ]
 
 function fmtDay(iso) {
@@ -131,6 +133,19 @@ function FunnelCard() {
                   <div key={s.source} className="flex items-center justify-between gap-3">
                     <span className="text-xs text-[#54627A] truncate">{s.source}</span>
                     <span className="text-xs font-semibold text-[#0B1B33] flex-shrink-0">{s.sessions}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {data.devices?.length > 0 && (
+            <div className="pt-3 mt-1 border-t border-[#E8ECF2]">
+              <p className="text-xs text-[#8493A8] mb-1.5">What they browse on</p>
+              <div className="space-y-1">
+                {data.devices.map(d => (
+                  <div key={d.device} className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-[#54627A] truncate">{d.device}</span>
+                    <span className="text-xs font-semibold text-[#0B1B33] flex-shrink-0">{d.sessions}</span>
                   </div>
                 ))}
               </div>

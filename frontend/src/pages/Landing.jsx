@@ -12,6 +12,7 @@ const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || 'docs@condo.insure'
 export default function Landing() {
   const rootRef = useRef(null)
   const [tourOpen, setTourOpen] = useState(false)
+  const openTour = () => { track('tour_play'); setTourOpen(true) }
 
   // Deep-link scroll: when arriving at /#features, /#how, /#pricing (e.g. from
   // the Vista Royale page or the /pricing redirect), the browser can't scroll to
@@ -149,6 +150,17 @@ export default function Landing() {
       tio.observe(tsec); observers.push(tio)
     } else if (cur === 0) resolveTabBoard()
 
+    // Funnel: the /pricing page is gone, so pricing_view fires here — once,
+    // when the landing #pricing section scrolls into view. Deliberately
+    // OUTSIDE the reduced-motion guard: it's measurement, not animation.
+    const pricingSec = root.querySelector('#pricing')
+    if ('IntersectionObserver' in window && pricingSec) {
+      const pio = new IntersectionObserver((e) => {
+        if (e.some((x) => x.isIntersecting)) { track('pricing_view'); pio.disconnect() }
+      }, { threshold: 0.3 })
+      pio.observe(pricingSec); observers.push(pio)
+    }
+
     if (!reduce) {
       const loop = (now) => {
         if (!paused) {
@@ -198,8 +210,8 @@ export default function Landing() {
             <p className="lede">Track every owner’s insurance in one dashboard. Declaration pages are reviewed automatically, compliance is verified, and renewal reminders are sent before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Start free</Link>
-              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer">Book a demo</a>
-              <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)}>
+              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
+              <button type="button" className="btn btn-ghost" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
             </div>
@@ -485,8 +497,8 @@ export default function Landing() {
           <p>Set up your association in minutes. No credit card required.</p>
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Start free</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
-            <button type="button" className="btn btn-ghost" onClick={() => setTourOpen(true)} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+            <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
             </button>
           </div>
