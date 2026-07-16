@@ -157,6 +157,15 @@ async def update_unit_owner(
     if (unit["assoc_title"] or "").strip().lower() in ("admin", "property manager"):
         await sync_admin_email_change(conn, str(unit["hoa_id"]), unit["old_email_primary"], email_primary, background_tasks)
 
+    # Snapshot pending invites BEFORE the stale-invite cleanup below — the
+    # auto re-invite check needs to know whether an invite was in flight to
+    # the old (possibly bouncing) address.
+    pending_invites = {
+        r["email"] for r in await conn.fetch(
+            "SELECT lower(email) AS email FROM unit_invites WHERE unit_id = $1 AND accepted_at IS NULL",
+            unit_id)
+    }
+
     # If the owner was replaced (email no longer matches), a still-pending invite
     # to the prior owner is stale — drop it so the unit stops showing "Invite
     # Sent" for someone who's no longer the owner. A plain typo fix (same email)
@@ -169,7 +178,35 @@ async def update_unit_owner(
         unit_id,
         current_emails,
     )
-    return {"updated": True}
+
+    # Auto re-invite: the admin just corrected a BOUNCING address that had a
+    # pending invite — re-send to the new address now instead of waiting for
+    # the admin to remember. Owner rows only (staff logins sync above via
+    # sync_admin_email_change); skipped when the new address is a placeholder
+    # or itself bouncing. Best-effort: a send failure never fails the edit.
+    reinvited: list[str] = []
+    if (unit["assoc_title"] or "").strip().lower() not in ("admin", "property manager"):
+        from routes.tenants import InviteRequest, invite_tenant  # local: avoids an import cycle
+
+        async def _bounced(addr: str) -> bool:
+            return bool(await conn.fetchval(
+                "SELECT 1 FROM email_bounces WHERE lower(email) = lower($1)", addr))
+
+        for old, new in ((unit["old_email_primary"], email_primary),
+                         (unit["old_email_secondary"], email_secondary)):
+            if not old or not new or old.lower() == new.lower():
+                continue
+            if old.lower() not in pending_invites or not await _bounced(old):
+                continue
+            if new.lower().endswith("@condo.insure") or await _bounced(new):
+                continue
+            try:
+                await invite_tenant(unit_id, InviteRequest(email=new), user=user, conn=conn)
+                reinvited.append(new)
+            except Exception:
+                logger.warning("auto re-invite failed for unit %s", unit_id, exc_info=True)
+
+    return {"updated": True, "reinvited": reinvited}
 
 
 class NewOwnerUpdate(BaseModel):

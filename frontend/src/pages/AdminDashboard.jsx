@@ -1005,8 +1005,13 @@ export default function AdminDashboard() {
     e.preventDefault()
     setSavingOwner(true)
     try {
-      await apiPatch(`/unit/${editUnit.unit_id}/owner`, editForm)
+      const res = await apiPatch(`/unit/${editUnit.unit_id}/owner`, editForm)
       setUnits(prev => prev.map(u => u.unit_id === editUnit.unit_id ? { ...u, ...editForm } : u))
+      // Corrected a bouncing address that had an invite in flight → the backend
+      // re-sent the invite automatically; tell the admin an email just went out.
+      if (res?.reinvited?.length) {
+        window.alert(`Invite re-sent automatically to ${res.reinvited.join(' and ')}.`)
+      }
       // Refresh totals: a board-title change affects Board Members, and an email
       // change can clear a stale invite (Invite Sent count + row badge). Works in
       // both single-HOA and All Associations views.
