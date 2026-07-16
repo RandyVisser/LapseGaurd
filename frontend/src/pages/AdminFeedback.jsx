@@ -11,20 +11,83 @@ const TYPE_META = {
 
 // Signup funnel — super-user only. Hides itself if analytics isn't reachable so
 // it can never break the feedback page.
+const MONO = '"JetBrains Mono", monospace'
+const DAILY_COLS = [
+  ['landing_view', 'Visits'],
+  ['pricing_view', 'Pricing'],
+  ['signup_started', 'Started'],
+  ['signup_completed', 'Signed up'],
+  ['owners_invited', 'Invited'],
+  ['invite_accepted', 'Accepted'],
+  ['owner_upload', 'Uploads'],
+  ['staff_activated', 'Staff'],
+]
+
+function fmtDay(iso) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric',
+  })
+}
+
 function FunnelCard() {
   const [data, setData] = useState(null)
   const [failed, setFailed] = useState(false)
+  const [view, setView] = useState('totals') // totals | daily
   useEffect(() => { apiGet('/analytics/funnel?days=7').then(setData).catch(() => setFailed(true)) }, [])
   if (failed) return null
   const top = data?.funnel?.[0]?.count || 0
   return (
     <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-5 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <p className="font-semibold text-[#0B1B33]">Signup funnel</p>
-        <span className="text-xs text-[#8493A8]">last 7 days</span>
+        <div className="flex items-center gap-2.5">
+          <p className="font-semibold text-[#0B1B33]">Signup funnel</p>
+          <span className="text-xs text-[#8493A8]">last 7 days</span>
+        </div>
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+          {[['totals', 'Totals'], ['daily', 'Per day']].map(([v, label]) => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-2.5 py-0.5 rounded-md text-xs font-medium ${view === v ? 'bg-white text-[#0B1B33] shadow-sm' : 'text-[#54627A]'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {!data ? (
         <div className="h-24 bg-slate-50 rounded animate-pulse" />
+      ) : view === 'daily' ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[#8493A8]">
+                <th className="text-left font-medium py-1 pr-2">Day</th>
+                {DAILY_COLS.map(([k, label]) => (
+                  <th key={k} className="text-right font-medium py-1 px-1.5 whitespace-nowrap">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(data.daily || []).map(d => (
+                <tr key={d.day} className="border-t border-[#F1F4F9]">
+                  <td className="py-1.5 pr-2 text-[#54627A] whitespace-nowrap">{fmtDay(d.day)}</td>
+                  {DAILY_COLS.map(([k]) => {
+                    const n = d.counts?.[k] || 0
+                    return (
+                      <td key={k} style={{ fontFamily: MONO }}
+                        className={`py-1.5 px-1.5 text-right ${n ? 'font-semibold text-[#0B1B33]' : 'text-[#C6CFDC]'}`}>
+                        {n || '·'}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+              {!(data.daily || []).length && (
+                <tr><td colSpan={DAILY_COLS.length + 1} className="py-3 text-[#8493A8]">
+                  Per-day data needs the latest backend — redeploy and reload.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="space-y-2">
           {data.funnel.map(s => {

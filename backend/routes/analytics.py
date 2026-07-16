@@ -162,6 +162,51 @@ async def funnel(
         days,
     )
 
+    # Per-day breakdown of the same trackers. Days are Eastern-time calendar
+    # days (the audience is Florida) — with a rolling now()-N window, every
+    # listed day is fully covered. Distinct sessions are counted per day, so a
+    # session spanning midnight appears on both days and the column may sum
+    # higher than the whole-window funnel count.
+    daily_event_rows = await conn.fetch(
+        """SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, name,
+                  count(distinct coalesce(session_id, id::text)) AS n
+           FROM events
+           WHERE created_at > now() - make_interval(days => $1)
+           GROUP BY 1, 2""",
+        days,
+    )
+    daily_invited_rows = await conn.fetch(
+        f"""SELECT (coalesce(last_sent_at, created_at) AT TIME ZONE 'America/New_York')::date AS day,
+                   count(*) AS n
+           FROM unit_invites
+           WHERE coalesce(last_sent_at, created_at) > now() - make_interval(days => $1)
+             AND {_NOT_INTERNAL_SQL}
+           GROUP BY 1""",
+        days, _INTERNAL_EMAILS,
+    )
+    daily_staff_rows = await conn.fetch(
+        f"""SELECT (accepted_at AT TIME ZONE 'America/New_York')::date AS day, count(*) AS n
+           FROM admin_invites
+           WHERE accepted_at > now() - make_interval(days => $1)
+             AND {_NOT_INTERNAL_SQL}
+           GROUP BY 1""",
+        days, _INTERNAL_EMAILS,
+    )
+    by_day: dict = defaultdict(dict)
+    for r in daily_event_rows:
+        by_day[r["day"]][r["name"]] = r["n"]
+    for r in daily_invited_rows:
+        by_day[r["day"]]["owners_invited"] = r["n"]
+    for r in daily_staff_rows:
+        by_day[r["day"]]["staff_activated"] = r["n"]
+    # "Today" comes from Postgres so it always agrees with the day-grouping above.
+    today = await conn.fetchval("SELECT (now() AT TIME ZONE 'America/New_York')::date")
+    daily = [
+        {"day": (today - timedelta(days=i)).isoformat(),
+         "counts": by_day.get(today - timedelta(days=i), {})}
+        for i in range(days)
+    ]
+
     extra = [{"name": "owners_invited", "label": "Owners invited", "count": owners_invited}]
     extra += [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
     extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
@@ -170,4 +215,5 @@ async def funnel(
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
         "extra": extra,
         "sources": [{"source": r["source"], "sessions": r["sessions"]} for r in source_rows],
+        "daily": daily,
     }
