@@ -23,6 +23,7 @@ const DAILY_GROUPS = [
     ['signup_completed', 'Signed up'],
     ['demo_click', 'Demo'],
     ['tour_play', 'Tour'],
+    ['vista_royale_view', 'VR'],
   ]],
   ['Activation', [
     ['owners_invited', 'Invited'],
@@ -32,7 +33,7 @@ const DAILY_GROUPS = [
   ]],
 ]
 
-const ENGAGEMENT = new Set(['demo_click', 'tour_play'])
+const ENGAGEMENT = new Set(['demo_click', 'tour_play', 'vista_royale_view'])
 
 function fmtDay(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {

@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 _ALLOWED = {
     "landing_view", "pricing_view", "signup_started", "signup_completed",
     "invite_accepted", "owner_upload", "demo_click", "tour_play",
+    "vista_royale_view",
 }
 
 # Crawler/scripted traffic is dropped at ingest — a public beacon otherwise
@@ -72,9 +73,12 @@ _EXTRA = [
     ("owner_upload", "Dec pages uploaded"),
 ]
 # Prospect-engagement beacons shown above the owner-activation extras.
+# vista_royale_view is the targeted-mailer landing page — its own counter
+# because that campaign is tracked by destination page, not utm tag.
 _ENGAGEMENT = [
     ("demo_click", "Demo clicks"),
     ("tour_play", "Tour plays"),
+    ("vista_royale_view", "Vista Royale visits"),
 ]
 
 # Internal/founder/test accounts excluded from the invited/activated counts.
