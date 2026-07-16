@@ -64,7 +64,7 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 - [ ] **Drop legacy tables** (S) — `property_manager_hoas` + `pm_billing`.
       Data-completeness verification DONE 2026-07-15 (every legacy row is
       covered by `pm_firm_*`, `pm_billing` is empty) — just needs the
-      go-ahead on timing.
+      go-ahead on timing. (Randy 2026-07-16: hold for now.)
 - [x] **Pricing page restyle** — stale item: the landing redesign shipped
       2026-06-30, its `#pricing` section is canonical, and `/pricing` now
       redirects there (old `Pricing.jsx` route is gone). Delete this line
@@ -83,9 +83,10 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 
 ## Small follow-ups from the 2026-07-14/15 audits
 
-- [ ] **Auto re-invite on bounced-email fix** (S–M) — admin corrects a bounced
-      address; system re-sends the invite instead of waiting for the admin to
-      remember. (Sends email — needs OK.)
+- [x] **Auto re-invite on bounced-email fix** — shipped 2026-07-16 (Randy OK'd):
+      correcting a bouncing address that had a pending invite re-sends it to
+      the new address automatically (owner rows only, placeholder/bouncing new
+      addresses skipped). E2E-tested on Sandbox.
 - [ ] **Alert links for account-less owners** (M) — renewal/lapse emails link
       to /tenant/dashboard, a login wall for owners who never signed up; link
       a /join/{token} upload page instead. (Touches alert emails — needs OK.)
@@ -98,7 +99,7 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
       pm_firms; firms from the 07-14→07-16 window legitimately have NULLs.
 - [ ] **Supabase Auth: enable leaked-password protection** — one toggle in the
       Supabase dashboard (advisor WARN; can't be set via SQL).
-- [ ] **Firm-dashboard "needs attention" deep-link** — clicking the count
-      filters to Needs Attention only (no combined lapsed+missing filter
-      exists), so the number can exceed the filtered rows. Product call:
-      combined filter vs relabel.
+- [x] **Firm-dashboard "needs attention" deep-link** — shipped 2026-07-16
+      (Randy chose combined filter): new 'attention' filter covers
+      lapsed+non_compliant+missing exactly, the deep link lands on it, and
+      the action strip's header toggles it.
