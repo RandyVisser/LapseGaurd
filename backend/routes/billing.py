@@ -93,9 +93,9 @@ async def _billable_units(conn: asyncpg.Connection, hoa_id: str) -> int:
 def _volume_monthly_cents(units: int) -> int:
     """VOLUME pricing (since 2026-07-12): every unit is billed at the rate of
     the tier the TOTAL lands in — ≤750 @ $1.00, 751–10,000 @ $0.50, 10,000+ @
-    $0.25, $50/mo minimum. Mirror of the Stripe volume price AND
-    frontend/src/pricing.js — the three must agree. (In Stripe: volume tiers
-    with the minimum modeled as a $50 flat fee on the 1–50 tier.)"""
+    $0.25, $50/mo minimum. Mirror of the Stripe volume price AND the landing
+    #pricing copy — the three must agree. (In Stripe: volume tiers with the
+    minimum modeled as a $50 flat fee on the 1–50 tier.)"""
     if units <= 0:
         return 0
     rate = 100 if units <= 750 else 50 if units <= 10000 else 25

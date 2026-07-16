@@ -31,8 +31,10 @@ views.
 
 - Every new `VITE_*` var must be declared ARG+ENV in `Dockerfile.prod` or
   Railway silently drops it from the build (env is baked at build time).
-- `src/pricing.js` mirrors backend `_volume_monthly_cents` and the live
-  Stripe Price — the three change together or invoices diverge from the UI.
+- The landing `#pricing` section's static tier copy mirrors backend
+  `_volume_monthly_cents` and the live Stripe Price — the three change
+  together or invoices diverge from the UI (`src/pricing.js` is gone,
+  deleted 2026-07-12; billing panels read backend-computed rates).
 - `landing.css` is fully scoped under `.lp`; `.reveal` elements are opacity:0
   until an IntersectionObserver adds `.in` — reusing landing classes on a new
   page without wiring the observer renders invisible sections (bit us on

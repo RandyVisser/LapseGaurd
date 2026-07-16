@@ -78,7 +78,6 @@ frontend/src/
   App.jsx              # Routes
   context/AuthContext.jsx  # Session, role, hoaId selection model (see frontend/CLAUDE.md)
   supabase.js          # supabase client, apiGet/apiPost/... helpers
-  pricing.js           # volume pricing math — mirrors backend + Stripe (change together)
   pages/
     Landing.jsx        # Marketing page (/) — pricing section is canonical (/pricing retired)
     Login.jsx / Signup.jsx / ForgotPassword.jsx / ResetPassword.jsx
@@ -155,10 +154,10 @@ Backend (Railway):
 - `RENTALS_ENABLED` / `BILLING_ENABLED` — **both "true" in prod** (billing
   E2E-verified: per-HOA 2026-07-08, firm-consolidated 2026-07-12)
 - Stripe: `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID`
-- [CONFIRM] `STRIPE_PRICE_ID` must point at a VOLUME-tier Price (1–50 flat $50 /
-  51–750 $1 / 751–10k $0.50 / 10k+ $0.25 per unit). Code switched to volume
-  pricing 2026-07-12; Troy owns creating the Price + updating the env var —
-  until then displayed prices and Stripe charges disagree.
+- `STRIPE_PRICE_ID` — the VOLUME-tier Price (1–50 flat $50 / 51–750 $1 /
+  751–10k $0.50 / 10k+ $0.25 per unit). Swapped 2026-07-16: tiers verified
+  against the live Stripe API; the old graduated Price is archived and its
+  only subscription (the 07-08 test) was already canceled.
 
 Frontend (Railway, baked at build time via Vite):
 - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`

@@ -21,9 +21,11 @@ pm_firms, never a join key (license numbers get typo'd and reissued).
 ## Billing invariants
 
 - **Volume pricing lives in THREE places that must agree**:
-  `_volume_monthly_cents` here, `frontend/src/pricing.js`, and the live
-  Stripe Price. Change all or none. The 750→751 price cliff is known and
-  accepted ("simplicity sells").
+  `_volume_monthly_cents` here, the live Stripe Price (volume tiers, swapped
+  + verified 2026-07-16), and the static landing `#pricing` copy in
+  `Landing.jsx` (`pricing.js` was deleted 2026-07-12; billing panels read
+  backend-computed rates). Change all or none. The 750→751 price cliff is
+  known and accepted ("simplicity sells").
 - Groups/assignments must NEVER affect billing — billing reads `pm_firm_hoas`
   only.
 - Pass-through (`billing_mode='association'`): each HOA subscribes itself at
