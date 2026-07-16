@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { track } from '../analytics'
+import { track, loadRb2b } from '../analytics'
 import './landing.css'
 
 const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4'
@@ -36,6 +36,7 @@ export default function Landing() {
 
   useEffect(() => {
     track('landing_view')
+    loadRb2b()
     const root = rootRef.current
     if (!root) return
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -149,6 +150,28 @@ export default function Landing() {
       const tio = new IntersectionObserver((e) => { if (e[0].isIntersecting) { if (cur === 0) resolveTabBoard(); tio.disconnect() } }, { threshold: 0.3 })
       tio.observe(tsec); observers.push(tio)
     } else if (cur === 0) resolveTabBoard()
+
+    // Section-reached beacons — the "where do we lose people" depth funnel.
+    // One event per section per pageload; low threshold because tall sections
+    // never reach high visibility fractions. Outside the reduced-motion guard:
+    // measurement, not animation.
+    const depthSections = [
+      ['.tabs-sec', 'section_features'],
+      ['.stakes', 'section_stakes'],
+      ['.how', 'section_how'],
+      ['.faq', 'section_faq'],
+      ['.cta', 'section_cta'],
+    ]
+    if ('IntersectionObserver' in window) {
+      for (const [sel, evName] of depthSections) {
+        const el = root.querySelector(sel)
+        if (!el) continue
+        const dio = new IntersectionObserver((es) => {
+          if (es.some((x) => x.isIntersecting)) { track(evName); dio.disconnect() }
+        }, { threshold: 0.15 })
+        dio.observe(el); observers.push(dio)
+      }
+    }
 
     // Funnel: the /pricing page is gone, so pricing_view fires here — once,
     // when the landing #pricing section scrolls into view. Deliberately

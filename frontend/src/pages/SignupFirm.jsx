@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { track } from '../analytics'
+import { track, getAttribution } from '../analytics'
 import usePageTitle from '../usePageTitle'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -59,6 +59,7 @@ export default function SignupFirm() {
           password: form.password,
           cab_number: form.cab_number || null,
           agree_tos: form.agree_tos,
+          attribution: getAttribution(),
         }),
       })
       if (!res.ok) {

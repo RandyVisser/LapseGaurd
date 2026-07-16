@@ -5,6 +5,7 @@ Public onboarding routes — no auth required.
   GET  /invite/{token}       — fetch invite info (for the join page)
   POST /invite/{token}       — tenant accepts invite, creates account
 """
+import json
 import os
 import secrets
 import uuid
@@ -40,6 +41,22 @@ STAFF_ALERT_EMAIL = os.environ.get("STAFF_ALERT_EMAIL", "support@condo.insure")
 # Bump when the Terms of Service change so the stored acceptance records which
 # version each user agreed to.
 TOS_VERSION = "2025-06-23"
+
+
+def _clean_attribution(raw: dict | None, email: str | None = None) -> str | None:
+    """Whitelist + truncate the client-supplied conversion attribution
+    (anonymous beacon session id, first-touch campaign tag, referrer) for the
+    signup_attribution jsonb column. For firm signups the account email rides
+    along so the funnel card can exclude internal signups (hoas already has
+    admin_email). Returns a JSON string, or None when there is nothing real."""
+    out = {}
+    for key, cap in (("session_id", 64), ("utm", 200), ("referrer", 200)):
+        v = (raw or {}).get(key)
+        if isinstance(v, str) and v.strip():
+            out[key] = v.strip()[:cap]
+    if out and email:
+        out["email"] = email.lower()[:200]
+    return json.dumps(out) if out else None
 
 
 def _client_ip(request: Request) -> str:
@@ -93,6 +110,8 @@ class AssociationSignup(BaseModel):
     ho6_policy_in_force_required: bool = True
     ho6_named_insured_match_required: bool = True
     ho6_property_address_match_required: bool = True
+    # Anonymous funnel attribution captured at conversion (sanitized server-side).
+    attribution: dict | None = None
 
 
 class InviteAccept(BaseModel):
@@ -401,15 +420,17 @@ async def signup_association(
                ho6_coverage_a_min, ho6_coverage_e_min,
                ho6_wind_required, ho6_additional_interest_required, ho6_policy_in_force_required,
                ho6_named_insured_match_required, ho6_property_address_match_required,
-               tos_accepted_at, tos_version, tos_accepted_ip, authorized_certified_at)
+               tos_accepted_at, tos_version, tos_accepted_ip, authorized_certified_at,
+               signup_attribution)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                   now(), $15, $16, CASE WHEN $17 THEN now() ELSE NULL END)""",
+                   now(), $15, $16, CASE WHEN $17 THEN now() ELSE NULL END, $18::jsonb)""",
         hoa_id, body.association_name, body.address, body.email, body.admin_name,
         body.unit_count, body.has_owner_emails,
         body.ho6_coverage_a_min, body.ho6_coverage_e_min, body.ho6_wind_required,
         body.ho6_additional_interest_required, body.ho6_policy_in_force_required,
         body.ho6_named_insured_match_required, body.ho6_property_address_match_required,
         TOS_VERSION, _client_ip(request), body.certify_authorized,
+        _clean_attribution(body.attribution),
     )
 
     # Only create a login when a password was supplied (future self-signup). The
@@ -448,6 +469,8 @@ class FirmSignup(BaseModel):
     password: str = Field(min_length=8, max_length=200)
     cab_number: str | None = Field(default=None, max_length=40)
     agree_tos: bool = False
+    # Anonymous funnel attribution captured at conversion (sanitized server-side).
+    attribution: dict | None = None
 
 
 @router.post("/onboard/firm", status_code=201)
@@ -492,9 +515,11 @@ async def signup_firm(
             # (true / 'firm'); is_owner mirrors role per the legacy-sync rule.
             # ToS acceptance is stamped server-side (now()), same as hoas.
             firm_id = await conn.fetchval(
-                """INSERT INTO pm_firms (name, cab_number, tos_accepted_at, tos_version, tos_accepted_ip)
-                   VALUES ($1, $2, now(), $3, $4) RETURNING id""",
+                """INSERT INTO pm_firms (name, cab_number, tos_accepted_at, tos_version,
+                       tos_accepted_ip, signup_attribution)
+                   VALUES ($1, $2, now(), $3, $4, $5::jsonb) RETURNING id""",
                 firm_name[:120], cab_number, TOS_VERSION, _client_ip(request),
+                _clean_attribution(body.attribution, email=body.email),
             )
             await conn.execute(
                 "INSERT INTO pm_firm_members (firm_id, supabase_user_id, is_owner, role) "

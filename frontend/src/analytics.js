@@ -99,6 +99,46 @@ function hasSession() {
   return false
 }
 
+// Conversion-time stitching: the signup pages attach this to the onboarding
+// POST so the new account row records which anonymous session (and first-touch
+// campaign tag) it came from. Internal/opted-out browsers contribute nothing.
+export function getAttribution() {
+  try {
+    if (selfExcluded()) return null
+    const out = {
+      session_id: sessionId(),
+      utm: utmFirstTouch(),
+      referrer: externalReferrer(),
+    }
+    return (out.session_id || out.utm || out.referrer) ? out : null
+  } catch {
+    return null
+  }
+}
+
+// RB2B reverse-IP visitor identification — the ONE third-party script we ship,
+// and only on marketing pages that call this. Loads solely when VITE_RB2B_ID
+// is set (unset the env var to kill it everywhere), and never for opted-out or
+// logged-in browsers. Loader mirrors RB2B's published snippet.
+export function loadRb2b() {
+  try {
+    const key = import.meta.env.VITE_RB2B_ID
+    if (!key || selfExcluded() || hasSession()) return
+    const reb2b = (window.reb2b = window.reb2b || [])
+    if (reb2b.invoked) return
+    reb2b.invoked = true
+    reb2b.methods = ['identify', 'collect']
+    reb2b.factory = function (method) {
+      return function (...args) { reb2b.push([method, ...args]); return reb2b }
+    }
+    for (const m of reb2b.methods) reb2b[m] = reb2b.factory(m)
+    const s = document.createElement('script')
+    s.async = true
+    s.src = `https://s3-us-west-2.amazonaws.com/b2bjsstore/b/${key}/${key}.js.gz`
+    document.head.appendChild(s)
+  } catch { /* analytics is best-effort; never break the page */ }
+}
+
 export function track(name) {
   try {
     if (selfExcluded()) return

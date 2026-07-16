@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { track } from '../analytics'
+import { track, loadRb2b } from '../analytics'
 import './landing.css'
 
 // Same Google Calendar booking link + 2-minute tour video the main landing uses.
@@ -13,7 +13,7 @@ const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/obje
 export default function VistaRoyale() {
   const [tourOpen, setTourOpen] = useState(false)
   const openTour = () => { track('tour_play'); setTourOpen(true) }
-  useEffect(() => track('vista_royale_view'), [])
+  useEffect(() => { track('vista_royale_view'); loadRb2b() }, [])
 
   // Postalytics page-click tracking. Reads the _bn_d token Postalytics appends
   // to the personalized postcard URL (or a cookie), exposes it as a global, then

@@ -25,7 +25,7 @@ function LegalShell({ title, updated, children }) {
 
 export function Privacy() {
   return (
-    <LegalShell title="Privacy Policy" updated="June 12, 2026">
+    <LegalShell title="Privacy Policy" updated="July 16, 2026">
       <section>
         <h2>What we collect</h2>
         <p>
@@ -54,6 +54,20 @@ export function Privacy() {
           Our infrastructure providers (Supabase for data hosting, Railway for application hosting,
           Resend for email, Anthropic for document processing) process data on our behalf under their
           respective terms.
+        </p>
+      </section>
+      <section>
+        <h2>Website analytics</h2>
+        <p>
+          Our public marketing pages use privacy-preserving, first-party analytics: a random
+          identifier stored in your browser lets us count unique visits, along with the page
+          path, coarse device type, and the campaign link that brought you here. We do not
+          store your IP address or full browser signature with these events. Marketing pages
+          may also use RB2B, a visitor-identification service that uses your IP address to
+          help us recognize the business or professional contact a visit may be associated
+          with; RB2B processes this data under its own privacy policy. Signed-in use of the
+          Platform is not tracked by these tools. To opt out of all visit tracking in your
+          browser, open any page with <code>?notrack=1</code> appended to the address.
         </p>
       </section>
       <section>

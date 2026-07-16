@@ -193,6 +193,22 @@ function FunnelCard() {
           </div>
           {top === 0 && <p className="text-xs text-[#8493A8] pt-2">No visits recorded in this window yet.</p>}
 
+          {top > 0 && (data.depth || []).length > 0 && (
+            <div className="pt-4 mt-4 border-t border-[#E8ECF2]">
+              <Eyebrow>Page depth — where visitors stop</Eyebrow>
+              <div className="space-y-2">
+                {data.depth.map((s, i) => {
+                  const prev = i > 0 ? data.depth[i - 1].count : 0
+                  return (
+                    <MeterRow key={s.name} label={s.label} count={s.count} max={data.depth[0]?.count || top}
+                      conv={i > 0 && prev > 0 ? Math.round((s.count / prev) * 100) : null}
+                      bar="bg-[#014AC5]" track="bg-[#E7EEFA]" />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {engagement.length > 0 && (
             <div className="flex gap-2 pt-4">
               {engagement.map(e => (
@@ -201,6 +217,27 @@ function FunnelCard() {
                   <span className="text-xs text-[#54627A]">{e.label}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {data.signups?.length > 0 && (
+            <div className="pt-4 mt-4 border-t border-[#E8ECF2]">
+              <Eyebrow>Signups — stitched to source</Eyebrow>
+              <div className="space-y-1.5">
+                {data.signups.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 flex-shrink-0 ${s.kind === 'firm' ? 'bg-[#E2E8F5] text-[#001842]' : 'bg-[#E7EEFA] text-[#014AC5]'}`}>
+                        {s.kind === 'firm' ? 'Firm' : 'Assoc'}
+                      </span>
+                      <span className="text-xs font-semibold text-[#0B1B33] truncate">{s.name}</span>
+                    </div>
+                    <span className="text-xs text-[#54627A] flex-shrink-0 truncate max-w-[55%] text-right" style={{ fontFamily: MONO }}>
+                      {s.source}{s.days_seen > 1 ? ` · ${s.days_seen} days on site` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

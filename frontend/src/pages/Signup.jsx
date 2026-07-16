@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { track } from '../analytics'
+import { track, getAttribution } from '../analytics'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -69,6 +69,7 @@ export default function Signup() {
           ho6_coverage_e_min: form.ho6_coverage_e_min ? Number(form.ho6_coverage_e_min) : null,
           unit_count: form.unit_count ? Number(form.unit_count) : null,
           has_owner_emails: form.has_owner_emails === 'yes' ? true : form.has_owner_emails === 'no' ? false : null,
+          attribution: getAttribution(),
         }),
       })
       if (!res.ok) {

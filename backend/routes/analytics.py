@@ -29,7 +29,20 @@ _ALLOWED = {
     "landing_view", "pricing_view", "signup_started", "signup_completed",
     "invite_accepted", "owner_upload", "demo_click", "tour_play",
     "vista_royale_view",
+    "section_features", "section_stakes", "section_how", "section_faq", "section_cta",
 }
+
+# Landing-page depth — how far down the page visitors get before leaving.
+# Order mirrors the page; pricing reuses the existing pricing_view beacon.
+_DEPTH = [
+    ("landing_view", "Arrived"),
+    ("section_features", "Features"),
+    ("section_stakes", "The stakes"),
+    ("section_how", "How it works"),
+    ("pricing_view", "Pricing"),
+    ("section_faq", "FAQ"),
+    ("section_cta", "Final CTA"),
+]
 
 # Crawler/scripted traffic is dropped at ingest — a public beacon otherwise
 # counts every bot hit as a "visit". Substring match on the lowercased UA.
@@ -266,6 +279,57 @@ async def funnel(
         for i in range(days)
     ]
 
+    # Conversion stitching: self-serve signups in the window, joined back to
+    # their anonymous funnel session (how many distinct days they visited
+    # before converting). Internal/sandbox signups excluded by email —
+    # hoas.admin_email, or the email stashed in the firm's attribution blob.
+    signup_rows = await conn.fetch(
+        """SELECT s.name, s.kind, s.created_at, s.attribution,
+                  ev.days_seen, ev.first_seen
+           FROM (
+             SELECT name, 'association' AS kind, created_at,
+                    signup_attribution AS attribution,
+                    lower(coalesce(admin_email, '')) AS email
+             FROM hoas
+             WHERE signup_attribution IS NOT NULL
+               AND created_at > now() - make_interval(days => $1)
+             UNION ALL
+             SELECT name, 'firm', created_at, signup_attribution,
+                    lower(coalesce(signup_attribution->>'email', ''))
+             FROM pm_firms
+             WHERE signup_attribution IS NOT NULL
+               AND created_at > now() - make_interval(days => $1)
+           ) s
+           LEFT JOIN LATERAL (
+             SELECT count(distinct (e.created_at AT TIME ZONE 'America/New_York')::date) AS days_seen,
+                    min(e.created_at) AS first_seen
+             FROM events e
+             WHERE e.session_id = s.attribution->>'session_id'
+           ) ev ON true
+           WHERE s.email = '' OR (s.email <> ALL($2::text[])
+                 AND s.email NOT LIKE 'sandbox-%'
+                 AND s.email NOT LIKE '%@mycondo.insure')
+           ORDER BY s.created_at DESC
+           LIMIT 20""",
+        days, _INTERNAL_EMAILS,
+    )
+
+    def _source_of(attr) -> str:
+        attr = json.loads(attr) if isinstance(attr, str) else (attr or {})
+        if attr.get("utm"):
+            return attr["utm"]
+        if attr.get("referrer"):
+            return "referral: " + attr["referrer"]
+        return "direct"
+
+    signups = [
+        {"name": r["name"], "kind": r["kind"], "source": _source_of(r["attribution"]),
+         "days_seen": r["days_seen"] or 0,
+         "first_seen": r["first_seen"].isoformat() if r["first_seen"] else None,
+         "created_at": r["created_at"].isoformat() if r["created_at"] else None}
+        for r in signup_rows
+    ]
+
     extra = [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _ENGAGEMENT]
     extra.append({"name": "owners_invited", "label": "Owners invited", "count": owners_invited})
     extra += [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _EXTRA]
@@ -273,6 +337,8 @@ async def funnel(
     return {
         "days": days,
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
+        "depth": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _DEPTH],
+        "signups": signups,
         "extra": extra,
         "sources": [{"source": r["source"], "sessions": r["sessions"]} for r in source_rows],
         "devices": [{"device": r["device"], "sessions": r["sessions"]} for r in device_rows],
