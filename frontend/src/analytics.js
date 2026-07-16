@@ -35,7 +35,7 @@ function selfExcluded() {
 // logged-OUT browsing stops counting as prospect traffic too. Called from
 // AuthContext whenever a session appears. Mirrors the backend's internal-email
 // exclusions (_INTERNAL_EMAILS in routes/analytics.py).
-const INTERNAL_DOMAINS = ['condo.insure', 'universalcondo.com']
+const INTERNAL_DOMAINS = ['condo.insure', 'universalcondo.com', 'mycondo.insure']
 const INTERNAL_GMAIL_INBOXES = ['troy.visser', 'randy.redfish'] // incl. +aliases
 
 export function excludeIfInternal(email) {

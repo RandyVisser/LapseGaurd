@@ -52,7 +52,10 @@ _INTERNAL_EMAILS = [
     "testadmin@condo.insure", "randy.redfish+pmtest@gmail.com",
 ]
 
-_NOT_INTERNAL_SQL = "lower(email) <> ALL($2::text[]) AND lower(email) NOT LIKE 'sandbox-%'"
+# mycondo.insure is Randy's lookalike test domain (e.g. randy@mycondo.insure,
+# used for self-serve firm-signup testing) — never a prospect.
+_NOT_INTERNAL_SQL = ("lower(email) <> ALL($2::text[]) AND lower(email) NOT LIKE 'sandbox-%' "
+                     "AND lower(email) NOT LIKE '%@mycondo.insure'")
 
 # In-memory per-IP rate limit so the public beacon can't bloat the table.
 _hits: dict[str, list[datetime]] = defaultdict(list)
