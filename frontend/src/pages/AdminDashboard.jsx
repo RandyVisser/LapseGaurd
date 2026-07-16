@@ -154,9 +154,18 @@ function ActionStrip({ summary, activeFilter, setActiveFilter }) {
   if (pills.length === 0) return null
   return (
     <div className="bg-[#FAEDD2] border border-[#F0DDAE] rounded-xl px-4 py-3 sm:px-5 flex items-center gap-2.5 flex-wrap mb-4">
-      <span className="text-[10.5px] font-bold uppercase text-[#946410] flex-shrink-0" style={{ fontFamily: MONO, letterSpacing: '.1em' }}>
+      {/* The header toggles the COMBINED filter (lapsed+non_compliant+missing) —
+          also what the firm dashboard's needs-attention deep link lands on. */}
+      <button
+        onClick={() => setActiveFilter(activeFilter === 'attention' ? 'all' : 'attention')}
+        title="Show every unit that needs attention (expired, flagged, or missing a policy)"
+        className={`text-[10.5px] font-bold uppercase text-[#946410] flex-shrink-0 rounded-md px-1.5 py-0.5 -mx-1.5 ${
+          activeFilter === 'attention' ? 'bg-white ring-1 ring-[#946410]/40' : 'hover:bg-white/60'
+        }`}
+        style={{ fontFamily: MONO, letterSpacing: '.1em' }}
+      >
         Needs attention
-      </span>
+      </button>
       {pills.map(p => (
         <button
           key={p.filter}
@@ -315,10 +324,10 @@ const GETTING_STARTED_DISMISSED_KEY = 'lapseguard.gettingStarted.dismissed.v1'
 // openUnit writes the review queue AdminTenantDetail steps through.
 const FILTER_INTENT_KEY = 'lapseguard.filterIntent'
 const REVIEW_QUEUE_KEY = 'lapseguard.reviewQueue'
-// Intent value → closest EXISTING table filter. There is no combined
-// lapsed+non_compliant+missing filter, so 'attention' maps to the
-// "Needs attention" pill (non_compliant) — the closest single one.
-const FILTER_INTENT_MAP = { attention: 'non_compliant', pending_review: 'pending_review', bounced: 'bounced' }
+// Intent value → table filter. 'attention' is the combined
+// lapsed+non_compliant+missing filter (matches the firm dashboard's
+// needs_attention count exactly; toggled by the action strip's header).
+const FILTER_INTENT_MAP = { attention: 'attention', pending_review: 'pending_review', bounced: 'bounced' }
 
 // First-run checklist for a brand-new association. Steps check themselves off
 // against live data; the panel disappears once everything is done (or dismissed).
@@ -1325,6 +1334,9 @@ export default function AdminDashboard() {
         else if (activeFilter === 'active') { if ((u.status !== 'active' && u.status !== 'expiring') || u.manually_approved || u.is_renter) return false }
         else if (activeFilter === 'manual') { if (!u.manually_approved || u.is_renter) return false }
         else if (activeFilter === 'approved') { if ((!u.manually_approved && u.status !== 'active' && u.status !== 'expiring') || u.is_renter) return false }
+        // 'attention' = the combined problem set: exactly what the firm
+        // dashboard's needs_attention count sums (lapsed+non_compliant+missing).
+        else if (activeFilter === 'attention') { if (!['lapsed', 'non_compliant', 'missing'].includes(u.status)) return false }
         else if (activeFilter === 'lapsed') { if (u.status !== 'lapsed') return false }
         else if (activeFilter === 'non_compliant') { if (u.status !== 'non_compliant') return false }
         else if (activeFilter === 'pending_review') { if (u.status !== 'pending_review') return false }
