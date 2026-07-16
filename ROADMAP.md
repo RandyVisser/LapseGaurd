@@ -54,7 +54,11 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
       first-touch utm/referrer stored per browser, carried on every beacon;
       funnel card shows a "Where visitors came from" breakdown. ⚠️ REMAINING
       ACTION: tag the Apollo/mailer links with `utm_source`/`utm_campaign`
-      (or short `src=`) params or nothing attributes.
+      (or short `src=`) params or nothing attributes. (2026-07-16: analytics
+      now also drops bot UAs, stores coarse device/browser buckets
+      (migration 043), counts demo_click/tour_play/vista_royale_view, and
+      the events table was cleared for a clean post-filter baseline —
+      attribution is first-touch, so tag links BEFORE sending.)
 - [ ] **Live card test: firm checkout** — dad is on it (his test firm, ~$0 now,
       trial carries into Stripe). Verify webhook fans "paid" to all its condos.
 - [ ] **Drop legacy tables** (S) — `property_manager_hoas` + `pm_billing`.
@@ -89,8 +93,9 @@ Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
       2026-07-15 but is fail-open and inert unless Resend's webhook payload
       carries an Authentication-Results header; capture one real inbound
       webhook body to confirm, and tighten if the data is there.
-- [ ] **Persist ToS acceptance for firm signups** (S) — required at signup,
-      not stored (no column yet).
+- [x] **Persist ToS acceptance for firm signups** — shipped 2026-07-16
+      (migration 044): /onboard/firm stamps tos_accepted_at/version/ip on
+      pm_firms; firms from the 07-14→07-16 window legitimately have NULLs.
 - [ ] **Supabase Auth: enable leaked-password protection** — one toggle in the
       Supabase dashboard (advisor WARN; can't be set via SQL).
 - [ ] **Firm-dashboard "needs attention" deep-link** — clicking the count
