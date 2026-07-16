@@ -490,9 +490,11 @@ async def signup_firm(
         async with conn.transaction():
             # open_visibility / billing_mode stay on their schema defaults
             # (true / 'firm'); is_owner mirrors role per the legacy-sync rule.
+            # ToS acceptance is stamped server-side (now()), same as hoas.
             firm_id = await conn.fetchval(
-                "INSERT INTO pm_firms (name, cab_number) VALUES ($1, $2) RETURNING id",
-                firm_name[:120], cab_number,
+                """INSERT INTO pm_firms (name, cab_number, tos_accepted_at, tos_version, tos_accepted_ip)
+                   VALUES ($1, $2, now(), $3, $4) RETURNING id""",
+                firm_name[:120], cab_number, TOS_VERSION, _client_ip(request),
             )
             await conn.execute(
                 "INSERT INTO pm_firm_members (firm_id, supabase_user_id, is_owner, role) "
