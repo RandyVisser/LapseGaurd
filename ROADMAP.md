@@ -4,7 +4,8 @@ Floating reminder list — knock these out as time allows. Check items off (or
 delete them) as they ship; add new ideas at the bottom of the right section.
 Effort tags are rough: (S) ≤ half day, (M) ~1 day, (L) multi-day.
 
-## PM-firm growth (north star — outbound campaign is live)
+## PM-firm growth (north star — outbound in prep: domain warming since
+07-08, Apollo not yet connected; no sends have gone out as of 07-18)
 
 - [x] **Firm self-serve onboarding** — shipped 2026-07-14: public firm signup
       at /signup/firm (POST /onboard/firm) + persona fork on /signup; a new
