@@ -243,6 +243,7 @@ export default function Landing() {
               <span><span className="chk">✓</span> Set up in minutes</span>
               <span><span className="chk">✓</span> Owners need no login</span>
               <span><span className="chk">✓</span> Built for Florida</span>
+              <span><span className="chk">✓</span> Built and delivered the same business day</span>
             </div>
           </div>
 
