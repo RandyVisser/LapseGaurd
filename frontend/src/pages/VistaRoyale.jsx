@@ -66,7 +66,7 @@ export default function VistaRoyale() {
             <a className="txt nav-section-link" href="/#how">How it works</a>
             <a className="txt nav-section-link" href="/#pricing">Pricing</a>
             <Link className="txt" to="/login">Sign in</Link>
-            <Link className="btn btn-primary" to="/signup">Start free</Link>
+            <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
           </nav>
         </div>
       </header>
@@ -86,9 +86,9 @@ export default function VistaRoyale() {
               Royale board always knows which units are covered, and which need follow-up.
             </p>
             <div className="hero-cta">
-              <Link className="btn btn-primary" to="/signup">Start free</Link>
+              <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
-              <button type="button" className="btn btn-ghost" onClick={openTour}>
+              <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
             </div>
@@ -144,7 +144,7 @@ export default function VistaRoyale() {
           <h2 className="display">Put all of Vista Royale on one dashboard.</h2>
           <p>Set up your association in minutes. 90 days free — no credit card required.</p>
           <div className="hero-cta">
-            <Link className="btn btn-light" to="/signup">Start free</Link>
+            <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
             <button type="button" className="btn btn-ghost" onClick={openTour}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
