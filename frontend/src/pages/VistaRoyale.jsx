@@ -146,7 +146,7 @@ export default function VistaRoyale() {
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
-            <button type="button" className="btn btn-ghost" onClick={openTour}>
+            <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
             </button>
           </div>
