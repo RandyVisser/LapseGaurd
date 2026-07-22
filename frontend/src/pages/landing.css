@@ -49,6 +49,8 @@ html{scroll-behavior:smooth}
 .lp .btn-secondary:hover{filter:brightness(1.06); transform:translateY(-1px)}
 .lp .btn-ghost{background:#fff; color:var(--navy); border-color:var(--line-2)}
 .lp .btn-ghost:hover{border-color:var(--navy); transform:translateY(-1px)}
+.lp .btn-tour{background:#fff; color:var(--navy); border-color:var(--navy)}
+.lp .btn-tour:hover{background:var(--navy); color:#fff; transform:translateY(-1px)}
 .lp .btn-light{background:#fff; color:var(--navy)} .lp .btn-light:hover{transform:translateY(-1px); box-shadow:var(--shadow-sm)}
 .lp .btn-block{width:100%}
 .lp .play{width:18px;height:18px;border-radius:50%;background:var(--green);display:inline-grid;place-items:center;flex:0 0 auto}

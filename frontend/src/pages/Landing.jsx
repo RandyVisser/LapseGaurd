@@ -234,7 +234,7 @@ export default function Landing() {
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
-              <button type="button" className="btn btn-ghost" onClick={openTour}>
+              <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
             </div>
