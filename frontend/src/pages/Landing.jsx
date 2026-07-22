@@ -230,7 +230,7 @@ export default function Landing() {
           <div>
             <span className="eyebrow">The compliance dashboard for condo &amp; HOA boards.</span>
             <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
-            <p className="lede">Track every owner’s insurance in one dashboard. Declaration pages are reviewed automatically, compliance is verified, and renewal reminders are sent before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
+            <p className="lede">Track every owner’s HO-6 insurance in one dashboard. Declaration pages are reviewed automatically, compliance is verified, and renewal reminders are sent before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
