@@ -313,7 +313,7 @@ export default function Landing() {
 
             {/* 1: AI dec-page review */}
             <div className="panel" role="tabpanel">
-              <div className="cap"><h3>The dec page reads itself</h3><p>We read each declaration page and check it against your HO-6 requirements automatically.</p></div>
+              <div className="cap"><h3>The dec page reads itself</h3><p>Our AI reads each declaration page and checks it against your HO-6 requirements automatically—no manual review.</p></div>
               <div className="stage stage-dec">
                 <div className="doc dec">
                   <div className="sheet">
@@ -413,7 +413,7 @@ export default function Landing() {
             <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Just your name and association address. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
             <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it’s ready.</p><div className="meta">done before you log in</div></div></div>
             <div className="step reveal"><div className="idx">03</div><div><h3>Review owners, send invites</h3><p>Check the list, fill any missing emails, and send each owner a link tied to their unit.</p><div className="meta">one click per owner</div></div></div>
-            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners simply upload or email their declaration page. We read it, verify coverage, and update their compliance status automatically.</p><div className="meta">AI-reviewed on upload</div></div></div>
+            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their declaration page, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. No one reviews it by hand.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
             <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>See every unit’s status at a glance. Automated reminders go out 30, 7, and 1 day before renewal—and instantly if a policy lapses.</p><div className="meta">reminders on autopilot</div></div></div>
           </div>
         </div>
@@ -508,7 +508,7 @@ export default function Landing() {
             </details>
             <details className="faq-item">
               <summary>What insurance does it track?</summary>
-              <p>Unit-owner HO-6 policies. We read each declaration page and verify the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
+              <p>Unit-owner HO-6 policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
             </details>
           </div>
         </div>
