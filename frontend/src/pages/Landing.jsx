@@ -211,8 +211,7 @@ export default function Landing() {
       <header className="nav">
         <div className="wrap nav-in">
           <Link className="brand" to="/">
-            <img src="/assets/logo-mark.svg" alt="condo.insure shield logo" />
-            <span><span className="w-condo">condo</span><span className="w-ins">.insure</span></span>
+            <img src="/assets/logo-full.svg" alt="condo.insure" />
           </Link>
           <nav className="nav-links">
             <a className="txt" href="#features">Product</a>
