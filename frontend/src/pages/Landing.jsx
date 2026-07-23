@@ -443,7 +443,7 @@ export default function Landing() {
           <div className="how-head reveal">
             <span className="eyebrow">How it works</span>
             <h2 className="display">From a guess to a dashboard, in five steps.</h2>
-            <p>You bring the association. We build your unit list from public records, then automatically track every owner’s coverage.</p>
+            <p>You bring the association. We build your unit list from public records, then automatically track every owner’s HO-6 coverage.</p>
           </div>
           <div className="steps">
             <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Just your name and association address. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
