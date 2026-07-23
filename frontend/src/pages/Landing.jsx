@@ -446,7 +446,7 @@ export default function Landing() {
             <p>You bring the association. We build your unit list from public records, then automatically track every owner’s HO-6 coverage.</p>
           </div>
           <div className="steps">
-            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Just your name and association address. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
+            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Your name and email, plus the association’s name, address, and number of units. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
             <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it’s ready.</p><div className="meta">done before you log in</div></div></div>
             <div className="step reveal"><div className="idx">03</div><div><h3>Review owners, send invites</h3><p>Check the list, fill any missing emails, and send each owner a link tied to their unit.</p><div className="meta">one click per owner</div></div></div>
             <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their declaration page, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. No one reviews it by hand.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
