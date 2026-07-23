@@ -34,6 +34,39 @@ export default function Landing() {
     return () => { cancelAnimationFrame(raf); clearTimeout(t) }
   }, [])
 
+  // Discovery nudge for visitors who land on the bare page: a scroll cue that
+  // fades once they scroll, plus a ONE-TIME gentle auto-scroll to #features if
+  // they're still idle after ~9s. Never loops; cancels permanently the moment
+  // the visitor scrolls/taps/types/clicks. Skipped when arriving at a #hash or
+  // under reduced-motion (the idle nudge; the cue still shows, just static).
+  useEffect(() => {
+    const cue = () => document.querySelector('.lp .scroll-cue')
+    if (window.location.hash) { cue()?.classList.add('hide'); return }
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    let done = false
+    let idle
+    const evs = ['wheel', 'touchstart', 'keydown', 'mousedown']
+    const stop = () => {
+      if (done) return
+      done = true
+      clearTimeout(idle)
+      window.removeEventListener('scroll', onScroll)
+      evs.forEach((e) => window.removeEventListener(e, stop))
+    }
+    const onScroll = () => { if (window.scrollY > 40) { cue()?.classList.add('hide'); stop() } }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    evs.forEach((e) => window.addEventListener(e, stop, { passive: true }))
+    if (!reduce) {
+      idle = setTimeout(() => {
+        if (done || window.scrollY > 40) return
+        document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        cue()?.classList.add('hide')
+        stop()
+      }, 9000)
+    }
+    return () => { clearTimeout(idle); window.removeEventListener('scroll', onScroll); evs.forEach((e) => window.removeEventListener(e, stop)) }
+  }, [])
+
   useEffect(() => {
     track('landing_view')
     loadRb2b()
@@ -267,6 +300,10 @@ export default function Landing() {
             </div>
           </div>
         </div>
+        <a className="scroll-cue" href="#features" aria-label="See how it works — scroll to features">
+          <span>See how it works</span>
+          <span className="arrow" aria-hidden="true"></span>
+        </a>
       </section>
 
       {/* AUTO-ADVANCING FEATURE TABS */}

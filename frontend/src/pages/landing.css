@@ -81,6 +81,12 @@ html{scroll-behavior:smooth}
 .lp .hero-cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:30px}
 .lp .trust{margin-top:24px; display:flex; align-items:center; gap:13px; color:var(--muted-2); font-size:13.5px; flex-wrap:wrap}
 .lp .trust .chk{color:var(--green); font-weight:700}
+/* hero scroll cue: nudges visitors toward the sections below (jumps to #features) */
+.lp .scroll-cue{display:flex; flex-direction:column; align-items:center; gap:7px; width:max-content; margin:40px auto 4px; padding:6px 12px; color:var(--muted-2); font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; text-decoration:none; transition:opacity .45s ease, color .2s ease}
+.lp .scroll-cue:hover{color:var(--navy)}
+.lp .scroll-cue .arrow{width:14px; height:14px; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(45deg); animation:scrollcue 1.7s ease-in-out infinite}
+.lp .scroll-cue.hide{opacity:0; pointer-events:none}
+@keyframes scrollcue{0%,100%{transform:rotate(45deg) translate(-3px,-3px)} 50%{transform:rotate(45deg) translate(3px,3px)}}
 
 /* soft pastel product frame — the Intercom signature look */
 .lp .frame{position:relative; border-radius:var(--r-lg); padding:30px;
