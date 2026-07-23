@@ -74,7 +74,7 @@ html{scroll-behavior:smooth}
 
 /* hero */
 .lp .hero{position:relative; overflow:hidden}
-.lp .hero .wrap{display:grid; grid-template-columns:1.02fr .98fr; gap:56px; align-items:center; padding-block:40px 86px}
+.lp .hero .wrap{display:grid; grid-template-columns:1.02fr .98fr; gap:56px; align-items:center; padding-block:24px 86px}
 .lp .hero h1{margin:18px 0 0; font-size:clamp(40px,5.2vw,62px)}
 .lp .hero h1 .pop{color:var(--blue)}
 .lp .hero .lede{margin:22px 0 0; font-size:clamp(17px,1.4vw,19.5px); color:var(--muted); max-width:34ch}
