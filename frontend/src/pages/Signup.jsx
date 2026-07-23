@@ -89,7 +89,7 @@ export default function Signup() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
         <div className="w-full max-w-md text-center">
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mx-auto mb-8" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mx-auto mb-8" />
           <div className="text-4xl mb-4">📬</div>
           <h1 className="text-2xl font-bold text-[#001842] mb-2" style={{ fontFamily: DISPLAY, letterSpacing: '-.02em' }}>
             Thanks — we&rsquo;re setting up your association
@@ -110,7 +110,7 @@ export default function Signup() {
       <div className="flex-1 flex flex-col px-6 py-10 sm:px-12">
         <div className="w-full max-w-xl mx-auto">
           <Link to="/" className="text-sm text-[#54627A] hover:text-[#001842] mb-7 inline-block">&larr; Back</Link>
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11 mb-6" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mb-6" />
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Set up your association
           </h1>
