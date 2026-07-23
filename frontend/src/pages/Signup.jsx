@@ -95,8 +95,8 @@ export default function Signup() {
             Thanks — we&rsquo;re setting up your association
           </h1>
           <p className="text-[#54627A] mb-6">
-            We&rsquo;re building out {form.association_name || 'your association'} now. You&rsquo;ll get an
-            email at <strong className="text-[#0B1B33]">{form.email}</strong> when your dashboard is ready.
+            We&rsquo;re building out {form.association_name || 'your association'} now. We&rsquo;ll email your
+            invite to <strong className="text-[#0B1B33]">{form.email}</strong> the same business day.
           </p>
           <Link to="/" className="text-[#014AC5] hover:underline text-sm">&larr; Back to home</Link>
         </div>
@@ -224,7 +224,7 @@ export default function Signup() {
             </button>
 
             <p className="text-center text-xs text-slate-500">
-              No credit card required. We&rsquo;ll email you when your association is ready.
+              No credit card required. We&rsquo;ll build your association dashboard and email your invite the same business day.
             </p>
           </form>
 
