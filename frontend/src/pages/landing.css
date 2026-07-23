@@ -67,8 +67,12 @@ html{scroll-behavior:smooth}
 
 /* nav */
 .lp .nav{position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:blur(14px); border-bottom:1px solid var(--line)}
-/* offset anchor jumps so the sticky nav doesn't cover the section eyebrow (#features/#how/#pricing) */
-.lp #features, .lp #how, .lp #pricing{scroll-margin-top:96px}
+/* offset anchor jumps so each section's eyebrow lands at the same spot below the nav
+   as the hero eyebrow (~33px below the 88px nav). Per-section because each section has a
+   different top padding / eyebrow offset (features 101, how 63, pricing 117). */
+.lp #features{scroll-margin-top:20px}
+.lp #how{scroll-margin-top:76px}
+.lp #pricing{scroll-margin-top:22px}
 .lp .nav-in{display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block:14px}
 .lp .nav-links{display:flex; align-items:center; gap:6px}
 .lp .nav-links a.txt{padding:9px 13px; color:var(--muted); font-weight:600; font-size:15px; border-radius:var(--r-pill)}
