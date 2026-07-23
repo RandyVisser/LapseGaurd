@@ -327,13 +327,13 @@ html{scroll-behavior:smooth}
 .lp .how-head{max-width:54ch}
 .lp .how-head h2{font-size:clamp(26px,3vw,38px); margin:8px 0 0}
 .lp .how-head p{color:var(--muted); margin:8px 0 0; font-size:16px}
-.lp .steps{margin-top:14px; display:grid; gap:0}
-.lp .step{display:grid; grid-template-columns:auto 1fr; gap:22px; padding:7px 0; border-top:1px solid var(--line); align-items:start}
+.lp .steps{margin-top:18px; display:grid; gap:0}
+.lp .step{display:grid; grid-template-columns:auto 1fr; gap:22px; padding:12px 0; border-top:1px solid var(--line); align-items:start}
 .lp .step:last-child{border-bottom:1px solid var(--line)}
 .lp .step .idx{font-family:"JetBrains Mono",monospace; font-weight:700; font-size:14px; color:var(--blue); padding-top:2px; min-width:40px}
 .lp .step h3{margin:0; font-size:18px; font-weight:700}
-.lp .step p{margin:4px 0 0; color:var(--muted); max-width:105ch; line-height:1.45}
-.lp .step .meta{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted-2); margin-top:4px}
+.lp .step p{margin:6px 0 0; color:var(--muted); max-width:105ch; line-height:1.45}
+.lp .step .meta{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted-2); margin-top:6px}
 
 /* cta */
 .lp .cta{position:relative; overflow:hidden; background:linear-gradient(135deg,var(--navy) 0%, #06245C 60%, var(--blue) 140%)}
