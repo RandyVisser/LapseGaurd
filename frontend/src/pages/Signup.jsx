@@ -255,7 +255,7 @@ export default function Signup() {
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">4</span><span>Watch every unit go compliant, hands-off</span></li>
           </ul>
           <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">
-            $1/unit/mo · $50/mo minimum · cancel anytime
+            $1/unit/mo · volume discounts at scale · $50/mo minimum · cancel anytime
           </p>
         </div>
       </aside>
