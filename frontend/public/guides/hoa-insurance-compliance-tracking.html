@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>How Condo Associations Track HO-6 Compliance: Spreadsheet vs. Software | condo.insure</title>
+<meta name="description" content="An honest comparison of the four ways associations track unit-owner insurance compliance — nothing, a spreadsheet, a property management module, or dedicated software — including when a spreadsheet is genuinely good enough and the specific points at which it stops working." />
+<link rel="canonical" href="https://www.condo.insure/guides/hoa-insurance-compliance-tracking.html" />
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="condo.insure" />
+<meta property="og:url" content="https://www.condo.insure/guides/hoa-insurance-compliance-tracking.html" />
+<meta property="og:title" content="How Condo Associations Track HO-6 Compliance" />
+<meta property="og:description" content="Spreadsheet vs. software — an honest comparison, including when a spreadsheet is genuinely good enough." />
+<meta property="og:image" content="https://www.condo.insure/assets/logo.png" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="icon" type="image/png" href="/assets/logo-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/guides/guides.css" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "How Condo Associations Track HO-6 Compliance: Spreadsheet vs. Software",
+      "description": "A comparison of methods for tracking unit-owner insurance compliance in condominium associations, including where manual tracking breaks down.",
+      "datePublished": "2026-08-01",
+      "dateModified": "2026-08-01",
+      "author": { "@type": "Organization", "name": "condo.insure", "url": "https://www.condo.insure/" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "condo.insure",
+        "logo": { "@type": "ImageObject", "url": "https://www.condo.insure/assets/logo.png" }
+      },
+      "mainEntityOfPage": "https://www.condo.insure/guides/hoa-insurance-compliance-tracking.html"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "condo.insure", "item": "https://www.condo.insure/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://www.condo.insure/guides/index.html" },
+        { "@type": "ListItem", "position": 3, "name": "HOA insurance compliance tracking" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can a condo association track insurance compliance in a spreadsheet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, and for a small, stable association with one building and an engaged volunteer, a spreadsheet is genuinely adequate. It stops working when the number of policy expiration dates a person must watch exceeds what they can reliably watch — usually somewhere between 40 and 60 units, or as soon as the association has multiple buildings with repeating unit numbers, or the moment the person maintaining it leaves."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How often should a condo association check insurance compliance?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Compliance is continuous rather than periodic, because policies expire on their own schedules throughout the year. An annual audit will find a unit that lapsed eleven months earlier. The practical standard is a daily or weekly automated check against expiration dates, with reminders sent ahead of expiration rather than after."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What should a condo association look for in insurance tracking software?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "That owners can submit without creating an account, that documents are read automatically rather than keyed in by hand, that reminders send themselves on a schedule, that units are matched on street address plus unit number rather than unit number alone, that bounced email addresses are surfaced rather than silently dropped, and that the board can see the current state without asking anyone to prepare a report."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="g-nav">
+  <div class="g-nav-in">
+    <a class="g-logo" href="/">
+      <img src="/assets/logo-mark.svg" alt="" />
+      <span>condo<i>.insure</i></span>
+    </a>
+    <div class="g-nav-cta">
+      <a class="btn btn-ghost" href="/">Product</a>
+      <a class="btn btn-primary" href="/signup">Start free</a>
+    </div>
+  </div>
+</header>
+
+<div class="g-wrap">
+<main class="g-main">
+<article>
+
+  <p class="g-eyebrow">Operations</p>
+  <h1>How Associations Track HO-6 Compliance</h1>
+
+  <p class="g-lede">
+    Most condominium associations track unit-owner insurance one of four ways: not at all, in
+    a spreadsheet, in a module of their management platform, or in dedicated software. A
+    spreadsheet is genuinely fine for a small, stable, single-building association. It breaks
+    at a predictable set of points — and knowing those points is more useful than a feature
+    list.
+  </p>
+
+  <p class="g-meta">
+    Last updated 2026-08-01 · Written by condo.insure, which sells software in this category —
+    we have tried to be straight about where it is not the answer
+  </p>
+
+  <h2 id="the-job">The job to be done</h2>
+
+  <p>
+    Insurance compliance looks like a filing problem and is actually a <strong>calendar
+    problem</strong>. Collecting a declaration page once is easy. The difficulty is that
+    every unit's policy expires on its own date, those dates are scattered across all twelve
+    months, and a unit that was compliant in March can be uninsured in April without anyone
+    doing anything wrong.
+  </p>
+
+  <p>The recurring work is therefore:</p>
+
+  <ol>
+    <li>Know which unit each owner corresponds to, as owners change</li>
+    <li>Collect a current declaration page from each one</li>
+    <li>Read it and check it against the association's requirements</li>
+    <li>Know the expiration date and act <em>before</em> it passes</li>
+    <li>Chase the ones that lapse, repeatedly, without giving up</li>
+    <li>Be able to show the board and the carrier where things stand</li>
+  </ol>
+
+  <p>
+    Steps 4 and 5 are where every manual system fails. Not because anyone is careless —
+    because tracking a few dozen independent renewal dates by memory and a reminder is not a
+    thing humans do reliably for years at a stretch.
+  </p>
+
+  <h2 id="four-ways">The four approaches</h2>
+
+  <div class="g-table-wrap">
+  <table>
+    <thead>
+      <tr><th>Approach</th><th>Real cost</th><th>Works when</th><th>Fails when</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>No tracking</strong></td>
+        <td>$0 until a claim</td>
+        <td>Never, really — though it is common</td>
+        <td>At the first uninsured loss, when the shortfall is assessed across every other owner</td>
+      </tr>
+      <tr>
+        <td><strong>Spreadsheet</strong></td>
+        <td>A few hours a month of somebody's time</td>
+        <td>One building, under ~50 units, a stable and engaged person maintaining it</td>
+        <td>Scale, multiple buildings, owner turnover, or that person leaving</td>
+      </tr>
+      <tr>
+        <td><strong>Management platform module</strong></td>
+        <td>Usually bundled</td>
+        <td>You already run the platform and the module actually stores expiration dates as dates</td>
+        <td>Many store documents but do not parse them, so nothing watches the calendar</td>
+      </tr>
+      <tr>
+        <td><strong>Dedicated software</strong></td>
+        <td>Typically per-unit, per-month</td>
+        <td>Multiple buildings, a portfolio, or when nobody has the hours</td>
+        <td>Very small associations where the minimum fee exceeds the value</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="spreadsheet-ok">When a spreadsheet is genuinely good enough</h2>
+
+  <div class="g-answer">
+    <span class="lab">Straight answer</span>
+    <p>
+      One building. Fewer than about 50 units. Low owner turnover. A specific person who
+      owns the task and is not going anywhere. In that situation a spreadsheet with a
+      conditional-format rule on the expiration column works, and paying for software is
+      hard to justify.
+    </p>
+  </div>
+
+  <p>If that is your association, the things worth getting right in the sheet:</p>
+
+  <ul>
+    <li>Store the expiration as a real <strong>date</strong>, not text — otherwise nothing can sort or alert on it</li>
+    <li>Key each row on <strong>street address + unit number</strong>, never unit number alone</li>
+    <li>Add a column for the wind-only companion policy and its own expiration date</li>
+    <li>Keep the PDF alongside the row, not in someone's inbox</li>
+    <li>Put a standing calendar reminder on the person, not on the spreadsheet</li>
+  </ul>
+
+  <h2 id="breaks">The five points where manual tracking breaks</h2>
+
+  <p>
+    These are consistent enough to be a diagnostic. If two or more describe your association,
+    the spreadsheet is already failing, whether or not it looks like it.
+  </p>
+
+  <dl>
+    <dt>1. The unit-number collision</dt>
+    <dd>
+      Multi-building associations reuse unit numbers — there is a 101 in every building.
+      Matching on unit number alone silently attaches the wrong policy to the wrong unit, and
+      it looks correct. The dedup key has to be street address plus unit number.
+    </dd>
+
+    <dt>2. The calendar exceeds working memory</dt>
+    <dd>
+      Somewhere around 40–60 units, the number of independent renewal dates passes the point
+      where a person catches them reliably. Failures here are invisible: nothing happens, no
+      alert fires, and the unit is simply uninsured.
+    </dd>
+
+    <dt>3. The email that quietly bounces</dt>
+    <dd>
+      An owner changes their address. Reminders keep sending to the old one and keep bouncing.
+      From inside the system it looks like an owner ignoring you; it is actually mail that
+      never arrived. Without bounce visibility this can persist for years.
+    </dd>
+
+    <dt>4. Ownership turnover</dt>
+    <dd>
+      A unit sells. The new owner was never invited, is not on the list, and does not know
+      there is a requirement. The old owner's policy sits in the file looking current until
+      it expires.
+    </dd>
+
+    <dt>5. The maintainer leaves</dt>
+    <dd>
+      The board treasurer who ran the sheet resigns and it is not handed over — or is handed
+      over without the context of which rows are stale. This is the most common single cause
+      of an association discovering it has no idea who is insured.
+    </dd>
+  </dl>
+
+  <div class="g-warn">
+    <span class="lab">Why this stays hidden</span>
+    <p>
+      Every one of these failures is <em>silent</em>. A missed renewal produces no error, no
+      complaint and no symptom. The association finds out at the only moment it matters — a
+      claim on an uninsured unit, where the shortfall usually lands on every other owner as a
+      special assessment. That asymmetry, not the administrative burden, is the real argument
+      for automating this.
+    </p>
+  </div>
+
+  <h2 id="what-to-look-for">What to look for, in any tool</h2>
+
+  <p>
+    Whether you evaluate us, a competitor such as Mackoul, or a module of the platform you
+    already run, these are the questions that separate tools that work from tools that store
+    files:
+  </p>
+
+  <ol>
+    <li>
+      <strong>Can owners submit without creating an account?</strong> Every login you require
+      is a large drop in response rate. Forwarding an email should be enough.
+    </li>
+    <li>
+      <strong>Is the document read, or just stored?</strong> If a human still types the
+      expiration date into a field, you have bought filing, not tracking.
+    </li>
+    <li>
+      <strong>Do reminders send themselves?</strong> On a schedule, before expiration, without
+      anyone remembering to trigger them.
+    </li>
+    <li>
+      <strong>How are units matched?</strong> Ask directly whether it matches on unit number
+      alone. In a multi-building association that answer matters.
+    </li>
+    <li>
+      <strong>Are bounced addresses surfaced?</strong> A tool that keeps mailing a dead address
+      and reports it as "reminder sent" is reporting a fiction.
+    </li>
+    <li>
+      <strong>Does it understand a wind-excluded pair?</strong> In Florida, a tool that flags
+      every wind-excluded HO-6 as non-compliant will generate enough false alarms to be
+      abandoned.
+    </li>
+    <li>
+      <strong>Can the board see status without asking anyone?</strong> If producing the answer
+      requires a person to prepare a report, the report will be out of date.
+    </li>
+    <li>
+      <strong>What happens when a unit sells?</strong> New owners should be detectable and
+      invitable, not silently missing.
+    </li>
+  </ol>
+
+  <div class="g-note">
+    <span class="lab">For management firms</span>
+    <p>
+      If you manage multiple associations, the question changes. Per-association tools force
+      you to log in separately for each book of business and give you no portfolio view. What
+      matters is whether one login shows every association you manage, whether staff
+      visibility can be scoped to the properties a given manager handles, and whether billing
+      is consolidated or passed through to each association.
+    </p>
+  </div>
+
+  <h2 id="getting-started">If you are starting from nothing</h2>
+
+  <p>A workable first 30 days, regardless of what you use:</p>
+
+  <ol>
+    <li>Build the unit list first, from property records — not from memory or old email</li>
+    <li>Attach whatever contact information you have; accept it will be incomplete</li>
+    <li>Ask for declaration pages in one round, with a deadline and a one-step submission path</li>
+    <li>Expect roughly half. Do not treat that as failure — it is the normal first pass</li>
+    <li>Send a second and third round; most of the remainder arrives here</li>
+    <li>Work the true holdouts individually, and note which addresses are bouncing</li>
+    <li>Only then set the recurring reminder cadence — by that point the list is real</li>
+  </ol>
+
+  <section class="g-cta">
+    <h2>See where your association actually stands</h2>
+    <p>
+      condo.insure builds your unit list from property records, lets owners submit by
+      forwarding an email, reads each declaration page automatically, and chases renewals on
+      its own. Start free — no setup fee.
+    </p>
+    <a class="btn btn-primary" href="/signup">Start free</a>
+    <a class="btn btn-ghost" href="https://calendar.app.google/FomLtiZGYqtmt8jUA" target="_blank" rel="noopener">Book a demo</a>
+  </section>
+
+  <section class="g-related">
+    <h2>Related guides</h2>
+    <ul>
+      <li><a href="/guides/what-is-a-declarations-page.html">What is a declarations page?</a></li>
+      <li><a href="/guides/ho6-vs-ho4-vs-wind-only.html">HO-6 vs. HO-4 vs. wind-only</a></li>
+      <li><a href="/guides/florida-condo-insurance-requirements.html">Florida condo insurance requirements</a></li>
+    </ul>
+  </section>
+
+</article>
+</main>
+
+<aside class="g-toc">
+  <h2>On this page</h2>
+  <ol>
+    <li><a href="#the-job">The job to be done</a></li>
+    <li><a href="#four-ways">The four approaches</a></li>
+    <li><a href="#spreadsheet-ok">When a spreadsheet is fine</a></li>
+    <li><a href="#breaks">Where manual tracking breaks</a></li>
+    <li><a href="#what-to-look-for">What to look for</a></li>
+    <li><a href="#getting-started">Starting from nothing</a></li>
+  </ol>
+</aside>
+</div>
+
+<footer class="g-foot">
+  <div class="g-foot-in">
+    <p><strong>condo.insure™</strong> — Insurance Compliance. Simplified.</p>
+    <p>
+      <a href="/">Home</a> ·
+      <a href="/guides/florida-condo-insurance-requirements.html">Guides</a> ·
+      <a href="/privacy">Privacy</a> ·
+      <a href="/terms">Terms</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

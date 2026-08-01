@@ -572,7 +572,10 @@ export default function Landing() {
             <span><span className="w-condo">condo</span><span className="w-ins">.insure</span><sup style={{ fontSize: '.6em', fontWeight: 600, marginLeft: '1px' }}>™</sup></span>
           </Link>
           <span>Insurance Compliance. Simplified.</span>
-          <span className="lk"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
+          {/* Guides are STATIC HTML under public/guides/, not React Router routes — this
+              must stay a plain <a> (a <Link> would hit the SPA catch-all). The other links
+              here are correctly <Link>s. */}
+          <span className="lk"><a href="/guides/index.html">Guides</a><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
         </div>
       </footer>
 
