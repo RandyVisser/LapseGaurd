@@ -1,0 +1,51 @@
+# www.condo.insure
+#
+# NOTE: this file must EXIST as a real file. `serve -s` (Dockerfile.prod) falls
+# through to index.html for any path that is not a real file, so a missing
+# robots.txt returns HTTP 200 with text/html instead of a 404 — which crawlers
+# read as a malformed directive file. Same applies to sitemap.xml.
+
+Sitemap: https://www.condo.insure/sitemap.xml
+
+# ---------------------------------------------------------------------------
+# Default: everything public is fair game, private/app routes are not.
+# ---------------------------------------------------------------------------
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin-setup/
+Disallow: /tenant/
+Disallow: /join/
+Disallow: /reset-password
+Disallow: /forgot-password
+
+# ---------------------------------------------------------------------------
+# AI / answer-engine crawlers — explicitly allowed.
+#
+# These are the crawlers that build the retrieval corpora behind ChatGPT,
+# Claude, Perplexity and Google's AI surfaces. Being cited there is a
+# deliberate distribution strategy for us, so do NOT add blanket blocks here
+# without a conversation — several hosting providers and WAFs block these by
+# default, which would silently remove us from AI answers.
+# ---------------------------------------------------------------------------
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bingbot
+User-agent: CCBot
+User-agent: meta-externalagent
+Allow: /
+Disallow: /admin/
+Disallow: /admin-setup/
+Disallow: /tenant/
+Disallow: /join/
+Disallow: /reset-password
+Disallow: /forgot-password

@@ -38,6 +38,13 @@ RUN npm install -g serve@14
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 
-# 'serve -s' enables SPA mode: unknown paths fall through to index.html
+# SPA fallback + caching now come from dist/serve.json (copied from public/).
+#
+# ⚠️ Do NOT add the `-s` / `--single` flag back. `-s` implies cleanUrls, which
+# 301s `/foo.html` -> `/foo`, which then hits the catch-all rewrite and returns
+# index.html — making every static page under /guides/ unreachable while still
+# returning HTTP 200. serve.json's explicit rewrite does the same SPA fallback
+# without that side effect. See the comment block in public/serve.json.
+#
 # PORT is injected by Railway at runtime
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+CMD ["sh", "-c", "serve dist -l ${PORT:-3000}"]

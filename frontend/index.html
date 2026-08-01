@@ -3,11 +3,140 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>condo.insure</title>
+
+    <title>condo.insure — HO-6 Insurance Compliance Tracking for Condo Associations</title>
+    <meta
+      name="description"
+      content="condo.insure tracks unit-owner HO-6 insurance compliance for condominium associations and property management firms. AI reads each declaration page, flags lapsed and expiring policies, and sends renewal reminders automatically."
+    />
+    <link rel="canonical" href="https://www.condo.insure/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="condo.insure" />
+    <meta property="og:url" content="https://www.condo.insure/" />
+    <meta property="og:title" content="HO-6 Insurance Compliance Tracking for Condo Associations" />
+    <meta
+      property="og:description"
+      content="See every unit's HO-6 status on one dashboard. AI reads declaration pages, flags lapses, and chases renewals so your board doesn't have to."
+    />
+    <meta property="og:image" content="https://www.condo.insure/assets/logo.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HO-6 Insurance Compliance Tracking for Condo Associations" />
+    <meta
+      name="twitter:description"
+      content="See every unit's HO-6 status on one dashboard. AI reads declaration pages, flags lapses, and chases renewals so your board doesn't have to."
+    />
+    <meta name="twitter:image" content="https://www.condo.insure/assets/logo.png" />
+
     <link rel="icon" type="image/png" href="/assets/logo-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+    <!--
+      Structured data. Lives in static <head> so it is readable by crawlers that
+      do not execute JavaScript (most LLM crawlers). The FAQ entries below MUST
+      stay in sync with the visible FAQ section in src/pages/Landing.jsx —
+      schema.org requires the marked-up answers be visible on the page.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.condo.insure/#organization",
+            "name": "condo.insure",
+            "url": "https://www.condo.insure/",
+            "logo": "https://www.condo.insure/assets/logo.png",
+            "description": "HO-6 insurance compliance tracking for condominium associations and property management firms.",
+            "areaServed": {
+              "@type": "State",
+              "name": "Florida"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.condo.insure/#website",
+            "url": "https://www.condo.insure/",
+            "name": "condo.insure",
+            "publisher": { "@id": "https://www.condo.insure/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "condo.insure",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "url": "https://www.condo.insure/",
+            "publisher": { "@id": "https://www.condo.insure/#organization" },
+            "description": "Tracks unit-owner HO-6 insurance compliance for condominium associations. Parses declaration pages with AI, flags lapsed and expiring policies, and automates renewal reminders.",
+            "offers": {
+              "@type": "Offer",
+              "price": "1.00",
+              "priceCurrency": "USD",
+              "description": "$1.00 per unit per month, $50/month minimum. Volume rates: $0.50/unit 751–10,000 units; $0.25/unit above 10,000."
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://www.condo.insure/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Do unit owners need to create an account?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Owners simply forward their insurer's email or use a secure one-time link to submit their declaration page. No account or password is required—we automatically match it to the correct unit."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What if we don't have emails for every owner?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "That's normal. We build your owner list from public property records during setup. You can add email addresses over time and invite owners whenever you're ready."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How long does setup take?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Just a few minutes. Enter your association's name and address, and we'll build your owner list from public property records. You'll be invited to review it—no spreadsheets or manual imports required."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is our association's data secure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Access is limited to your association, and every owner can only view their own unit plus shared building documents. Your association's records are never visible to other communities."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What does it cost?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Most associations pay $1 per unit, per month, with a $50/month minimum. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What insurance does it track?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Unit-owner HO-6 policies. We read each declaration page and verify the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
