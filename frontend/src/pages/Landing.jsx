@@ -434,6 +434,13 @@ export default function Landing() {
             <div className="stake"><div className="k">Silent renewals</div><p>Policies expire on their <b>own schedule</b>. Nobody tells the board until there’s a claim.</p></div>
             <div className="stake"><div className="k">Scattered proof</div><p>Declaration pages live in <b>inboxes and filing cabinets</b>, never where you need them.</p></div>
           </div>
+          {/* Contextual links into the reference guides — plain <a>, not <Link>:
+              /guides/* are static HTML files, not React Router routes. */}
+          <p style={{ marginTop: 22, fontSize: 15.5 }}>
+            Not sure what your association can actually require? We wrote the
+            reference: <a className="inline-link" href="/guides/florida-condo-insurance-requirements.html">what Florida law puts on the association vs. the unit owner</a>,
+            and <a className="inline-link" href="/guides/florida-condo-loss-assessment-coverage.html">why loss assessment coverage rarely covers what boards assume</a>.
+          </p>
         </div>
       </section>
 
@@ -449,7 +456,7 @@ export default function Landing() {
             <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Your name and email, plus the association’s name, address, and number of units. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
             <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it’s ready.</p><div className="meta">done before you log in</div></div></div>
             <div className="step reveal"><div className="idx">03</div><div><h3>Review owners, send invites</h3><p>Check the list, fill any missing emails, and send each owner a link tied to their unit.</p><div className="meta">one click per owner</div></div></div>
-            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their declaration page, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. No one reviews it by hand.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
+            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their <a className="inline-link" href="/guides/what-is-a-declarations-page.html">declaration page</a>, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. No one reviews it by hand.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
             <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>See every unit’s status at a glance. Automated reminders go out 30, 7, and 1 day before renewal—and instantly if a policy lapses.</p><div className="meta">reminders on autopilot</div></div></div>
           </div>
         </div>
@@ -461,7 +468,7 @@ export default function Landing() {
           <div className="sec-head center reveal">
             <span className="eyebrow" style={{ justifyContent: 'center' }}>Pricing</span>
             <h2 className="display">Priced by the unit. Built to grow.</h2>
-            <p>Simple per-unit pricing with volume discounts as your portfolio grows. Every feature is included, regardless of size.</p>
+            <p>Simple per-unit pricing with volume discounts as your portfolio grows. Every feature is included, regardless of size. <a className="inline-link" href="/guides/ho6-compliance-cost-calculator.html">Work out your exact cost →</a></p>
           </div>
 
           <div className="reveal" style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -540,17 +547,55 @@ export default function Landing() {
             </details>
             <details className="faq-item">
               <summary>What does it cost?</summary>
-              <p>Most associations pay $1 per unit, per month, with a $50/month minimum. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free.</p>
+              <p>Most associations pay <a className="inline-link" href="/guides/ho6-compliance-cost-calculator.html">$1 per unit, per month, with a $50/month minimum</a>. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free.</p>
             </details>
             <details className="faq-item">
               <summary>What insurance does it track?</summary>
-              <p>Unit-owner HO-6 policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
+              <p>Unit-owner <a className="inline-link" href="/guides/ho6-vs-ho4-vs-wind-only.html">HO-6</a> policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
             </details>
           </div>
         </div>
       </section>
 
       {/* CTA */}
+      {/* GUIDES & TOOLS — free reference pages. Contextual internal links from
+          the homepage make them discoverable to readers and reachable by
+          crawlers. These are static HTML files, so plain <a>, never <Link>. */}
+      <section className="how">
+        <div className="wrap">
+          <div className="sec-head center reveal">
+            <span className="eyebrow" style={{ justifyContent: 'center' }}>Free resources</span>
+            <h2 className="display">Guides &amp; tools, no signup required.</h2>
+            <p>Reference material on Florida condo insurance, cited to the statutes and the regulators — plus two calculators you can use right now.</p>
+          </div>
+          <div className="res-grid reveal">
+            <a className="res" href="/guides/florida-condo-insurance-requirements.html">
+              <span className="tag">Florida law</span>
+              <div className="k">What the law actually requires</div>
+              <p>Association vs. unit owner under § 718.111(11) — and why Florida repealed its HO-6 mandate in 2010.</p>
+            </a>
+            <a className="res" href="/guides/florida-condo-milestone-inspection-sirs.html">
+              <span className="tag">Florida law</span>
+              <div className="k">Milestone inspections &amp; SIRS</div>
+              <p>The post-Surfside chain from SB 4-D to HB 913, current deadlines, and the coastal rule that no longer exists.</p>
+            </a>
+            <a className="res" href="/guides/loss-assessment-calculator.html">
+              <span className="tag">Calculator</span>
+              <div className="k">Loss assessment exposure</div>
+              <p>Your master deductible split across units, against the $2,000 minimum most owners carry.</p>
+            </a>
+            <a className="res" href="/guides/ho6-compliance-cost-calculator.html">
+              <span className="tag">Calculator</span>
+              <div className="k">What compliance costs</div>
+              <p>Your association's exact monthly and annual cost. No email address required.</p>
+            </a>
+          </div>
+          <p style={{ marginTop: 20, textAlign: 'center' }}>
+            <a className="inline-link" href="/guides/index.html">See all guides →</a>
+          </p>
+        </div>
+      </section>
+
       <section className="cta">
         <div className="wrap reveal">
           <h2 className="display">Put your whole association on one dashboard.</h2>
