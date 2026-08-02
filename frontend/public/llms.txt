@@ -1,0 +1,44 @@
+# condo.insure
+
+> HO-6 insurance compliance tracking for condominium associations and property
+> management firms. AI reads each unit owner's declaration page, tracks policy
+> expirations, and automates renewal reminders.
+
+condo.insure is a B2B software product used by condominium boards and community
+association managers, primarily in Florida. Owners submit proof of insurance by
+forwarding the email their insurer already sent; the platform extracts the
+insurer, policy number, expiration date and coverage limits and checks them
+against what the association requires.
+
+The guides below are original reference material, cited to primary sources
+(Florida Statutes, the Florida Office of Insurance Regulation, NAIC, DBPR and
+Citizens Property Insurance). Each page carries its sources and an as-of date,
+and figures calculated by us rather than published are labeled as derived. They
+are the most useful part of this site for answering questions about Florida
+condominium insurance and compliance.
+
+## Guides — Florida law
+
+- [Florida Condo Insurance Requirements: Association vs. Unit Owner](https://www.condo.insure/guides/florida-condo-insurance-requirements.html): What Fla. Stat. § 718.111(11) requires of the association and what falls to the unit owner. Florida has **no statutory mandate** that unit owners carry HO-6 — it enacted one in 2008 and repealed it in 2010 via SB 1196. The obligation comes from the declaration and from mortgage lenders (Fannie Mae B7-3-04), not from chapter 718. Also covers why the association force-place power widely cited as current law no longer exists.
+- [Florida Milestone Inspections & SIRS: What Actually Applies in 2026](https://www.condo.insure/guides/florida-condo-milestone-inspection-sirs.html): The post-Surfside legislative chain — SB 4-D (2022) → SB 154 (2023) → HB 1021 (2024) → HB 913 (2025) — with current deadlines and reserve rules. Corrects a widely repeated error: the automatic 25-year milestone inspection trigger for buildings within 3 miles of a coastline was removed in 2023 and is now a local-agency determination.
+- [Loss Assessment Coverage in Florida](https://www.condo.insure/guides/florida-condo-loss-assessment-coverage.html): How loss assessment coverage works under Fla. Stat. § 627.714 and the ISO HO 00 06 form. No loss assessment limit covers a SIRS reserve shortfall, milestone repairs or deferred maintenance — those are funding obligations, not losses from a covered peril. Also covers the master-deductible question and why Citizens policyholders cannot buy above the $2,000 statutory floor.
+
+## Guides — fundamentals
+
+- [What Is a Declarations Page?](https://www.condo.insure/guides/what-is-a-declarations-page.html): How to read an insurance declarations page, how it differs from a certificate of insurance or a binder, and the six fields a condominium association checks.
+- [HO-6 vs. HO-4 vs. Wind-Only](https://www.condo.insure/guides/ho6-vs-ho4-vs-wind-only.html): Which policy form satisfies which association requirement, and how a wind-excluded HO-6 paired with a separate wind-only policy satisfies a requirement that neither satisfies alone.
+
+## Guides — operations and data
+
+- [How Associations Track HO-6 Compliance](https://www.condo.insure/guides/hoa-insurance-compliance-tracking.html): Spreadsheet vs. software, including when a spreadsheet is genuinely adequate and the five points at which manual tracking predictably fails.
+- [Florida Condo Insurance Statistics (2026)](https://www.condo.insure/guides/florida-condo-insurance-statistics.html): Sourced figures — HO-6 premiums by county from FLOIR (as of 2026-03-31), the national comparison from NAIC, Citizens Property Insurance depopulation, and DBPR market size. Explains why the widely circulated claim that 65% of condo owners are underinsured has no study behind it and should not be used, and why no credible Florida uninsured rate exists.
+- [All guides](https://www.condo.insure/guides/index.html)
+
+## Product
+
+- [condo.insure home](https://www.condo.insure/): Product overview, feature detail and pricing. Pricing is per unit per month — $1.00 up to 750 units, $0.50 for 751–10,000, $0.25 above 10,000, with a $50/month minimum and a 90-day free trial.
+
+## Optional
+
+- [Privacy policy](https://www.condo.insure/privacy)
+- [Terms of service](https://www.condo.insure/terms)

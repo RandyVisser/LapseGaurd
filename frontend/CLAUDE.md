@@ -70,5 +70,15 @@ Three ways to silently break them — all return HTTP 200, so nothing looks wron
 
 Verify after touching any of this: `npx vite build && npx serve dist -l 4173`,
 then confirm a guide URL returns its own `<h1>` and contains **no** `id="root"`.
-`robots.txt` and `sitemap.xml` live in `public/` and must return `text/plain` /
-`application/xml` — if either returns `text/html`, the fallback has eaten them.
+`robots.txt`, `sitemap.xml` and `llms.txt` live in `public/` and must return
+`text/plain` / `application/xml` / `text/plain` — if any returns `text/html`,
+the fallback has eaten them.
+
+**The general trap:** ANY well-known file path that doesn't exist returns
+`index.html` at HTTP 200 with `text/html`, so external validators report it as a
+*malformed* file rather than a missing one. Google Lighthouse's agentic-browsing
+audit flagged `/llms.txt` this way (no H1, no links — because it was parsing
+`index.html`). Still unaddressed and harmless for now: `/ads.txt`,
+`/security.txt`, `/.well-known/security.txt`, `/humans.txt`, `/manifest.json`,
+`/favicon.ico`. If a tool ever complains about one of those, this is why —
+create the real file rather than debugging its contents.
