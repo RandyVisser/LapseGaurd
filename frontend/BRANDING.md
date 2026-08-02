@@ -116,7 +116,12 @@ Compliance. Simplified." Don't reintroduce a `©`.
 
 - **Book a demo** → `https://calendar.app.google/FomLtiZGYqtmt8jUA` (dad's Google
   Appointment Schedule; `target="_blank"`). Single source of truth for demo CTAs.
-- **Watch the 2-min tour** → Descript modal, embed `https://share.descript.com/embed/yR7DW1QXNOZ`.
+- **Watch the 2-min tour** → in-page `<video>` modal playing
+  `https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4`
+  (the public `public-assets` bucket), wired as `TOUR_VIDEO_URL` in both
+  `Landing.jsx` and `VistaRoyale.jsx`. The older Descript embed
+  (`https://share.descript.com/embed/yR7DW1QXNOZ`) still resolves but is **no
+  longer what the site plays** — corrected 2026-08-01.
 - **Start free** → `/signup` · **Sign in** → `/login`.
 - **Pricing (REAL, 3-band graduated, $50/mo minimum):** $1.00/unit up to 750 units ·
   $0.50/unit 751–10,000 · $0.25/unit 10,000+. (A separate older `/pricing` route

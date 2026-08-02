@@ -149,18 +149,67 @@ Named competitor to expect on comparison pages: **Mackoul**.
 | Logo (square) | `frontend/public/assets/logo-icon.png` (512×512, transparent) | ✅ ready |
 | Logo (horizontal) | `frontend/public/assets/logo.png` (1520×380, transparent) | ✅ ready |
 | Social/banner | `frontend/public/assets/og-image.png` (1200×630) | ✅ ready |
-| Product screenshots | — | ❌ **needed — 4–6 shots** |
-| Demo video | `https://share.descript.com/view/yR7DW1QXNOZ` | ✅ existing 2-min tour |
+| Product screenshots | `~/Desktop/lapsegaurd-promo/shots/out/` | ✅ **14 captured** |
+| Demo video | see §7a below | ✅ 2-min tour |
 
-**Screenshots still to produce** (capture against **Sandbox Condo** only — never
-3 Island or Vista Royale, which are real customers with real owner emails):
+Screenshots were captured against **Sandbox Condo only** (never 3 Island or
+Vista Royale — real customers with real owner emails), at 1440×900 @2× retina.
+The capture script is `lapsegaurd-promo/shots/capture.cjs`; it sets `?notrack=1`
+first so no funnel beacons are recorded, and it is read-only — it never submits
+a form, uploads, invites, or notifies.
 
-1. Compliance dashboard — hero gauge + unit table
-2. AI dec-page review — extracted fields beside the document
-3. Firm portfolio dashboard — multi-association KPIs
-4. Owner submission flow — the email-in path
-5. Document center
-6. Board report email
+⚠️ One hazard the script deliberately avoids: clicking a **Missing** unit row in
+the dashboard POSTs to `/unit/{id}/tenant` and **creates a tenant record**. The
+unit-detail shots navigate directly to known tenant IDs instead.
+
+### Recommended six, with captions
+
+Upload in this order — the first is what appears on the category listing card.
+
+| # | File | Caption |
+|---|---|---|
+| 1 | `04-compliance-dashboard.png` | **Every unit's HO-6 status on one dashboard.** Coverage percentage, units needing attention, and a live compliance trend — no spreadsheet to maintain. |
+| 2 | `10-unit-detail-clean.png` | **AI-verified coverage, checked against your requirements.** Named insured, property address, Coverage A and E limits and wind coverage are each verified against the association's minimums — including the extra requirements that apply to rented units. |
+| 3 | `06-unit-detail-approved.png` | **Problems surface before a claim does.** An expired policy is flagged the moment it lapses, with the specific requirement that failed called out rather than a generic warning. |
+| 4 | `05-unit-table.png` | **Every unit, every status, one table.** Sort and filter by compliance state, board role, bounced email, or rental status; export to CSV any time. |
+| 5 | `08-document-center.png` | **Shared association documents in one place.** Wind mitigation reports, sprinkler forms and building records, available to every unit owner without an email thread. |
+| 6 | `02-landing-features.png` | **Four ways in: compliance board, AI dec-page review, email-in submission, and a document center.** |
+
+### Also available
+
+`01-landing-hero.png`, `03-landing-how.png`, `09-settings.png`,
+`11-unit-detail-flagged.png`, plus `-scrolled` variants of the unit-detail
+shots showing the extracted policy fields and history.
+
+### Not captured, and why
+
+- **Firm portfolio dashboard** — the sandbox firm ("Sandbox Property Group")
+  manages exactly one association, and a PM who can see one association is
+  deliberately routed to the classic per-association dashboard instead. Getting
+  this shot needs a second sandbox association, which is a product decision, not
+  a screenshot decision.
+- **Email-in flow / board report email** — not app screens. The landing page's
+  "Email it in" feature tab is the closest existing visual.
+
+## 7a. Demo video
+
+Both of these resolve (verified 2026-08-01):
+
+- **Descript share page:** `https://share.descript.com/view/yR7DW1QXNOZ` — a real
+  watch page, best for fields wanting a URL
+- **Direct MP4 (what the site actually plays):**
+  `https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/object/public/public-assets/tour.mp4`
+  (10.8 MB, in the public `public-assets` bucket)
+
+⚠️ `Landing.jsx` and `VistaRoyale.jsx` both play the **Supabase MP4**, not the
+Descript embed — so the MP4 is the current tour. Confirm the Descript version
+matches before linking it publicly; if it is an older cut, upload the MP4
+instead.
+
+⚠️ **G2 and Capterra generally expect a YouTube or Vimeo URL** for the video
+field. Neither a Descript share page nor a raw MP4 reliably embeds. The clean
+fix is a one-time unlisted YouTube upload of `tour.mp4`, then use that URL
+everywhere — including a `VideoObject` on the landing page later.
 
 ---
 
