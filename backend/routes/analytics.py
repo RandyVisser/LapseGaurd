@@ -30,6 +30,11 @@ _ALLOWED = {
     "invite_accepted", "owner_upload", "demo_click", "tour_play",
     "vista_royale_view",
     "section_features", "section_stakes", "section_how", "section_faq", "section_cta",
+    # Static /guides/ reference pages. Fired by public/guides/guide-analytics.js
+    # (the static pages can't import src/analytics.js). These pages exist to earn
+    # organic search and AI-answer traffic, so their referrer is the whole point —
+    # see /analytics/pages.
+    "guide_view",
 }
 
 # Landing-page depth — how far down the page visitors get before leaving.
@@ -162,6 +167,153 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
     except Exception:
         logger.debug("dropped malformed analytics event", exc_info=True)
     return Response(status_code=204)
+
+
+# Referrer host -> (bucket, friendly label). ORDER MATTERS: the AI assistants are
+# matched before the plain search engines because several live on a search
+# engine's own domain (gemini.google.com would otherwise read as "Google").
+_REFERRER_RULES = [
+    # AI assistants / answer engines — the GEO surface we actually care about.
+    ("gemini.google.com", "ai", "Gemini"),
+    ("bard.google.com", "ai", "Gemini"),
+    ("chatgpt.com", "ai", "ChatGPT"),
+    ("chat.openai.com", "ai", "ChatGPT"),
+    ("openai.com", "ai", "ChatGPT"),
+    ("perplexity.ai", "ai", "Perplexity"),
+    ("claude.ai", "ai", "Claude"),
+    ("copilot.microsoft.com", "ai", "Copilot"),
+    ("you.com", "ai", "You.com"),
+    ("phind.com", "ai", "Phind"),
+    # Classic search engines.
+    ("google.", "search", "Google"),
+    ("bing.com", "search", "Bing"),
+    ("duckduckgo.com", "search", "DuckDuckGo"),
+    ("search.yahoo.com", "search", "Yahoo"),
+    ("ecosia.org", "search", "Ecosia"),
+    ("search.brave.com", "search", "Brave"),
+    ("yandex.", "search", "Yandex"),
+    ("baidu.com", "search", "Baidu"),
+]
+
+
+def _classify_referrer(referrer: str | None, utm: str | None):
+    """(bucket, label) for a stored referrer. Buckets: campaign | ai | search |
+    referral | direct. A first-touch utm tag wins — that's a tagged outbound
+    click we placed deliberately, and it's more specific than the referrer."""
+    if utm:
+        return "campaign", utm
+    if not referrer:
+        return "direct", "Direct / none"
+    low = referrer.lower()
+    for needle, bucket, label in _REFERRER_RULES:
+        if needle in low:
+            return bucket, label
+    # Fall back to the bare host so the long tail stays readable.
+    host = low.split("//")[-1].split("/")[0].removeprefix("www.")
+    return "referral", host or "Unknown"
+
+
+@router.get("/analytics/pages")
+async def pages(
+    days: int = 30,
+    user: AuthUser = Depends(get_current_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Traffic to the static /guides/ reference pages, split by where it came
+    from. This is how we tell whether the SEO/GEO work is landing: organic
+    search and AI-assistant referrals are the whole point of those pages.
+
+    Super-user only. Counts distinct sessions (a session reading three guides is
+    one visitor, three views)."""
+    if user.role != "super_user":
+        raise HTTPException(status_code=403, detail="Super-user only")
+    days = max(1, min(days, 365))
+
+    page_rows = await conn.fetch(
+        """SELECT path,
+                  count(distinct coalesce(session_id, id::text)) AS sessions,
+                  count(*) AS views
+           FROM events
+           WHERE name = 'guide_view'
+             AND created_at > now() - make_interval(days => $1)
+           GROUP BY path
+           ORDER BY sessions DESC
+           LIMIT 50""",
+        days,
+    )
+
+    # Raw referrer/utm pairs, bucketed in Python so the rules stay in one place.
+    src_rows = await conn.fetch(
+        """SELECT referrer, utm,
+                  count(distinct coalesce(session_id, id::text)) AS sessions
+           FROM events
+           WHERE name = 'guide_view'
+             AND created_at > now() - make_interval(days => $1)
+           GROUP BY referrer, utm""",
+        days,
+    )
+    by_source: dict[tuple[str, str], int] = defaultdict(int)
+    by_bucket: dict[str, int] = defaultdict(int)
+    for r in src_rows:
+        bucket, label = _classify_referrer(r["referrer"], r["utm"])
+        by_source[(bucket, label)] += r["sessions"]
+        by_bucket[bucket] += r["sessions"]
+
+    sources = sorted(
+        ({"bucket": b, "label": l, "sessions": n} for (b, l), n in by_source.items()),
+        key=lambda s: -s["sessions"],
+    )[:15]
+
+    # Per-day guide sessions, so a ranking win shows up as a step change.
+    daily_rows = await conn.fetch(
+        """SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day,
+                  count(distinct coalesce(session_id, id::text)) AS n
+           FROM events
+           WHERE name = 'guide_view'
+             AND created_at > now() - make_interval(days => $1)
+           GROUP BY 1""",
+        days,
+    )
+    seen = {r["day"]: r["n"] for r in daily_rows}
+    today = await conn.fetchval("SELECT (now() AT TIME ZONE 'America/New_York')::date")
+    daily = [
+        {"day": (today - timedelta(days=i)).isoformat(), "sessions": seen.get(today - timedelta(days=i), 0)}
+        for i in range(min(days, 90) - 1, -1, -1)
+    ]
+
+    total_sessions = await conn.fetchval(
+        """SELECT count(distinct coalesce(session_id, id::text)) FROM events
+           WHERE name = 'guide_view' AND created_at > now() - make_interval(days => $1)""",
+        days,
+    ) or 0
+
+    # Did guide readers go on to convert? Joins signups back to sessions that
+    # read a guide first — the payoff metric for the whole content effort.
+    converted = await conn.fetchval(
+        """SELECT count(*) FROM (
+             SELECT signup_attribution->>'session_id' AS sid FROM hoas
+             WHERE signup_attribution IS NOT NULL
+               AND created_at > now() - make_interval(days => $1)
+             UNION ALL
+             SELECT signup_attribution->>'session_id' FROM pm_firms
+             WHERE signup_attribution IS NOT NULL
+               AND created_at > now() - make_interval(days => $1)
+           ) s
+           WHERE s.sid IS NOT NULL AND EXISTS (
+             SELECT 1 FROM events e
+             WHERE e.session_id = s.sid AND e.name = 'guide_view')""",
+        days,
+    ) or 0
+
+    return {
+        "days": days,
+        "total_sessions": total_sessions,
+        "converted": converted,
+        "buckets": [{"bucket": b, "sessions": n} for b, n in sorted(by_bucket.items(), key=lambda x: -x[1])],
+        "pages": [{"path": r["path"], "sessions": r["sessions"], "views": r["views"]} for r in page_rows],
+        "sources": sources,
+        "daily": daily,
+    }
 
 
 @router.get("/analytics/funnel")

@@ -265,6 +265,137 @@ function FunnelCard() {
   )
 }
 
+// Friendly names for the static /guides/ pages. Falls back to the slug, so a
+// new guide shows up here without needing an entry.
+const GUIDE_LABELS = {
+  '/guides/index.html': 'Guides index',
+  '/guides/florida-condo-insurance-requirements.html': 'FL insurance requirements',
+  '/guides/florida-condo-milestone-inspection-sirs.html': 'Milestone inspections & SIRS',
+  '/guides/florida-condo-insurance-statistics.html': 'FL insurance statistics',
+  '/guides/florida-condo-loss-assessment-coverage.html': 'Loss assessment coverage',
+  '/guides/what-is-a-declarations-page.html': 'What is a dec page',
+  '/guides/ho6-vs-ho4-vs-wind-only.html': 'HO-6 vs HO-4 vs wind-only',
+  '/guides/hoa-insurance-compliance-tracking.html': 'Compliance tracking',
+}
+
+function guideLabel(path) {
+  if (GUIDE_LABELS[path]) return GUIDE_LABELS[path]
+  return (path || '').replace('/guides/', '').replace(/\.html$/, '') || 'unknown'
+}
+
+// Bucket → [label, pill classes]. 'search' and 'ai' are the two that tell us the
+// SEO/GEO work is landing; everything else is context.
+const BUCKET_META = {
+  search: ['Organic search', 'bg-[#E7EEFA] text-[#014AC5] border-[#C7DBF5]'],
+  ai: ['AI assistants', 'bg-[#E2F4EC] text-[#0E8E68] border-[#BFE5D5]'],
+  campaign: ['Tagged campaign', 'bg-[#FAEDD2] text-[#946410] border-[#F0DDAE]'],
+  referral: ['Referral', 'bg-slate-100 text-[#54627A] border-slate-200'],
+  direct: ['Direct', 'bg-slate-50 text-[#8493A8] border-slate-200'],
+}
+
+// Guide-page traffic — super-user only. Same self-hiding behaviour as
+// FunnelCard: if analytics isn't reachable it renders nothing rather than
+// breaking the feedback page.
+function PagesCard() {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [view, setView] = useState('pages') // pages | sources
+  const [days, setDays] = useState(30)
+  useEffect(() => {
+    setData(null)
+    apiGet(`/analytics/pages?days=${days}`).then(setData).catch(() => setFailed(true))
+  }, [days])
+  if (failed) return null
+
+  const buckets = Object.fromEntries((data?.buckets || []).map(b => [b.bucket, b.sessions]))
+  const maxPage = Math.max(1, ...(data?.pages || []).map(p => p.sessions))
+  const maxSource = Math.max(1, ...(data?.sources || []).map(s => s.sessions))
+  const findable = (buckets.search || 0) + (buckets.ai || 0)
+
+  return (
+    <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-5 mb-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <p className="font-semibold text-[#0B1B33]">Guide pages</p>
+          <p className="text-xs text-[#8493A8] mt-0.5">
+            Organic reach from the /guides/ reference pages
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Toggle options={[[7, '7d'], [30, '30d'], [90, '90d']]} value={days} onChange={setDays} />
+          <Toggle options={[['pages', 'Pages'], ['sources', 'Sources']]} value={view} onChange={setView} />
+        </div>
+      </div>
+
+      {!data ? (
+        <div className="h-40 bg-slate-50 rounded animate-pulse" />
+      ) : data.total_sessions === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-[#54627A]">No guide traffic yet in this window.</p>
+          <p className="text-xs text-[#8493A8] mt-1">
+            Indexing typically takes days to weeks after a sitemap submission.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              ['Readers', data.total_sessions, 'text-[#0B1B33]'],
+              ['Found us via search or AI', findable, 'text-[#0E8E68]'],
+              ['AI assistants', buckets.ai || 0, 'text-[#0E8E68]'],
+              ['Went on to sign up', data.converted, 'text-[#014AC5]'],
+            ].map(([label, n, cls]) => (
+              <div key={label} className="rounded-lg border border-[#E8ECF2] px-3 py-2.5">
+                <p style={{ fontFamily: MONO }} className={`text-xl font-bold ${cls}`}>{n}</p>
+                <p className="text-[11px] text-[#54627A] leading-tight mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {view === 'pages' ? (
+            <div className="space-y-1.5">
+              <Eyebrow>Most-read guides</Eyebrow>
+              {data.pages.map(p => (
+                <div key={p.path} className="flex items-center gap-3"
+                  title={`${p.path} — ${p.sessions} readers, ${p.views} views`}>
+                  <span className="text-sm text-[#54627A] w-52 flex-shrink-0 truncate">{guideLabel(p.path)}</span>
+                  <div className="flex-1 h-4 rounded-r bg-[#E7EEFA]">
+                    <div className="h-4 rounded-r bg-[#014AC5]"
+                      style={{ width: `${(p.sessions / maxPage) * 100}%`, minWidth: p.sessions > 0 ? 3 : 0 }} />
+                  </div>
+                  <span style={{ fontFamily: MONO }} className="text-sm font-semibold text-[#0B1B33] w-9 text-right">{p.sessions}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Eyebrow>Where guide readers came from</Eyebrow>
+              {data.sources.map(s => {
+                const [bLabel, cls] = BUCKET_META[s.bucket] || BUCKET_META.referral
+                return (
+                  <div key={`${s.bucket}:${s.label}`} className="flex items-center gap-3" title={bLabel}>
+                    <span className="w-52 flex-shrink-0 flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 ${cls}`}>
+                        {bLabel}
+                      </span>
+                      <span className="text-xs text-[#54627A] truncate">{s.label}</span>
+                    </span>
+                    <div className="flex-1 h-4 rounded-r bg-slate-100">
+                      <div className="h-4 rounded-r bg-[#54627A]"
+                        style={{ width: `${(s.sessions / maxSource) * 100}%`, minWidth: s.sessions > 0 ? 3 : 0 }} />
+                    </div>
+                    <span style={{ fontFamily: MONO }} className="text-sm font-semibold text-[#0B1B33] w-9 text-right">{s.sessions}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminFeedback() {
   usePageTitle('Feedback')
   const [items, setItems] = useState(null)
@@ -289,6 +420,7 @@ export default function AdminFeedback() {
       <Nav role="hoa_admin" title="Feedback" />
       <main className="max-w-3xl mx-auto px-4 py-8">
         <FunnelCard />
+        <PagesCard />
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-[#0B1B33]">Pilot feedback</h1>

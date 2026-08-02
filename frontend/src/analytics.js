@@ -74,12 +74,24 @@ function utmFirstTouch() {
   }
 }
 
-// Cross-origin referrer only — same-origin navigation referrers are noise.
-function externalReferrer() {
+// First-touch cross-origin referrer, persisted like the utm tag above.
+//
+// Same-origin navigation referrers are noise, so they're ignored — but that
+// alone loses the signal we most want: someone arrives from a Google result
+// onto a /guides/ page, then clicks into the app, at which point
+// document.referrer is same-origin and the Google referrer is gone forever.
+// Persisting the FIRST external referrer under 'ci.ref' is what lets organic
+// search attribution survive to signup. First touch wins; later referrers never
+// overwrite. Mirrored in public/guides/guide-analytics.js — keep the keys in sync.
+function referrerFirstTouch() {
   try {
+    const saved = localStorage.getItem('ci.ref')
+    if (saved) return saved
     const ref = document.referrer
     if (!ref || new URL(ref).origin === location.origin) return null
-    return ref.slice(0, 200)
+    const trimmed = ref.slice(0, 200)
+    localStorage.setItem('ci.ref', trimmed)
+    return trimmed
   } catch {
     return null
   }
@@ -108,7 +120,7 @@ export function getAttribution() {
     const out = {
       session_id: sessionId(),
       utm: utmFirstTouch(),
-      referrer: externalReferrer(),
+      referrer: referrerFirstTouch(),
     }
     return (out.session_id || out.utm || out.referrer) ? out : null
   } catch {
@@ -145,7 +157,7 @@ export function track(name) {
       path: location.pathname,
       session_id: sessionId(),
       utm: utmFirstTouch(),
-      referrer: externalReferrer(),
+      referrer: referrerFirstTouch(),
     })
     const url = `${API_BASE}/analytics/event`
     if (navigator.sendBeacon) {
