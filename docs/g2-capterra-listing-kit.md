@@ -164,22 +164,33 @@ unit-detail shots navigate directly to known tenant IDs instead.
 
 ### Recommended six, with captions
 
+⚠️ **Captions are capped at 80 characters** on both platforms. Every caption
+below is verified under that limit — the length is shown so you can see the
+headroom if you want to edit one. Paste exactly; don't add a trailing period,
+several platforms append their own punctuation.
+
 Upload in this order — the first is what appears on the category listing card.
 
-| # | File | Caption |
-|---|---|---|
-| 1 | `04-compliance-dashboard.png` | **Every unit's HO-6 status on one dashboard.** Coverage percentage, units needing attention, and a live compliance trend — no spreadsheet to maintain. |
-| 2 | `10-unit-detail-clean.png` | **AI-verified coverage, checked against your requirements.** Named insured, property address, Coverage A and E limits and wind coverage are each verified against the association's minimums — including the extra requirements that apply to rented units. |
-| 3 | `06-unit-detail-approved.png` | **Problems surface before a claim does.** An expired policy is flagged the moment it lapses, with the specific requirement that failed called out rather than a generic warning. |
-| 4 | `05-unit-table.png` | **Every unit, every status, one table.** Sort and filter by compliance state, board role, bounced email, or rental status; export to CSV any time. |
-| 5 | `08-document-center.png` | **Shared association documents in one place.** Wind mitigation reports, sprinkler forms and building records, available to every unit owner without an email thread. |
-| 6 | `02-landing-features.png` | **Four ways in: compliance board, AI dec-page review, email-in submission, and a document center.** |
+| # | File | Caption | Len |
+|---|---|---|---|
+| 1 | `04-compliance-dashboard.png` | `Every unit's HO-6 status on one live dashboard` | 46 |
+| 2 | `10-unit-detail-clean.png` | `AI checks each policy against your association's requirements` | 61 |
+| 3 | `06-unit-detail-approved.png` | `Expired and non-compliant policies are flagged automatically` | 60 |
+| 4 | `05-unit-table.png` | `Sort, filter and export every unit by compliance status` | 55 |
+| 5 | `08-document-center.png` | `Shared association documents, available to every owner` | 54 |
+| 6 | `02-landing-features.png` | `Compliance board, AI dec-page review, email-in, documents` | 57 |
 
 ### Also available
 
-`01-landing-hero.png`, `03-landing-how.png`, `09-settings.png`,
-`11-unit-detail-flagged.png`, plus `-scrolled` variants of the unit-detail
-shots showing the extracted policy fields and history.
+| File | Caption | Len |
+|---|---|---|
+| `01-landing-hero.png` | `Know every unit is covered, without a spreadsheet` | 49 |
+| `11-unit-detail-flagged.png` | `See exactly which requirement a policy failed` | 45 |
+| `09-settings.png` | `Set the coverage minimums your association requires` | 51 |
+| `03-landing-how.png` | `From a guess to a dashboard in five steps` | 41 |
+
+Plus `-scrolled` variants of the unit-detail shots showing the extracted policy
+fields and history. Reuse the caption of the shot they belong to.
 
 ### Not captured, and why
 
