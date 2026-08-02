@@ -286,3 +286,82 @@ While you're doing vendor profiles, these are the same kind of work and cheap:
 - **Product Hunt** — one-time launch spike, decent link
 - **Florida CAI chapter** — vendor/sponsor listing, exactly your vertical and
   more relevant to buyers than any of the above
+
+---
+
+## 11. Answers used on the Capterra submission (2026-08-01)
+
+Reuse these verbatim for G2 — same decisions apply.
+
+### Category: **HOA**, not Association Management
+
+Counterintuitive, and the feature lists are the evidence. "Association
+Management" on Capterra means **membership organizations** — its feature list is
+Chapter Management, Fundraising, Job Board, Member Directory, Event Ticketing,
+Dues Management. That's chambers of commerce and trade bodies, not community
+associations.
+
+The HOA list is the right world (HOA Violation Enforcement, Property Database,
+Work Order Management, Fee Collection) and — decisively — it contains
+**Portfolio Management**, which Association Management does not. That is the
+PM-firm north star as a literal filter checkbox.
+
+Do **not** use Association Management as a secondary either; it is the wrong
+audience, not merely the weaker one.
+
+### Features — 15 of 43 checked
+
+Generative AI · Portfolio Management · Access Controls/Permissions · Reminders ·
+Alerts/Notifications · Activity Dashboard · Reporting/Analytics · Document
+Management · File Management · Self Service Portal · Property Database · Member
+Database · Contact Management · Member Communication · Activity Tracking
+
+**Deliberately unchecked, and why it matters:** every money feature — Fee
+Collection, Billing & Invoicing, Accounting, General Ledger, Bank Reconciliation,
+Payment Processing, Electronic Payments, Expense Tracking, Transaction History,
+Recurring/Subscription Billing. Our Stripe integration bills *the association for
+condo.insure*; it does not collect dues from owners. In this category those
+checkboxes mean the latter, and ticking them invites a head-to-head with Vantaca
+and CINC on their strongest ground.
+
+Also unchecked: HOA Violation Enforcement, Work Order Management, Maintenance
+Scheduling, Vendor Management, **Inspection Management** (we *write* about
+milestone inspections — the product does not manage them; don't let content
+credibility leak into a product claim), SMS Messaging (roadmap, not built),
+AI Copilot (parsing is not a chat assistant), API, Third-Party Integrations,
+Real-Time Notifications (alerts run on a daily cron).
+
+Checking ~15 of 43 reads as a focused point solution. Checking 30 reads as a
+thin all-in-one, and surfaces us in filters we cannot satisfy.
+
+### Target market (200-char limit — this is 185)
+
+```
+Condo and homeowner associations, and the property management firms that run them. Board presidents, treasurers, and community association managers running multi-association portfolios.
+```
+
+ASCII-only on purpose; smart quotes and em-dashes can shift the count on paste.
+Florida is deliberately omitted — the version naming it landed at exactly 200,
+and geography belongs in the long description rather than a hard filter.
+
+### Target industries
+
+Priority order, nearest match wins: Real Estate → Property Management →
+Insurance → Facilities Services. Stop at four; more dilutes rather than broadens.
+
+### Target company size: 1 · 2-10 · 11-50 · 51-200 · 201-500
+
+"Company size" means **employees, not units** — a firm managing 10,000 units may
+have 80 people, so 51-200 already covers a large Florida firm. `1` and `2-10`
+are real: a self-managed association is a volunteer board. Stopped at 201-500;
+above that is national operators with entrenched vendors.
+
+### Target number of users: 1 · 2-10 · 11-50
+
+Smaller than company size **because owners don't need accounts** — they forward
+an email. Seats are board members and PM staff only, so a 300-unit association
+might be three users. Left 51-200 off: not a claim we can back with a reference
+customer yet.
+
+⚠️ Keep this consistent with pricing. A $50/mo minimum and a 1–750 unit first
+tier signal small-to-mid; enterprise sizing next to a $50 floor reads as confused.
