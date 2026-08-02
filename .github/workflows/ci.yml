@@ -25,8 +25,25 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - name: Build the frontend (catches white-screen / build crashes)
+      - name: Build the frontend (catches build crashes)
         run: npm run build
+
+      # A successful build does NOT mean the app renders — a runtime error on
+      # module init builds fine and shows a blank page. This serves dist/ and
+      # asserts #root actually has children, that the static /guides/ pages
+      # aren't eaten by the SPA catch-all, and that robots/sitemap/llms.txt
+      # keep their real content-types.
+      #
+      # Playwright is installed with --no-save so it never becomes a committed
+      # devDependency (CLAUDE.md keeps test tooling out of this repo; this is CI
+      # infrastructure). Unauthenticated on purpose — an authenticated run would
+      # have to hit production, since there is no staging.
+      - name: Install Playwright (transient, CI only)
+        run: |
+          npm i --no-save playwright@1.61.0
+          npx playwright install --with-deps chromium
+      - name: Smoke test the built app (catches white screens)
+        run: node scripts/smoke.mjs
 
   backend-check:
     runs-on: ubuntu-latest
@@ -40,8 +57,17 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - name: Compile-check all modules (syntax errors)
         run: python -m compileall -q .
       - name: Import-check (app imports cleanly — catches bad imports / undefined names)
         run: python -c "import main"
+
+      # backend/tests/ existed for months but CI never ran it. These need no DB,
+      # no env vars and no network. Includes two guards against silent drift:
+      # test_alert_parity (a processor added only to run_alerts.py would never
+      # run in production, which has shipped dead features twice) and
+      # test_pricing_consistency (the volume tiers must agree across the billing
+      # function, the landing copy and the public listing kit).
+      - name: Run the test suite
+        run: python -m pytest tests/ -q
