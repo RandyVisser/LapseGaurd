@@ -71,16 +71,14 @@ exclusion pattern and are not real mailboxes.
 
 ## 3. Categories
 
-Taxonomies shift, so pick the nearest match to these:
+- **Primary: HOA.** Settled on the live Capterra taxonomy — see §11 for the
+  evidence and why "Association Management" is the wrong list despite the name.
+- **Secondary:** Property Management, or an insurance category if offered.
+- **Do NOT use Association Management** — wrong audience, not merely weaker.
 
-- **Primary:** Association Management / HOA software
-- **Secondary:** Property Management software
-- **Also relevant:** Insurance compliance, Document management, Compliance
-  tracking
-
-Prefer a *narrower* category where offered. Being credible in "HOA / association
-management" beats being invisible in "Property Management," which is dominated
-by AppFolio and Yardi.
+Prefer a *narrower* category where offered. Being credible in a small, precise
+category beats being invisible in Property Management, which is dominated by
+AppFolio, Buildium and Yardi.
 
 ---
 
