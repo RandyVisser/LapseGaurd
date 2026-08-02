@@ -47,6 +47,63 @@ still unconnected, lookalike domain warming since 07-08)
       (Needs a migration for the agent-email column + `cc` support in
       send_email — audited 2026-07-14, bumped to M.)
 
+## Organic acquisition (SEO / GEO — started 2026-08-01)
+
+Compounding channel, not a replacement for outbound. The point is that a PM who
+gets a mailer and then searches us finds substance. Realistic signal window is
+6–12 weeks; nothing here pays off next week.
+
+- [x] **Crawlability foundation** — shipped 2026-08-01: the site was serving
+      crawlers `<div id="root"></div>` and nothing else. Google renders JS so
+      SEO limped, but LLM crawlers (GPTBot/ClaudeBot/PerplexityBot) mostly
+      don't — so AI-answer visibility was *zero*, not low. Added head meta +
+      JSON-LD (Organization/WebSite/SoftwareApplication/FAQPage), real
+      robots.txt (AI crawlers explicitly allow-listed) and sitemap.xml — both
+      previously returned 200 `text/html` because the files didn't exist and the
+      SPA catch-all swallowed them. ⚠️ `serve -s` had to go: `-s` implies
+      cleanUrls, which 301s `/foo.html` → `/foo` → catch-all, making every
+      static page unreachable at HTTP 200. See `frontend/CLAUDE.md`.
+- [x] **Seven cited guide pages** — shipped 2026-08-01 at `/guides/*.html`:
+      FL insurance requirements · milestone inspections & SIRS · FL insurance
+      statistics · loss assessment coverage · dec pages · HO-6 vs HO-4 vs
+      wind-only · compliance tracking. Static HTML on purpose (crawlable
+      without JS), own `guides.css` — NOT landing.css, whose `.reveal` renders
+      blank without JS. Two corrections to things widely published as current
+      law: the association force-place power was **repealed in 2010** (SB 1196),
+      and the 3-mile coastal milestone trigger **no longer exists** (SB 154,
+      2023).
+- [x] **Guide analytics + super-user Pages card** — shipped 2026-08-01:
+      `guide_view` beacon on the static pages, `/analytics/pages`, and a Pages
+      card on /admin/feedback bucketing referrers campaign/ai/search/referral/
+      direct. Also fixed a latent bug: first-touch **referrer** was never
+      persisted, so a Google → guide → app → signup journey lost the Google
+      referrer at the first same-origin click. Organic attribution could not
+      have worked before this (`ci.ref`).
+- [x] **OG social card** — shipped 2026-08-01: real 1200×630 card replacing the
+      transparent logo PNG that cropped badly on social.
+- [ ] ⚠️ **REVIEW THE THREE LEGAL PAGES** — requirements, SIRS, loss assessment
+      are live and make statutory claims under our brand. All cited to
+      flsenate.gov / leg.state.fl.us with not-legal-advice disclaimers, but
+      Randy + Troy have not read them. **Only genuinely open risk in this work.**
+- [ ] **G2 listing** — Capterra submitted 2026-08-01 (category **HOA**, not
+      Association Management — see `docs/g2-capterra-listing-kit.md` §11 for
+      why the name misleads). Kit has every answer; G2 is a repeat.
+- [ ] **YouTube upload of `tour.mp4`** (S) — G2/Capterra want a YouTube/Vimeo
+      URL; a Descript share page and a raw MP4 don't embed reliably.
+- [ ] **Reviews for the listings** (3–5) — a listing with none reads abandoned.
+      ⚠️ Realistic sources are 3 Island + Vista Royale: **real customers**, so
+      needs Randy/Troy OK and must come from a human mailbox, never Resend.
+- [ ] **Backlinks** (S each) — the actual bottleneck; a new domain with no
+      inbound links won't rank however well it's crawled. LinkedIn company page
+      (we have none), **Florida CAI chapter** (most relevant to real buyers),
+      Crunchbase, Product Hunt.
+- [ ] **Prerender the landing SPA body** (M) — its `<head>` is crawlable now,
+      which captures most of the value, but non-JS crawlers still see an empty
+      root on `/`, `/privacy`, `/terms`.
+- [ ] **Pull the "65% of condo owners are underinsured" stat** (S) — no study
+      behind it, and universalcondo.com repeats it. Our statistics page
+      explicitly declines to use it; the agency collateral should too.
+
 ## Deadlines & housekeeping
 
 - [ ] **Paywall decision + build** — `assert_billing_ok` is still a no-op; all
@@ -54,13 +111,15 @@ still unconnected, lookalike domain warming since 07-08)
       read-only / nag) and build it by September.
 - [x] **UTM tracking for outbound** — shipped 2026-07-14 (migration 041):
       first-touch utm/referrer stored per browser, carried on every beacon;
-      funnel card shows a "Where visitors came from" breakdown. ⚠️ REMAINING
-      ACTION: tag the Apollo/mailer links with `utm_source`/`utm_campaign`
-      (or short `src=`) params or nothing attributes. (2026-07-16: analytics
-      now also drops bot UAs, stores coarse device/browser buckets
+      funnel card shows a "Where visitors came from" breakdown. (2026-07-16:
+      analytics now also drops bot UAs, stores coarse device/browser buckets
       (migration 043), counts demo_click/tour_play/vista_royale_view, and
       the events table was cleared for a clean post-filter baseline —
-      attribution is first-touch, so tag links BEFORE sending.)
+      attribution is first-touch, so tag links BEFORE sending.) 2026-07-28:
+      tagging convention + canonical links defined in `docs/utm-conventions.md`
+      and handed to dad — apollo/mailer × broward-pm/palmbeach-pm; VR mailers
+      stay page-tracked (vista_royale_view). ⚠️ REMAINING: dad must actually
+      use the tagged links when Apollo goes live / on the next mailer print.
 - [ ] **Live card test: firm checkout** — dad is on it (his test firm, ~$0 now,
       trial carries into Stripe). Verify webhook fans "paid" to all its condos.
 - [ ] **Drop legacy tables** (S) — `property_manager_hoas` + `pm_billing`.
