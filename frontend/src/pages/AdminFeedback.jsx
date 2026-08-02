@@ -276,6 +276,9 @@ const GUIDE_LABELS = {
   '/guides/what-is-a-declarations-page.html': 'What is a dec page',
   '/guides/ho6-vs-ho4-vs-wind-only.html': 'HO-6 vs HO-4 vs wind-only',
   '/guides/hoa-insurance-compliance-tracking.html': 'Compliance tracking',
+  '/guides/condo-insure-vs-mackoul.html': 'vs Mackoul',
+  '/guides/loss-assessment-calculator.html': 'Loss assessment calculator',
+  '/guides/ho6-compliance-cost-calculator.html': 'Cost calculator',
 }
 
 function guideLabel(path) {

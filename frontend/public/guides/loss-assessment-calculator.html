@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Loss Assessment Exposure Calculator (Florida)</title>
+<meta name="description" content="Estimate each unit owner's share of a Florida condominium association's master policy deductible, and the gap against their loss assessment coverage limit. Florida's statutory minimum is $2,000 per occurrence, unchanged since 2010." />
+<link rel="canonical" href="https://www.condo.insure/guides/loss-assessment-calculator.html" />
+
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="condo.insure" />
+<meta property="og:url" content="https://www.condo.insure/guides/loss-assessment-calculator.html" />
+<meta property="og:title" content="Loss Assessment Exposure Calculator (Florida)" />
+<meta property="og:description" content="Each owner's share of the master deductible, against their loss assessment limit." />
+<meta property="og:image" content="https://www.condo.insure/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="condo.insure — HO-6 compliance for condo associations" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="icon" type="image/png" href="/assets/logo-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/guides/guides.css" />
+<style>
+  .calc { border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; margin: 0 0 28px; background: #fff; }
+  .calc .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 18px; }
+  .calc label { display: block; font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+  .calc .hint { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted-2); margin-top: 3px; }
+  .calc input, .calc select {
+    width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: 15px;
+    padding: 9px 11px; border: 1px solid var(--line-2); border-radius: 8px; color: var(--ink); background: #fff;
+  }
+  .calc input:focus, .calc select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  .out { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 4px; }
+  .out .big { font-family: var(--mono); font-weight: 700; font-size: 30px; line-height: 1.1; color: var(--navy); }
+  .out .lbl { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+  .out .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
+  .verdict { margin-top: 18px; padding: 14px 16px; border-radius: 9px; font-size: 15px; }
+  .verdict.gap { background: var(--coral-bg); border: 1px solid #EEC7BB; color: #8A3222; }
+  .verdict.ok { background: var(--green-bg); border: 1px solid #BFE5D5; color: #0A6B4F; }
+  .verdict b { color: inherit; }
+  noscript .g-warn { margin-bottom: 0; }
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Loss Assessment Exposure Calculator (Florida)",
+      "description": "Estimate a unit owner's share of a condominium association's master policy deductible against their loss assessment coverage limit.",
+      "datePublished": "2026-08-02",
+      "dateModified": "2026-08-02",
+      "author": { "@type": "Organization", "name": "condo.insure", "url": "https://www.condo.insure/" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "condo.insure",
+        "logo": { "@type": "ImageObject", "url": "https://www.condo.insure/assets/logo.png" }
+      },
+      "mainEntityOfPage": "https://www.condo.insure/guides/loss-assessment-calculator.html"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "condo.insure", "item": "https://www.condo.insure/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://www.condo.insure/guides/index.html" },
+        { "@type": "ListItem", "position": 3, "name": "Loss assessment calculator" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How is a condominium master policy deductible split between unit owners?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Under Fla. Stat. 718.111(11)(j) the deductible and damages above the association's coverage are a common expense of the condominium, so they are shared by all owners according to their share of common expenses under the declaration — usually a percentage of ownership rather than an equal split. An association may opt out of that default under 718.111(11)(k)-(m) and allocate differently, and a negligent owner can be made responsible under 718.111(11)(j)1."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much loss assessment coverage does Florida require?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Fla. Stat. 627.714 requires a condominium unit owner policy to include at least $2,000 of property loss assessment coverage, with a deductible on that coverage of no more than $250. The limit applies per occurrence — all assessments arising from the same direct loss share one limit — and the floor has not changed since 2010."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="g-nav">
+  <div class="g-nav-in">
+    <a class="g-logo" href="/">
+      <img src="/assets/logo-mark.svg" alt="" />
+      <span>condo<i>.insure</i></span>
+    </a>
+    <div class="g-nav-cta">
+      <a class="btn btn-ghost" href="/">Product</a>
+      <a class="btn btn-primary" href="/signup">Start free</a>
+    </div>
+  </div>
+</header>
+
+<div class="g-wrap">
+<main class="g-main">
+<article>
+
+  <p class="g-eyebrow">Calculator</p>
+  <h1>Loss Assessment Exposure Calculator</h1>
+
+  <p class="g-lede">
+    When a Florida association takes a hurricane loss, its master policy deductible becomes a
+    <strong>common expense</strong> — shared across every owner. This estimates each owner's
+    share and compares it to the loss assessment coverage on their HO-6. Florida's statutory
+    minimum is <strong>$2,000</strong>, and it hasn't moved since 2010.
+  </p>
+
+  <p class="g-meta">
+    Last updated 2026-08-02 · Estimate only, not legal or insurance advice
+  </p>
+
+  <noscript>
+    <div class="g-warn">
+      <span class="lab">JavaScript required for the calculator</span>
+      <p>
+        The interactive calculator needs JavaScript. The method is simple enough to do by
+        hand: <strong>deductible ÷ number of units = each owner's share</strong> if the
+        declaration splits common expenses evenly, then subtract their loss assessment limit
+        to find the gap. Everything else on this page reads normally.
+      </p>
+    </div>
+  </noscript>
+
+  <div class="calc">
+    <div class="row">
+      <div>
+        <label for="mode">Deductible is stated as
+          <span class="hint">Hurricane deductibles are usually a percentage</span>
+        </label>
+        <select id="mode">
+          <option value="pct">A percentage of insured value</option>
+          <option value="flat">A flat dollar amount</option>
+        </select>
+      </div>
+      <div id="wrapValue">
+        <label for="value">Building insured value ($)
+          <span class="hint">Replacement cost on the master policy</span>
+        </label>
+        <input id="value" type="number" min="0" step="100000" value="50000000" />
+      </div>
+      <div id="wrapPct">
+        <label for="pct">Hurricane deductible (%)
+          <span class="hint">Commonly 2–5% in Florida</span>
+        </label>
+        <input id="pct" type="number" min="0" step="0.5" value="3" />
+      </div>
+      <div id="wrapFlat" style="display:none">
+        <label for="flat">Deductible amount ($)</label>
+        <input id="flat" type="number" min="0" step="1000" value="50000" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="units">Number of units</label>
+        <input id="units" type="number" min="1" step="1" value="120" />
+      </div>
+      <div>
+        <label for="limit">Owner's loss assessment limit ($)
+          <span class="hint">$2,000 is the Florida statutory minimum</span>
+        </label>
+        <input id="limit" type="number" min="0" step="1000" value="2000" />
+      </div>
+    </div>
+
+    <div class="out">
+      <div class="grid">
+        <div>
+          <div class="big" id="oTotal">—</div>
+          <div class="lbl">Total deductible the association absorbs</div>
+        </div>
+        <div>
+          <div class="big" id="oShare">—</div>
+          <div class="lbl">Each owner's share, split evenly</div>
+        </div>
+        <div>
+          <div class="big" id="oGap">—</div>
+          <div class="lbl">Uncovered by their HO-6</div>
+        </div>
+      </div>
+      <div class="verdict" id="oVerdict"></div>
+    </div>
+  </div>
+
+  <div class="g-warn">
+    <span class="lab">What this does and doesn't tell you</span>
+    <p>
+      <strong>It splits the deductible evenly.</strong> Real allocation follows your
+      declaration, which almost always uses each unit's percentage of common expenses — so a
+      penthouse pays more than a studio. Treat the per-owner figure as an average, not as any
+      particular owner's bill.
+    </p>
+    <p>
+      It also assumes the assessment arises from a <strong>peril the owner's own policy
+      covers</strong>. If it doesn't — flood, or a reserve shortfall — loss assessment
+      coverage pays nothing at all, whatever the limit.
+      <a href="/guides/florida-condo-loss-assessment-coverage.html">Why →</a>
+    </p>
+  </div>
+
+  <h2 id="how">How the allocation actually works</h2>
+
+  <div class="g-answer">
+    <span class="lab">The statute</span>
+    <p>
+      Fla. Stat. § 718.111(11)(j): "all property insurance deductibles and other damages in
+      excess of property insurance coverage under the property insurance policies maintained by
+      the association are a <strong>common expense of the condominium</strong>" — so the
+      deductible is shared by all owners under the declaration, not charged to whichever unit
+      happened to be damaged.<a href="#s1" class="g-cite">[1]</a>
+    </p>
+  </div>
+
+  <p>Three things change the answer for a specific building:</p>
+
+  <ul>
+    <li>
+      <strong>Your declaration's percentages.</strong> Common expenses are rarely split evenly.
+    </li>
+    <li>
+      <strong>A recorded opt-out.</strong> §§ 718.111(11)(k)–(m) let a majority of total voting
+      interests opt out of the (j) default and allocate under the declaration instead —
+      effective on recording, with no mortgagee consent required. Check whether one exists.
+    </li>
+    <li>
+      <strong>The negligence exception.</strong> § 718.111(11)(j)1. can put the entire cost on
+      one owner where the damage came from that owner's negligence or failure to comply with
+      the declaration — including acts of tenants and guests.
+    </li>
+  </ul>
+
+  <h2 id="why-2000">Why $2,000 is the number to argue with</h2>
+
+  <p>
+    § 627.714 requires every Florida condominium unit owner policy to carry at least
+    <strong>$2,000</strong> of property loss assessment coverage, with a deductible on it of no
+    more than $250.<a href="#s2" class="g-cite">[2]</a> That floor was set in 2010 and has not
+    been raised since.
+  </p>
+
+  <p>
+    Set the calculator to a 3% deductible on a $50 million building across 120 units and the
+    average share is <strong>$12,500</strong> — against a statutory minimum limit of $2,000.
+    That ratio is the argument for associations setting their own minimum in the declaration,
+    and for boards knowing which owners are sitting at the floor before a storm rather than
+    after one.
+  </p>
+
+  <p>
+    One catch worth knowing: under § 627.714(2) the limit that applies is the one in force
+    <strong>one day before the occurrence</strong>. Raising coverage after a storm — or after
+    hearing an assessment is coming — buys nothing for that loss.
+  </p>
+
+  <section class="g-cta">
+    <h2>Know who's at the floor before the storm</h2>
+    <p>
+      condo.insure reads every declaration page and extracts the coverage limits your
+      association requires — including loss assessment — so you can see which owners are at
+      $2,000 while there's still time to tell them.
+    </p>
+    <a class="btn btn-primary" href="/signup">Start free</a>
+    <a class="btn btn-ghost" href="https://calendar.app.google/FomLtiZGYqtmt8jUA" target="_blank" rel="noopener">Book a demo</a>
+  </section>
+
+  <section class="g-sources">
+    <h2 id="sources">Sources</h2>
+    <ol>
+      <li id="s1">
+        Fla. Stat. § 718.111(11) (2025), Insurance — including (j) deductible allocation and
+        (k)–(m) opt-out.
+        <a href="https://www.flsenate.gov/Laws/Statutes/2025/718.111">flsenate.gov — § 718.111</a>
+      </li>
+      <li id="s2">
+        Fla. Stat. § 627.714 (2025), Condominium unit owner policies; loss assessment coverage.
+        <a href="http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&amp;URL=0600-0699/0627/Sections/0627.714.html">leg.state.fl.us — § 627.714</a>
+      </li>
+    </ol>
+  </section>
+
+  <section class="g-related">
+    <h2>Related guides</h2>
+    <ul>
+      <li><a href="/guides/florida-condo-loss-assessment-coverage.html">Loss assessment coverage in Florida — the full guide</a></li>
+      <li><a href="/guides/florida-condo-insurance-statistics.html">Florida condo insurance statistics</a></li>
+      <li><a href="/guides/ho6-compliance-cost-calculator.html">HO-6 compliance cost calculator</a></li>
+    </ul>
+  </section>
+
+</article>
+</main>
+
+<aside class="g-toc">
+  <h2>On this page</h2>
+  <ol>
+    <li><a href="#how">How allocation works</a></li>
+    <li><a href="#why-2000">Why $2,000 matters</a></li>
+    <li><a href="#sources">Sources</a></li>
+  </ol>
+</aside>
+</div>
+
+<footer class="g-foot">
+  <div class="g-foot-in">
+    <p><strong>condo.insure™</strong> — Insurance Compliance. Simplified.</p>
+    <p>
+      <a href="/">Home</a> ·
+      <a href="/guides/index.html">Guides</a> ·
+      <a href="/privacy">Privacy</a> ·
+      <a href="/terms">Terms</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id) }
+  var usd = function (n) {
+    return '$' + Math.round(n).toLocaleString('en-US')
+  }
+  var ids = ['mode', 'value', 'pct', 'flat', 'units', 'limit']
+
+  function calc() {
+    var mode = $('mode').value
+    $('wrapValue').style.display = mode === 'pct' ? '' : 'none'
+    $('wrapPct').style.display = mode === 'pct' ? '' : 'none'
+    $('wrapFlat').style.display = mode === 'flat' ? '' : 'none'
+
+    var total = mode === 'pct'
+      ? (parseFloat($('value').value) || 0) * ((parseFloat($('pct').value) || 0) / 100)
+      : (parseFloat($('flat').value) || 0)
+    var units = Math.max(1, parseInt($('units').value, 10) || 1)
+    var limit = parseFloat($('limit').value) || 0
+
+    var share = total / units
+    var gap = Math.max(0, share - limit)
+
+    $('oTotal').textContent = usd(total)
+    $('oShare').textContent = usd(share)
+    $('oGap').textContent = usd(gap)
+
+    var v = $('oVerdict')
+    if (total <= 0) {
+      v.className = 'verdict'
+      v.textContent = 'Enter a deductible to see the exposure.'
+    } else if (gap > 0) {
+      v.className = 'verdict gap'
+      v.innerHTML = 'An owner carrying <b>' + usd(limit) + '</b> of loss assessment coverage would be '
+        + '<b>' + usd(gap) + '</b> short on an average share of <b>' + usd(share) + '</b>'
+        + (limit <= 2000 ? ' — and ' + usd(limit) + ' is at or below Florida’s statutory minimum.' : '.')
+    } else {
+      v.className = 'verdict ok'
+      v.innerHTML = 'A limit of <b>' + usd(limit) + '</b> would cover an average share of <b>'
+        + usd(share) + '</b> — assuming the assessment arises from a peril the owner’s own policy covers.'
+    }
+  }
+
+  for (var i = 0; i < ids.length; i++) {
+    var el = $(ids[i])
+    el.addEventListener('input', calc)
+    el.addEventListener('change', calc)
+  }
+  calc()
+})()
+</script>
+<script src="/guides/guide-analytics.js" defer></script>
+</body>
+</html>

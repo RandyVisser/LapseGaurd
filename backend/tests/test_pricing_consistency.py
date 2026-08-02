@@ -82,6 +82,41 @@ class TestPublishedCopyMatches:
             f"_volume_monthly_cents says ${_volume_monthly_cents(units) / 100:.2f}."
         )
 
+    def test_cost_calculator_matches_the_billing_function(self):
+        """The public cost calculator reimplements the tiers in JS because it is a
+        static page with no backend. Extract its constants and check they produce
+        the same number as _volume_monthly_cents across the whole range."""
+        calc = REPO / "frontend" / "public" / "guides" / "ho6-compliance-cost-calculator.html"
+        if not calc.exists():
+            return
+        src = calc.read_text()
+
+        def const(name: str) -> float:
+            m = re.search(rf"var {name} = ([0-9.]+)", src)
+            assert m, f"{name} missing from the cost calculator — did the script get rewritten?"
+            return float(m.group(1))
+
+        t1_max, t2_max = int(const("TIER_1_MAX")), int(const("TIER_2_MAX"))
+        r1, r2, r3 = const("RATE_1"), const("RATE_2"), const("RATE_3")
+        minimum = const("MINIMUM")
+
+        assert (t1_max, t2_max) == (TIER_1_MAX, TIER_2_MAX)
+        assert (r1, r2, r3) == (TIER_1_RATE / 100, TIER_2_RATE / 100, TIER_3_RATE / 100)
+        assert minimum == MINIMUM_CENTS / 100
+
+        def js_monthly(units: int) -> float:
+            if units <= 0:
+                return 0.0
+            rate = r1 if units <= t1_max else r2 if units <= t2_max else r3
+            return max(units * rate, minimum)
+
+        for units in (0, 1, 25, 49, 50, 51, 120, 500, 749, 750, 751, 1000,
+                      9999, 10_000, 10_001, 25_000):
+            assert round(js_monthly(units) * 100) == _volume_monthly_cents(units), (
+                f"At {units} units the calculator says ${js_monthly(units):,.2f} but "
+                f"_volume_monthly_cents says ${_volume_monthly_cents(units) / 100:,.2f}."
+            )
+
     def test_public_listing_copy_matches(self):
         """docs/g2-capterra-listing-kit.md is pasted into G2/Capterra, so a stale
         figure there contradicts the invoice in public."""
