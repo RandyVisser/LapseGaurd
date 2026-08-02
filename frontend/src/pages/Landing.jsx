@@ -271,7 +271,7 @@ export default function Landing() {
               </button>
             </div>
             <div className="trust">
-              <span><span className="chk">✓</span> No credit card</span>
+              <span><span className="chk">✓</span> 90 days free — no credit card</span>
               <span><span className="chk">✓</span> Set up in minutes</span>
               <span><span className="chk">✓</span> Owners need no login</span>
               <span><span className="chk">✓</span> Built for Florida</span>
@@ -522,6 +522,25 @@ export default function Landing() {
       </section>
 
       {/* FAQ */}
+
+      {/* PM FIRMS — the mailer audience lands here; route them to the firm path
+          instead of making them discover it inside the association form. */}
+      <section className="stakes" id="firms">
+        <div className="wrap reveal">
+          <span className="eyebrow">Property management firms</span>
+          <h2 className="display">Managing more than one association?</h2>
+          <div className="stakes-grid">
+            <div className="stake"><div className="k">One login, whole portfolio</div><p>Every association you manage on <b>one firm dashboard</b> — KPIs, lapses, and uploads needing review across the book.</p></div>
+            <div className="stake"><div className="k">Your team, scoped</div><p>Owner, manager, and member roles with <b>per-manager assignments</b> — staff see their book, not the whole firm.</p></div>
+            <div className="stake"><div className="k">Billing that fits the firm</div><p>One consolidated subscription, or each association pays its own way at your <b>firm bulk rate</b> — no monthly minimum.</p></div>
+          </div>
+          <div className="hero-cta" style={{ marginTop: 26 }}>
+            <Link className="btn btn-light" to="/signup/firm">Set up your firm</Link>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+          </div>
+        </div>
+      </section>
+
       <section className="faq" id="faq">
         <div className="wrap faq-wrap">
           <div className="sec-head center reveal">
@@ -550,6 +569,10 @@ export default function Landing() {
               <p>Most associations pay <a className="inline-link" href="/guides/ho6-compliance-cost-calculator.html">$1 per unit, per month, with a $50/month minimum</a>. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free.</p>
             </details>
             <details className="faq-item">
+              <summary>We manage multiple associations — does this work as a portfolio?</summary>
+              <p>Yes. A property management firm gets one dashboard across every association it manages, with role-based access for staff and per-manager assignments. Billing is either one consolidated subscription for the firm or each association paying its own way at the firm’s bulk rate. Set up at condo.insure/signup/firm.</p>
+            </details>
+            <details className="faq-item">
               <summary>What insurance does it track?</summary>
               <p>Unit-owner <a className="inline-link" href="/guides/ho6-vs-ho4-vs-wind-only.html">HO-6</a> policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
             </details>
@@ -558,6 +581,20 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
+      <section className="cta">
+        <div className="wrap reveal">
+          <h2 className="display">Put your whole association on one dashboard.</h2>
+          <p>Set up your association in minutes. No credit card required.</p>
+          <div className="hero-cta">
+            <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+            <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
+              <span className="play" aria-hidden="true"></span>Watch the 2-min tour
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* GUIDES & TOOLS — free reference pages. Contextual internal links from
           the homepage make them discoverable to readers and reachable by
           crawlers. These are static HTML files, so plain <a>, never <Link>. */}
@@ -596,19 +633,6 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="cta">
-        <div className="wrap reveal">
-          <h2 className="display">Put your whole association on one dashboard.</h2>
-          <p>Set up your association in minutes. No credit card required.</p>
-          <div className="hero-cta">
-            <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
-            <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
-              <span className="play" aria-hidden="true"></span>Watch the 2-min tour
-            </button>
-          </div>
-        </div>
-      </section>
 
       <footer className="ft">
         <div className="wrap ft-in">
