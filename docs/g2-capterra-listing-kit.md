@@ -136,8 +136,6 @@ Starting price to enter: **$50.00 / month**
    silent wrong-unit matches.
 5. **Portfolio-native for management firms**, not one login per association.
 
-Named competitor to expect on comparison pages: **Mackoul**.
-
 ---
 
 ## 7. Assets to upload
