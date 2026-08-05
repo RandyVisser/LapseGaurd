@@ -118,9 +118,9 @@ const geoPath = (pts, close) =>
 // are direct-labeled, every dot has a native tooltip, and the list beside the
 // map carries the exact numbers.
 function GeoSection({ geo }) {
-  const fl = geo?.florida || []
-  const outside = geo?.outside || []
-  if (!fl.length && !outside.length) return null
+  if (!geo) return null // backend predating migration 048
+  const fl = geo.florida || []
+  const outside = geo.outside || []
   const max = Math.max(1, ...fl.map(c => c.sessions))
   const flTotal = fl.reduce((n, c) => n + c.sessions, 0)
   const outsideTotal = outside.reduce((n, o) => n + o.sessions, 0)
@@ -128,12 +128,16 @@ function GeoSection({ geo }) {
     <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 pt-4 mt-4 border-t border-[#E8ECF2]">
       <div>
         <Eyebrow>Where they are — Florida ({flTotal})</Eyebrow>
-        {fl.length ? (
-          <svg viewBox="0 0 296 288" className="w-full max-w-[280px]" role="img"
-            aria-label={`Florida map: ${flTotal} sessions across ${fl.length} cities`}>
-            <path d={geoPath(FL_OUTLINE, true)} fill="#EEF2F8" stroke="#DCE3EC" strokeWidth="1" strokeLinejoin="round" />
-            <path d={geoPath(FL_KEYS)} fill="none" stroke="#DCE3EC" strokeWidth="2.5" strokeLinecap="round" />
-            {fl.map((c, i) => {
+        <svg viewBox="0 0 296 288" className="w-full max-w-[280px]" role="img"
+          aria-label={`Florida map: ${flTotal} sessions across ${fl.length} cities`}>
+          <path d={geoPath(FL_OUTLINE, true)} fill="#EEF2F8" stroke="#DCE3EC" strokeWidth="1" strokeLinejoin="round" />
+          <path d={geoPath(FL_KEYS)} fill="none" stroke="#DCE3EC" strokeWidth="2.5" strokeLinecap="round" />
+          {!fl.length && (
+            <text x="148" y="140" textAnchor="middle" className="fill-[#8493A8]" fontSize="11">
+              No located sessions yet
+            </text>
+          )}
+          {fl.map((c, i) => {
               const [x, y] = projGeo([c.lon, c.lat])
               const r = 4 + 8 * Math.sqrt(c.sessions / max)
               const labelLeft = x > 210
@@ -150,10 +154,11 @@ function GeoSection({ geo }) {
               )
             })}
           </svg>
-        ) : (
-          <p className="text-xs text-[#8493A8]">No located Florida sessions in this window yet.</p>
-        )}
-        <p className="text-[10px] text-[#8493A8] mt-1">Dot size = sessions. Location is city-level, resolved and discarded at ingest.</p>
+        <p className="text-[10px] text-[#8493A8] mt-1">
+          {fl.length
+            ? 'Dot size = sessions. Location is city-level, resolved and discarded at ingest.'
+            : 'Location is captured from Aug 5 onward — dots appear as new visitors arrive.'}
+        </p>
       </div>
       <div className="space-y-4">
         <MiniList title="Top Florida cities" rows={fl.slice(0, 6).map(c => ({ where: c.city, sessions: c.sessions }))} nameKey="where" />
