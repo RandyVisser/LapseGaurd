@@ -84,7 +84,9 @@ silently-dead features twice. Throttling is per tenant/type via `alert_log`.
 
 ## Analytics
 
-The beacon stores no IP/UA (deliberate privacy stance). Bot filtering is two
+The beacon stores no IP/UA (deliberate privacy stance) — both are classified
+at ingest into coarse buckets (device/browser from the UA; city-level geo via
+geojs.io from the IP, migration 048) and then discarded. Bot filtering is two
 layers: UA markers at ingest (`_BOT_MARKERS`), then the `human_events` /
 `scanner_sessions` views (migration 047) at query time, which drop
 email-security-scanner sessions (section beacons <4s after arrival, or

@@ -4,17 +4,21 @@ Lightweight, privacy-preserving funnel analytics.
   GET  /analytics/funnel  — super-user signup funnel for the last N days
 
 The beacon records only an allow-listed event name, the page path, a random
-client session id, and campaign attribution (first-touch utm tag + cross-origin
-referrer) — no IP, no UA, no names. It powers the super-user funnel card so we
+client session id, campaign attribution (first-touch utm tag + cross-origin
+referrer), and coarse buckets derived at ingest and then discarded — device/
+browser from the UA, city-level geo from the IP. No IP, no UA, no names is
+ever stored. It powers the super-user funnel card so we
 can tell a *traffic* problem (no one visiting) from a *conversion* problem
 (visiting but bouncing).
 """
+import ipaddress
 import json
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 import asyncpg
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from auth.jwt import AuthUser, get_current_user
@@ -124,12 +128,55 @@ _hits: dict[str, list[datetime]] = defaultdict(list)
 _LIMIT, _WINDOW = 300, timedelta(hours=1)
 
 
-def _rate_ok(request: Request) -> bool:
+def _client_ip(request: Request) -> str:
     # Rightmost X-Forwarded-For entry: appended by Railway's edge, so the
-    # client can't spoof its way past the limit (leftmost values are theirs).
-    ip = (request.headers.get("X-Forwarded-For")
-          or (request.client.host if request.client else "")
-          or "?").split(",")[-1].strip()
+    # client can't spoof it (leftmost values are theirs).
+    return (request.headers.get("X-Forwarded-For")
+            or (request.client.host if request.client else "")
+            or "?").split(",")[-1].strip()
+
+
+# Coarse geolocation, same privacy pattern as the device/browser buckets: the
+# IP is looked up and DISCARDED — only city/state/country and the CITY-centroid
+# lat/lon (not the visitor's position) are stored. geojs.io: free, keyless,
+# city-level. Best-effort with a short timeout; failures cache as None so a
+# flaky lookup never slows a burst, and NULL columns just read "unknown".
+_geo_cache: dict[str, tuple | None] = {}
+_GEO_CACHE_MAX = 4096
+
+
+async def _coarse_geo(ip: str) -> tuple | None:
+    """(city, region, country, lat, lon) or None. Never raises."""
+    try:
+        if not ip or ip == "?" or not ipaddress.ip_address(ip).is_global:
+            return None
+    except ValueError:
+        return None
+    if ip in _geo_cache:
+        return _geo_cache[ip]
+    geo = None
+    try:
+        async with httpx.AsyncClient(timeout=1.5) as client:
+            r = await client.get(f"https://get.geojs.io/v1/ip/geo/{ip}.json")
+        if r.status_code == 200:
+            d = r.json()
+            geo = (
+                (d.get("city") or None),
+                (d.get("region") or None),
+                (d.get("country_code") or None),
+                float(d["latitude"]) if d.get("latitude") else None,
+                float(d["longitude"]) if d.get("longitude") else None,
+            )
+    except Exception:
+        logger.debug("geo lookup failed", exc_info=True)
+    if len(_geo_cache) >= _GEO_CACHE_MAX:
+        _geo_cache.clear()
+    _geo_cache[ip] = geo
+    return geo
+
+
+def _rate_ok(request: Request) -> bool:
+    ip = _client_ip(request)
     now = datetime.utcnow()
     # Evict idle IPs so the dict doesn't grow forever on public bot traffic
     # (a public endpoint sees a new IP per bot; empty lists never expired).
@@ -157,9 +204,11 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
         payload = json.loads(await request.body() or b"{}")
         name = (payload.get("name") or "").strip()
         if name in _ALLOWED:
+            geo = await _coarse_geo(_client_ip(request)) or (None,) * 5
             await conn.execute(
-                """INSERT INTO events (name, path, session_id, utm, referrer, device, browser)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                """INSERT INTO events (name, path, session_id, utm, referrer, device, browser,
+                                       geo_city, geo_region, geo_country, geo_lat, geo_lon)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)""",
                 name,
                 (payload.get("path") or "")[:200] or None,
                 (payload.get("session_id") or "")[:64] or None,
@@ -168,6 +217,7 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
                 (payload.get("utm") or "")[:200] or None,
                 (payload.get("referrer") or "")[:200] or None,
                 device, browser,
+                geo[0], geo[1], geo[2], geo[3], geo[4],
             )
     except Exception:
         logger.debug("dropped malformed analytics event", exc_info=True)
@@ -384,6 +434,44 @@ async def funnel(
         days,
     )
 
+    # Where visitors are — coarse city buckets derived at ingest (migration
+    # 048; IP never stored). Outbound only targets Florida, so the card maps
+    # FL cities and lumps everything else. A session's geo is its first
+    # non-null city (one browser = one place at this coarseness). Rows from
+    # before 048 have NULL geo → the "unknown" count.
+    geo_rows = await conn.fetch(
+        """SELECT geo_city, geo_region, geo_country,
+                  avg(geo_lat)  AS lat,
+                  avg(geo_lon)  AS lon,
+                  count(distinct coalesce(session_id, id::text)) AS sessions
+           FROM human_events
+           WHERE created_at > now() - make_interval(days => $1)
+             AND geo_city IS NOT NULL
+           GROUP BY 1, 2, 3
+           ORDER BY sessions DESC
+           LIMIT 100""",
+        days,
+    )
+    geo_unknown = await conn.fetchval(
+        """SELECT count(*) FROM (
+             SELECT coalesce(session_id, id::text) AS sid,
+                    bool_or(geo_city IS NOT NULL) AS has_geo
+             FROM human_events
+             WHERE created_at > now() - make_interval(days => $1)
+             GROUP BY 1) s
+           WHERE NOT has_geo""",
+        days,
+    ) or 0
+    geo_fl, geo_outside = [], defaultdict(int)
+    for r in geo_rows:
+        if r["geo_region"] == "Florida" and r["geo_country"] == "US":
+            geo_fl.append({"city": r["geo_city"], "lat": r["lat"], "lon": r["lon"],
+                           "sessions": r["sessions"]})
+        else:
+            where = (f'{r["geo_region"]}, {r["geo_country"]}'
+                     if r["geo_country"] == "US" else (r["geo_country"] or "??"))
+            geo_outside[where] += r["sessions"]
+
     # What visitors browse on — coarse buckets derived at ingest (raw UA never
     # stored). Rows from before migration 043 have NULL device → 'unknown'.
     device_rows = await conn.fetch(
@@ -508,5 +596,12 @@ async def funnel(
         "extra": extra,
         "sources": [{"source": r["source"], "sessions": r["sessions"]} for r in source_rows],
         "devices": [{"device": r["device"], "sessions": r["sessions"]} for r in device_rows],
+        "geo": {
+            "florida": geo_fl,
+            "outside": sorted(
+                ({"where": w, "sessions": n} for w, n in geo_outside.items()),
+                key=lambda x: -x["sessions"])[:8],
+            "unknown": geo_unknown,
+        },
         "daily": daily,
     }

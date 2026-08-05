@@ -87,6 +87,87 @@ function MiniList({ title, rows, nameKey }) {
   )
 }
 
+// --- "Where they are" map -----------------------------------------------------
+// Simplified Florida outline as [lon, lat] pairs, projected with the SAME
+// function that places the city dots, so geometry and data can't drift apart.
+// Coordinates are hand-simplified from the real coastline — recognizable, not
+// surveying-grade.
+const FL_OUTLINE = [
+  [-87.60, 30.99], [-85.00, 31.00], [-84.86, 30.71], [-83.60, 30.65],
+  [-82.55, 30.59], [-82.20, 30.57], [-82.05, 30.36], [-81.62, 30.73],
+  [-81.44, 30.71], [-81.38, 30.25], [-81.26, 29.71], [-81.05, 29.14],
+  [-80.53, 28.46], [-80.30, 27.50], [-80.05, 26.97], [-80.03, 26.60],
+  [-80.11, 26.10], [-80.13, 25.77], [-80.30, 25.40], [-80.36, 25.19],
+  [-80.90, 25.14], [-81.16, 25.22], [-81.35, 25.85], [-81.80, 26.10],
+  [-81.90, 26.45], [-82.25, 26.75], [-82.55, 27.30], [-82.65, 27.70],
+  [-82.85, 28.17], [-82.70, 28.90], [-83.00, 29.13], [-83.60, 29.90],
+  [-84.35, 30.06], [-84.90, 29.72], [-85.35, 29.68], [-85.70, 30.10],
+  [-86.45, 30.38], [-87.20, 30.33], [-87.45, 30.30],
+]
+const FL_KEYS = [
+  [-80.45, 25.15], [-80.60, 24.95], [-81.10, 24.72], [-81.55, 24.63], [-81.80, 24.55],
+]
+// Equirectangular, x compressed by cos(mid-latitude) so Florida keeps its shape.
+const projGeo = ([lon, lat]) => [(lon + 87.7) * 42 * 0.885, (31.15 - lat) * 42]
+const geoPath = (pts, close) =>
+  pts.map((p, i) => `${i ? 'L' : 'M'}${projGeo(p).map(n => n.toFixed(1)).join(' ')}`).join('') + (close ? 'Z' : '')
+
+// Proportional-symbol map of Florida sessions + the outside-FL remainder.
+// Outbound (mailers/Apollo) only targets Florida, so non-FL traffic is listed
+// as a discount column, not mapped. Dot area scales with sessions; top cities
+// are direct-labeled, every dot has a native tooltip, and the list beside the
+// map carries the exact numbers.
+function GeoSection({ geo }) {
+  const fl = geo?.florida || []
+  const outside = geo?.outside || []
+  if (!fl.length && !outside.length) return null
+  const max = Math.max(1, ...fl.map(c => c.sessions))
+  const flTotal = fl.reduce((n, c) => n + c.sessions, 0)
+  const outsideTotal = outside.reduce((n, o) => n + o.sessions, 0)
+  return (
+    <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4 pt-4 mt-4 border-t border-[#E8ECF2]">
+      <div>
+        <Eyebrow>Where they are — Florida ({flTotal})</Eyebrow>
+        {fl.length ? (
+          <svg viewBox="0 0 296 288" className="w-full max-w-[280px]" role="img"
+            aria-label={`Florida map: ${flTotal} sessions across ${fl.length} cities`}>
+            <path d={geoPath(FL_OUTLINE, true)} fill="#EEF2F8" stroke="#DCE3EC" strokeWidth="1" strokeLinejoin="round" />
+            <path d={geoPath(FL_KEYS)} fill="none" stroke="#DCE3EC" strokeWidth="2.5" strokeLinecap="round" />
+            {fl.map((c, i) => {
+              const [x, y] = projGeo([c.lon, c.lat])
+              const r = 4 + 8 * Math.sqrt(c.sessions / max)
+              const labelLeft = x > 210
+              return (
+                <g key={`${c.city}-${i}`}>
+                  <circle cx={x} cy={y} r={r} fill="#014AC5" fillOpacity=".78" stroke="#fff" strokeWidth="2" />
+                  {i < 3 && (
+                    <text x={labelLeft ? x - r - 4 : x + r + 4} y={y + 3}
+                      textAnchor={labelLeft ? 'end' : 'start'}
+                      className="fill-[#54627A]" fontSize="10">{c.city}</text>
+                  )}
+                  <title>{`${c.city}: ${c.sessions} session${c.sessions === 1 ? '' : 's'}`}</title>
+                </g>
+              )
+            })}
+          </svg>
+        ) : (
+          <p className="text-xs text-[#8493A8]">No located Florida sessions in this window yet.</p>
+        )}
+        <p className="text-[10px] text-[#8493A8] mt-1">Dot size = sessions. Location is city-level, resolved and discarded at ingest.</p>
+      </div>
+      <div className="space-y-4">
+        <MiniList title="Top Florida cities" rows={fl.slice(0, 6).map(c => ({ where: c.city, sessions: c.sessions }))} nameKey="where" />
+        <MiniList title={`Outside Florida (${outsideTotal}) — likely noise`} rows={outside} nameKey="where" />
+        {geo?.unknown > 0 && (
+          <p className="text-[10px] text-[#8493A8]">
+            {geo.unknown} session{geo.unknown === 1 ? '' : 's'} without location (recorded before geo shipped, or lookup failed).
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Toggle({ options, value, onChange }) {
   return (
     <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
@@ -259,6 +340,8 @@ function FunnelCard() {
               <MiniList title="What they browse on" rows={data.devices} nameKey="device" />
             </div>
           )}
+
+          <GeoSection geo={data.geo} />
         </div>
       )}
 
