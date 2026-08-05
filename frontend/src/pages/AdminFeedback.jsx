@@ -261,6 +261,14 @@ function FunnelCard() {
           )}
         </div>
       )}
+
+      {data?.scanners_filtered > 0 && (
+        <p className="text-[11px] text-[#8493A8] pt-3">
+          {data.scanners_filtered} bot session{data.scanners_filtered === 1 ? '' : 's'} filtered
+          out — email link scanners &amp; headless browsers that pass the UA check but scroll
+          the whole page in under 4 seconds.
+        </p>
+      )}
     </div>
   )
 }

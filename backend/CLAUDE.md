@@ -84,7 +84,13 @@ silently-dead features twice. Throttling is per tenant/type via `alert_log`.
 
 ## Analytics
 
-The beacon stores no IP/UA (deliberate privacy stance). Funnel tickers
+The beacon stores no IP/UA (deliberate privacy stance). Bot filtering is two
+layers: UA markers at ingest (`_BOT_MARKERS`), then the `human_events` /
+`scanner_sessions` views (migration 047) at query time, which drop
+email-security-scanner sessions (section beacons <4s after arrival, or
+same-minute shallow burst companions on the same device+browser). Funnel and
+pages endpoints read `human_events`, never `events`, so history stays clean
+retroactively and raw rows are never deleted. Funnel tickers
 exclude founder emails (`_INTERNAL_EMAILS`) and the `sandbox-%` email pattern
 — which is why test logins must use `sandbox-*@condo.insure`. `?notrack=1` on
 any page permanently flags that browser via localStorage. The

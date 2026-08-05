@@ -51,6 +51,11 @@ _DEPTH = [
 
 # Crawler/scripted traffic is dropped at ingest — a public beacon otherwise
 # counts every bot hit as a "visit". Substring match on the lowercased UA.
+# Second layer: email-security scanners (SafeLinks, Proofpoint, ...) use real
+# browser UAs and get PAST this filter, so the read queries below go through
+# the human_events view (migration 047), which drops sessions with scanner
+# behavior (section beacons <4s after arrival, same-minute burst companions)
+# at query time — nothing is deleted, and history is cleaned retroactively.
 _BOT_MARKERS = (
     "bot", "crawler", "spider", "scrape", "headless", "phantom", "slurp",
     "python", "curl", "wget", "httpx", "go-http", "node-fetch", "axios",
@@ -233,7 +238,7 @@ async def pages(
         """SELECT path,
                   count(distinct coalesce(session_id, id::text)) AS sessions,
                   count(*) AS views
-           FROM events
+           FROM human_events
            WHERE name = 'guide_view'
              AND created_at > now() - make_interval(days => $1)
            GROUP BY path
@@ -246,7 +251,7 @@ async def pages(
     src_rows = await conn.fetch(
         """SELECT referrer, utm,
                   count(distinct coalesce(session_id, id::text)) AS sessions
-           FROM events
+           FROM human_events
            WHERE name = 'guide_view'
              AND created_at > now() - make_interval(days => $1)
            GROUP BY referrer, utm""",
@@ -268,7 +273,7 @@ async def pages(
     daily_rows = await conn.fetch(
         """SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day,
                   count(distinct coalesce(session_id, id::text)) AS n
-           FROM events
+           FROM human_events
            WHERE name = 'guide_view'
              AND created_at > now() - make_interval(days => $1)
            GROUP BY 1""",
@@ -282,7 +287,7 @@ async def pages(
     ]
 
     total_sessions = await conn.fetchval(
-        """SELECT count(distinct coalesce(session_id, id::text)) FROM events
+        """SELECT count(distinct coalesce(session_id, id::text)) FROM human_events
            WHERE name = 'guide_view' AND created_at > now() - make_interval(days => $1)""",
         days,
     ) or 0
@@ -327,12 +332,20 @@ async def funnel(
     days = max(1, min(days, 90))
     rows = await conn.fetch(
         """SELECT name, count(distinct coalesce(session_id, id::text)) AS n
-           FROM events
+           FROM human_events
            WHERE created_at > now() - make_interval(days => $1)
            GROUP BY name""",
         days,
     )
     counts = {r["name"]: r["n"] for r in rows}
+
+    # How many sessions the scanner filter discounted in this window — shown on
+    # the card so a quiet funnel next to a loud Apollo campaign is explainable.
+    scanners_filtered = await conn.fetchval(
+        """SELECT count(*) FROM scanner_sessions
+           WHERE first_seen > now() - make_interval(days => $1)""",
+        days,
+    ) or 0
 
     # Owner invites come from the source of truth (unit_invites), not a beacon —
     # they're sent server-side, so there's no client to fire an event. coalesce
@@ -362,7 +375,7 @@ async def funnel(
                                      THEN 'referral: ' || referrer
                                      ELSE 'direct' END) AS source,
                   count(distinct coalesce(session_id, id::text)) AS sessions
-           FROM events
+           FROM human_events
            WHERE name = 'landing_view'
              AND created_at > now() - make_interval(days => $1)
            GROUP BY 1
@@ -377,7 +390,7 @@ async def funnel(
         """SELECT CASE WHEN device IS NULL THEN 'unknown'
                        ELSE device || ' · ' || coalesce(browser, 'other') END AS device,
                   count(distinct coalesce(session_id, id::text)) AS sessions
-           FROM events
+           FROM human_events
            WHERE name = 'landing_view'
              AND created_at > now() - make_interval(days => $1)
            GROUP BY 1
@@ -394,7 +407,7 @@ async def funnel(
     daily_event_rows = await conn.fetch(
         """SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, name,
                   count(distinct coalesce(session_id, id::text)) AS n
-           FROM events
+           FROM human_events
            WHERE created_at > now() - make_interval(days => $1)
            GROUP BY 1, 2""",
         days,
@@ -488,6 +501,7 @@ async def funnel(
     extra.append({"name": "staff_activated", "label": "Invited staff activated", "count": staff_activated})
     return {
         "days": days,
+        "scanners_filtered": scanners_filtered,
         "funnel": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _FUNNEL],
         "depth": [{"name": n, "label": l, "count": counts.get(n, 0)} for n, l in _DEPTH],
         "signups": signups,
