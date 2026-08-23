@@ -374,6 +374,9 @@ const GUIDE_LABELS = {
   '/guides/hoa-insurance-compliance-tracking.html': 'Compliance tracking',
   '/guides/loss-assessment-calculator.html': 'Loss assessment calculator',
   '/guides/ho6-compliance-cost-calculator.html': 'Cost calculator',
+  '/guides/florida-ho6-compliance-checklist.html': 'Compliance checklist',
+  '/guides/property-manager-ho6-compliance-tracking.html': 'PM portfolio tracking',
+  '/guides/how-to-choose-hoa-insurance-tracking-software.html': 'Software buying guide',
 }
 
 function guideLabel(path) {

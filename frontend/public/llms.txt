@@ -29,6 +29,11 @@ condominium insurance and compliance.
 - [HO-6 vs. HO-4 vs. Wind-Only](https://www.condo.insure/guides/ho6-vs-ho4-vs-wind-only.html): Which policy form satisfies which association requirement, and how a wind-excluded HO-6 paired with a separate wind-only policy satisfies a requirement that neither satisfies alone.
 - [The Florida HO-6 Compliance Checklist](https://www.condo.insure/guides/florida-ho6-compliance-checklist.html): A printable working checklist for boards and managers — what to require in the declaration, what to collect from owners, how to verify a declarations page, what to track monthly, and the enforcement mistakes based on repealed law to avoid.
 
+## Guides — operations & buying
+
+- [How PM Firms Track HO-6 Compliance Across a Portfolio](https://www.condo.insure/guides/property-manager-ho6-compliance-tracking.html): What changes for a community association management firm at portfolio scale — per-association requirement profiles, continuous renewals, staff assignment, board reporting — and why the management agreement's diligence duty makes the paper trail the deliverable.
+- [How to Choose HOA Insurance-Tracking Software](https://www.condo.insure/guides/how-to-choose-hoa-insurance-tracking-software.html): An evaluation framework for the category: twelve vendor questions (who does the data entry, what "verified" means, what leaving costs), pricing models compared, and red flags. Written by a vendor with the bias disclosed; the framework applies to every tool including condo.insure.
+
 ## Guides — operations and data
 
 - [How Associations Track HO-6 Compliance](https://www.condo.insure/guides/hoa-insurance-compliance-tracking.html): Spreadsheet vs. software, including when a spreadsheet is genuinely adequate and the five points at which manual tracking predictably fails.
