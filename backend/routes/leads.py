@@ -117,3 +117,32 @@ async def expiring_leads(
         "within_60": sum(1 for l in leads if l["days_left"] <= 60),
         "leads": leads,
     }
+
+
+@router.get("/leads/checklist")
+async def checklist_leads(
+    user: AuthUser = Depends(require_super_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Prospect emails captured by the guide-page checklist form (guide_leads,
+    migration 049). Read-only lead surface for personal follow-up — the product
+    never emails these addresses."""
+    rows = await conn.fetch(
+        """SELECT email, source_path, session_id, utm, referrer, created_at
+           FROM guide_leads
+           ORDER BY created_at DESC
+           LIMIT 500"""
+    )
+    return {
+        "total": len(rows),
+        "leads": [
+            {
+                "email": r["email"],
+                "source_path": r["source_path"],
+                "utm": r["utm"],
+                "referrer": r["referrer"],
+                "created_at": r["created_at"].isoformat(),
+            }
+            for r in rows
+        ],
+    }

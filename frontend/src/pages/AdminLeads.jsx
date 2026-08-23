@@ -42,12 +42,22 @@ function csvEscape(v) {
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
 }
 
+// "Where did this lead come from" — first-touch utm beats referrer beats direct.
+function leadSource(l) {
+  if (l.utm) return l.utm
+  if (l.referrer) {
+    try { return new URL(l.referrer).hostname.replace(/^www\./, '') } catch { return l.referrer }
+  }
+  return 'direct'
+}
+
 export default function AdminLeads() {
   usePageTitle('Renewal Leads')
   const [days, setDays] = useState(60)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [checklist, setChecklist] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +69,14 @@ export default function AdminLeads() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [days])
+
+  useEffect(() => {
+    let cancelled = false
+    apiGet('/leads/checklist')
+      .then(d => { if (!cancelled) setChecklist(d) })
+      .catch(() => {}) // secondary card — never block the renewal table
+    return () => { cancelled = true }
+  }, [])
 
   const leads = data?.leads || []
 
@@ -173,6 +191,53 @@ export default function AdminLeads() {
             </table>
           </div>
         )}
+
+        {/* Checklist leads — prospect emails captured by the guide-page form
+            (guide_leads, migration 049). Personal follow-up only: nothing in
+            the product ever emails these addresses. */}
+        <section className="mt-10">
+          <h2 className="text-lg font-bold text-[#0B1B33]">Checklist leads</h2>
+          <p className="text-sm text-[#54627A] mt-0.5 mb-4">
+            {checklist
+              ? `${checklist.total} ${checklist.total === 1 ? 'prospect' : 'prospects'} asked for the FL compliance checklist — follow up personally, never through the product.`
+              : 'Prospects who asked for the FL compliance checklist on a guide page.'}
+          </p>
+          {checklist && checklist.leads.length === 0 && (
+            <div className="bg-white rounded-xl border border-[#E8ECF2] p-8 text-center">
+              <p className="text-sm text-[#54627A]">No checklist requests yet.</p>
+            </div>
+          )}
+          {checklist && checklist.leads.length > 0 && (
+            <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-[#8493A8] border-b border-[#E8ECF2]">
+                    <th className="px-4 py-3 font-semibold">Captured</th>
+                    <th className="px-3 py-3 font-semibold">Email</th>
+                    <th className="px-3 py-3 font-semibold">From page</th>
+                    <th className="px-4 py-3 font-semibold">Source</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0F3F8]">
+                  {checklist.leads.map((l, i) => (
+                    <tr key={i} className="hover:bg-[#F4F8FE]">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-[#0B1B33]" style={{ fontFamily: MONO }}>
+                        {fmtDate(l.created_at.slice(0, 10))}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <a href={`mailto:${l.email}`} className="text-[#014AC5] hover:underline">{l.email}</a>
+                      </td>
+                      <td className="px-3 py-2.5 text-[#54627A]">
+                        {(l.source_path || '—').replace('/guides/', '').replace('.html', '')}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#54627A]">{leadSource(l)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )

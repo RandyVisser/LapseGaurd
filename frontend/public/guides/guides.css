@@ -402,6 +402,51 @@ dd { margin: 0 0 10px; }
 }
 .g-cta .btn-ghost:hover { border-color: rgba(255, 255, 255, 0.6); }
 
+/* Checklist lead-capture form inside the CTA band. Works without JS (the
+   form's action navigates to the checklist page; the email input has no name
+   attribute, so nothing leaks into the URL). */
+.g-lead {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+.g-lead label {
+  display: block;
+  color: #C9D6EA;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.g-lead label strong { color: #fff; }
+.g-lead-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.g-lead-row input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+}
+.g-lead-row input::placeholder { color: rgba(255, 255, 255, 0.45); }
+.g-lead-row input:focus {
+  outline: 2px solid #6FE3B6;
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.g-lead-row button.btn {
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.g-lead small {
+  display: block;
+  margin-top: 10px;
+  color: rgba(201, 214, 234, 0.75);
+  font-size: 12.5px;
+}
+
 /* ---------- related ---------- */
 
 .g-related { margin-top: 52px; }

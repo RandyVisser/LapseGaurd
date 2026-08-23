@@ -14,6 +14,7 @@ can tell a *traffic* problem (no one visiting) from a *conversion* problem
 import ipaddress
 import json
 import logging
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -221,6 +222,39 @@ async def record_event(request: Request, conn: asyncpg.Connection = Depends(get_
             )
     except Exception:
         logger.debug("dropped malformed analytics event", exc_info=True)
+    return Response(status_code=204)
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
+
+
+@router.post("/analytics/checklist-lead")
+async def checklist_lead(request: Request, conn: asyncpg.Connection = Depends(get_conn)):
+    """Checklist lead capture from the /guides/ pages (migration 049). Same
+    posture as the event beacon: public, text/plain (CORS-simple), rate-limited,
+    bots dropped, best-effort 204 always. Stores the email for PERSONAL
+    follow-up via /admin/leads — nothing here ever sends email. First submit
+    wins (UNIQUE + DO NOTHING), matching first-touch attribution."""
+    if not _rate_ok(request):
+        return Response(status_code=204)
+    if _classify_ua(request.headers.get("user-agent", "")) is None:
+        return Response(status_code=204)
+    try:
+        payload = json.loads(await request.body() or b"{}")
+        email = (payload.get("email") or "").strip().lower()[:200]
+        if _EMAIL_RE.match(email):
+            await conn.execute(
+                """INSERT INTO guide_leads (email, source_path, session_id, utm, referrer)
+                   VALUES ($1, $2, $3, $4, $5)
+                   ON CONFLICT (email) DO NOTHING""",
+                email,
+                (payload.get("path") or "")[:200] or None,
+                (payload.get("session_id") or "")[:64] or None,
+                (payload.get("utm") or "")[:200] or None,
+                (payload.get("referrer") or "")[:200] or None,
+            )
+    except Exception:
+        logger.debug("dropped malformed checklist lead", exc_info=True)
     return Response(status_code=204)
 
 

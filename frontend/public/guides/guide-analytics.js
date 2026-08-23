@@ -94,16 +94,26 @@
     } catch (e) { return null }
   }
 
-  function send(name) {
+  // Exclusion (notrack flag / logged-in browser) gates the BEACONS, not the
+  // listeners — the checklist form below must still navigate for everyone.
+  var excluded = false
+  try { excluded = selfExcluded() || hasSession() } catch (e) { excluded = false }
+
+  function payload(extra) {
+    var p = {
+      path: location.pathname,
+      session_id: sessionId(),
+      utm: utmFirstTouch(),
+      referrer: referrerFirstTouch()
+    }
+    for (var k in extra) p[k] = extra[k]
+    return JSON.stringify(p)
+  }
+
+  function post(endpoint, body) {
+    if (excluded) return
     try {
-      var body = JSON.stringify({
-        name: name,
-        path: location.pathname,
-        session_id: sessionId(),
-        utm: utmFirstTouch(),
-        referrer: referrerFirstTouch()
-      })
-      var url = API_BASE + '/analytics/event'
+      var url = API_BASE + endpoint
       // text/plain keeps it a CORS-simple request (no preflight), same as the SPA.
       if (navigator.sendBeacon) {
         navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))
@@ -114,9 +124,11 @@
     } catch (e) { /* analytics is best-effort; never break the page */ }
   }
 
-  try {
-    if (selfExcluded() || hasSession()) return
+  function send(name) {
+    try { post('/analytics/event', payload({ name: name })) } catch (e) { /* best-effort */ }
+  }
 
+  try {
     send('guide_view')
 
     // Demo bookings leave for an external calendar page, so the click is the
@@ -126,6 +138,21 @@
       var t = ev.target
       var a = t && t.closest ? t.closest('a[href*="calendar.app.google"]') : null
       if (a) send('demo_click')
+    })
+
+    // Checklist form: store the lead (backend keeps it for PERSONAL follow-up,
+    // never automated email), then go to the checklist page. Without JS the
+    // form's own action performs the same navigation.
+    document.addEventListener('submit', function (ev) {
+      var f = ev.target
+      if (!f || !f.hasAttribute || !f.hasAttribute('data-checklist')) return
+      ev.preventDefault()
+      try {
+        var input = f.querySelector('input[type="email"]')
+        var email = input && input.value ? input.value.trim() : ''
+        if (email) post('/analytics/checklist-lead', payload({ email: email }))
+      } catch (e) { /* the lead is best-effort; the navigation is not */ }
+      location.href = f.getAttribute('action') || '/guides/florida-ho6-compliance-checklist.html'
     })
   } catch (e) { /* analytics is best-effort; never break the page */ }
 })()
