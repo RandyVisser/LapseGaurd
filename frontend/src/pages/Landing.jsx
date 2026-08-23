@@ -251,7 +251,7 @@ export default function Landing() {
             <a className="txt" href="#how">How it works</a>
             <a className="txt" href="#pricing">Pricing</a>
             <Link className="txt" to="/login">Sign in</Link>
-            <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
+            <Link className="btn btn-primary" to="/signup">Start your free trial</Link>
           </nav>
         </div>
       </header>
@@ -264,8 +264,8 @@ export default function Landing() {
             <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
             <p className="lede">Track every unit-owner’s insurance policy in one dashboard. Each HO-6 Declaration page is reviewed automatically, compliance is verified, and renewal reminders are sent before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
             <div className="hero-cta">
-              <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
-              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
+              <Link className="btn btn-primary" to="/signup">Start your free trial</Link>
+              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a 15-min walkthrough</a>
               <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
@@ -514,7 +514,7 @@ export default function Landing() {
             </div>
             <div className="pf-right">
               <div className="price-eg">A 120-unit association pays <b>$120/month</b>.</div>
-              <Link className="btn btn-primary btn-block" to="/signup">Request your Dashboard</Link>
+              <Link className="btn btn-primary btn-block" to="/signup">Start your free trial</Link>
               <div className="price-mini">$50/mo minimum · no setup fee · cancel anytime</div>
             </div>
           </div>
@@ -536,7 +536,7 @@ export default function Landing() {
           </div>
           <div className="hero-cta" style={{ marginTop: 26 }}>
             <Link className="btn btn-light" to="/signup/firm">Set up your firm</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
           </div>
         </div>
       </section>
@@ -586,8 +586,8 @@ export default function Landing() {
           <h2 className="display">Put your whole association on one dashboard.</h2>
           <p>Set up your association in minutes. No credit card required.</p>
           <div className="hero-cta">
-            <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+            <Link className="btn btn-light" to="/signup">Start your free trial</Link>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
             <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
             </button>

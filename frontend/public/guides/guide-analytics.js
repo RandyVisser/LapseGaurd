@@ -94,23 +94,38 @@
     } catch (e) { return null }
   }
 
+  function send(name) {
+    try {
+      var body = JSON.stringify({
+        name: name,
+        path: location.pathname,
+        session_id: sessionId(),
+        utm: utmFirstTouch(),
+        referrer: referrerFirstTouch()
+      })
+      var url = API_BASE + '/analytics/event'
+      // text/plain keeps it a CORS-simple request (no preflight), same as the SPA.
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))
+      } else {
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true })
+          .catch(function () {})
+      }
+    } catch (e) { /* analytics is best-effort; never break the page */ }
+  }
+
   try {
     if (selfExcluded() || hasSession()) return
 
-    var body = JSON.stringify({
-      name: 'guide_view',
-      path: location.pathname,
-      session_id: sessionId(),
-      utm: utmFirstTouch(),
-      referrer: referrerFirstTouch()
+    send('guide_view')
+
+    // Demo bookings leave for an external calendar page, so the click is the
+    // last moment we can observe — same demo_click event the SPA fires, so the
+    // funnel card counts landing and guide bookings together.
+    document.addEventListener('click', function (ev) {
+      var t = ev.target
+      var a = t && t.closest ? t.closest('a[href*="calendar.app.google"]') : null
+      if (a) send('demo_click')
     })
-    var url = API_BASE + '/analytics/event'
-    // text/plain keeps it a CORS-simple request (no preflight), same as the SPA.
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))
-    } else {
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true })
-        .catch(function () {})
-    }
   } catch (e) { /* analytics is best-effort; never break the page */ }
 })()

@@ -9,7 +9,7 @@ const TOUR_VIDEO_URL = 'https://ykbjvmqdkczqyzyylwxo.supabase.co/storage/v1/obje
 
 // Personalized postcard landing page for the Vista Royale board.
 // Reachable at /vista_royale — pitches condo.insure adoption with
-// "Start free" + "Book a demo" CTAs.
+// "Start free" + "Book a 15-min walkthrough" CTAs.
 export default function VistaRoyale() {
   const [tourOpen, setTourOpen] = useState(false)
   const openTour = () => { track('tour_play'); setTourOpen(true) }
@@ -87,7 +87,7 @@ export default function VistaRoyale() {
             </p>
             <div className="hero-cta">
               <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
-              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a demo</a>
+              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a 15-min walkthrough</a>
               <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
@@ -145,7 +145,7 @@ export default function VistaRoyale() {
           <p>Set up your association in minutes. 90 days free — no credit card required.</p>
           <div className="hero-cta">
             <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
-            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a demo</a>
+            <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
             <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
             </button>
