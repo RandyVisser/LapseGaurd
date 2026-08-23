@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/postbuild-guides.mjs",
+    "build": "vite build && node scripts/postbuild-guides.mjs && vite build --ssr src/entry-server.jsx --outDir dist-server --emptyOutDir && node scripts/prerender-landing.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
