@@ -94,7 +94,7 @@ export default function Landing() {
       if (reduce) { el.textContent = to; return }
       const s = performance.now()
       ;(function t(n) {
-        const p = Math.min(1, (n - s) / ms), e = 1 - Math.pow(1 - p, 3)
+        const p = Math.max(0, Math.min(1, (n - s) / ms)), e = 1 - Math.pow(1 - p, 3)
         el.textContent = Math.round(from + (to - from) * e)
         if (p < 1) requestAnimationFrame(t)
       })(performance.now())
@@ -249,9 +249,11 @@ export default function Landing() {
           <nav className="nav-links">
             <a className="txt" href="#features">Product</a>
             <a className="txt" href="#how">How it works</a>
+            <a className="txt" href="#firms">For PM firms</a>
             <a className="txt" href="#pricing">Pricing</a>
+            <Link className="txt nav-owner" to="/owners">Unit owners</Link>
             <Link className="txt" to="/login">Sign in</Link>
-            <Link className="btn btn-primary" to="/signup">Start your free trial</Link>
+            <a className="btn btn-primary" href="#start">Get started free</a>
           </nav>
         </div>
       </header>
@@ -260,30 +262,46 @@ export default function Landing() {
       <section className="hero">
         <div className="wrap">
           <div>
-            <span className="eyebrow">The compliance dashboard for condo &amp; HOA boards.</span>
-            <h1 className="display">Knowing every unit is covered,<br /><span className="pop">without the paperwork chase.</span></h1>
-            <p className="lede">Track every unit-owner’s insurance policy in one dashboard. Each HO-6 Declaration page is reviewed automatically, compliance is verified, and renewal reminders are sent before policies expire. One expired HO-6 policy can expose your entire association. <strong>condo.insure</strong> makes sure you know before it becomes a problem.</p>
-            <div className="hero-cta">
-              <Link className="btn btn-primary" to="/signup">Start your free trial</Link>
-              <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a 15-min walkthrough</a>
+            <span className="eyebrow">HO-6 compliance for Florida condo associations</span>
+            <h1 className="display">Know every unit is insured,<br /><span className="pop">without chasing a single dec page.</span></h1>
+            <p className="lede">Owners email or upload their declaration page. AI checks it against your association’s requirements in seconds. Reminders go out 30, 7 and 1 day before a policy expires. You see who’s covered, expiring, or lapsed on one board — instead of in a filing cabinet.</p>
+
+            {/* Two-path split: boards and PM firms have different signup flows
+                (association = setup request we fulfil by hand; firm = instant
+                self-serve account), so say so up front instead of making a PM
+                discover the firm path inside the association form. */}
+            <div className="paths" id="start">
+              <Link className="path" to="/signup">
+                <span className="who">I’m on a condo board</span>
+                <span className="what">Request a free setup. We build your unit list from public records and email your invite within one business day.</span>
+                <span className="go">Set up my association →</span>
+              </Link>
+              <Link className="path" to="/signup/firm">
+                <span className="who">I manage associations</span>
+                <span className="what">Create a firm account in minutes. One login and one dashboard for every association you manage.</span>
+                <span className="go">Create a firm account →</span>
+              </Link>
+            </div>
+            <div className="hero-cta sub">
+              <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a 15-min walkthrough</a>
               <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
               </button>
             </div>
+            <p className="owner-hint">Unit owner? Got our postcard? <Link to="/owners">Start here →</Link></p>
             <div className="trust">
               <span><span className="chk">✓</span> 90 days free — no credit card</span>
-              <span><span className="chk">✓</span> Set up in minutes</span>
-              <span><span className="chk">✓</span> Owners need no login</span>
-              <span><span className="chk">✓</span> Built for Florida</span>
-              <span><span className="chk">✓</span> Built and delivered the same business day</span>
+              <span><span className="chk">✓</span> $1/unit/mo, every feature</span>
+              <span><span className="chk">✓</span> Owners can email their dec page in — no login</span>
+              <span><span className="chk">✓</span> Built by a licensed Florida insurance agency</span>
             </div>
           </div>
 
           <div className="frame">
-            <div className="board" role="img" aria-label="Live compliance board: 18 active, 2 expiring, 1 lapsed.">
+            <div className="board" role="img" aria-label="Example compliance board with sample data: 18 active, 2 expiring, 1 lapsed.">
               <div className="board-top">
                 <span className="ttl"><span className="pin" aria-hidden="true"></span>Harbor Point · Compliance</span>
-                <span className="live">21 units · live</span>
+                <span className="live">Example · 21 units</span>
               </div>
               <div className="summary">
                 <div className="sm act"><div className="n" data-count="18">0</div><div className="l">Active</div></div>
@@ -311,7 +329,7 @@ export default function Landing() {
         <div className="wrap">
           <div className="tabs-head reveal">
             <span className="eyebrow">One place for everything</span>
-            <h2 className="display">Everything your board needs to manage HO-6 compliance.</h2>
+            <h2 className="display">Everything your board or management team needs to prove every unit is covered.</h2>
           </div>
 
           <div className="tablist" role="tablist" aria-label="Product features">
@@ -349,7 +367,7 @@ export default function Landing() {
 
             {/* 1: AI dec-page review */}
             <div className="panel" role="tabpanel">
-              <div className="cap"><h3>The dec page reads itself</h3><p>Our AI reads each declaration page and checks it against your HO-6 requirements automatically—no manual review.</p></div>
+              <div className="cap"><h3>The dec page reads itself</h3><p>Our AI reads each declaration page and checks it against the requirements your association sets — coverage minimums, wind, named insured, address, and whether the policy is in force. You only look at the ones it flags.</p></div>
               <div className="stage stage-dec">
                 <div className="doc dec">
                   <div className="sheet">
@@ -360,7 +378,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <div className="field"><span className="lab">Coverage A</span><span className="val">$250,000 <span className="ok">✓</span></span></div>
-                    <div className="field"><span className="lab">Loss Assessment</span><span className="val">$50,000 <span className="ok">✓</span></span></div>
+                    <div className="field"><span className="lab">Liability (Cov. E)</span><span className="val">$300,000 <span className="ok">✓</span></span></div>
                     <div className="field"><span className="lab">Wind / Hurricane</span><span className="val">Included <span className="ok">✓</span></span></div>
                     <div className="field"><span className="lab">Expiration</span><span className="val">05/14/27 <span className="ok">✓</span></span></div>
                     <div className="verdict">✓ Meets association requirements</div>
@@ -373,7 +391,7 @@ export default function Landing() {
 
             {/* 2: Email it in */}
             <div className="panel" role="tabpanel">
-              <div className="cap"><h3>Owners just forward the email</h3><p>No login, no upload — an owner forwards their insurer’s email and we pull the declaration page, parse it, and attach it to the right unit.</p></div>
+              <div className="cap"><h3>Owners just forward the email</h3><p>No login needed — an owner forwards their insurer’s email from the address on file, and we pull the declaration page, parse it, and attach it to the right unit.</p></div>
               <div className="stage stage-rem">
                 <div className="emailflow">
                   <div className="phone">
@@ -438,8 +456,9 @@ export default function Landing() {
               /guides/* are static HTML files, not React Router routes. */}
           <p style={{ marginTop: 22, fontSize: 15.5 }}>
             Not sure what your association can actually require? We wrote the
-            reference: <a className="inline-link" href="/guides/florida-condo-insurance-requirements.html">what Florida law puts on the association vs. the unit owner</a>,
-            and <a className="inline-link" href="/guides/florida-condo-loss-assessment-coverage.html">why loss assessment coverage rarely covers what boards assume</a>.
+            reference: <a className="inline-link" href="/guides/florida-condo-insurance-requirements.html">what Florida law puts on the association vs. the unit owner</a>,{' '}
+            <a className="inline-link" href="/guides/florida-condo-loss-assessment-coverage.html">why loss assessment coverage rarely covers what boards assume</a>, and{' '}
+            <a className="inline-link" href="/guides/florida-condo-milestone-inspection-sirs.html">where milestone inspections and SIRS stand now</a>.
           </p>
         </div>
       </section>
@@ -453,11 +472,11 @@ export default function Landing() {
             <p>You bring the association. We build your unit list from public records, then automatically track every owner’s HO-6 coverage.</p>
           </div>
           <div className="steps">
-            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up your association</h3><p>Your name and email, plus the association’s name, address, and number of units. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
-            <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it’s ready.</p><div className="meta">done before you log in</div></div></div>
+            <div className="step reveal"><div className="idx">01</div><div><h3>Request your setup</h3><p>Your name and email, plus the association’s name, address, and number of units. Management firms skip this step and set up their own account.</p><div className="meta">~60 seconds</div></div></div>
+            <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>A person on our team assembles your unit and owner list from property-assessor records, then emails your invite.</p><div className="meta">within one business day</div></div></div>
             <div className="step reveal"><div className="idx">03</div><div><h3>Review owners, send invites</h3><p>Check the list, fill any missing emails, and send each owner a link tied to their unit.</p><div className="meta">one click per owner</div></div></div>
-            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their <a className="inline-link" href="/guides/what-is-a-declarations-page.html">declaration page</a>, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. No one reviews it by hand.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
-            <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>See every unit’s status at a glance. Automated reminders go out 30, 7, and 1 day before renewal—and instantly if a policy lapses.</p><div className="meta">reminders on autopilot</div></div></div>
+            <div className="step reveal"><div className="idx">04</div><div><h3>Owners send their declaration page</h3><p>Owners upload or email their <a className="inline-link" href="/guides/what-is-a-declarations-page.html">declaration page</a>, and our AI does the rest—instantly reading it, verifying coverage against your requirements, and updating their compliance status. You only review the ones it flags.</p><div className="meta">Reviewed by AI, not by hand</div></div></div>
+            <div className="step reveal"><div className="idx">05</div><div><h3>Watch the board stay green</h3><p>See every unit’s status at a glance. Automated reminders go out 30, 7, and 1 day before renewal — and again if a policy lapses. Board-ready reports go out monthly.</p><div className="meta">reminders on autopilot</div></div></div>
           </div>
         </div>
       </section>
@@ -514,7 +533,8 @@ export default function Landing() {
             </div>
             <div className="pf-right">
               <div className="price-eg">A 120-unit association pays <b>$120/month</b>.</div>
-              <Link className="btn btn-primary btn-block" to="/signup">Start your free trial</Link>
+              <Link className="btn btn-primary btn-block" to="/signup">Set up my association</Link>
+              <Link className="price-alt" to="/signup/firm">Manage several? Create a firm account →</Link>
               <div className="price-mini">$50/mo minimum · no setup fee · cancel anytime</div>
             </div>
           </div>
@@ -534,9 +554,48 @@ export default function Landing() {
             <div className="stake"><div className="k">Your team, scoped</div><p>Owner, manager, and member roles with <b>per-manager assignments</b> — staff see their book, not the whole firm.</p></div>
             <div className="stake"><div className="k">Billing that fits the firm</div><p>One consolidated subscription, or each association pays its own way at your <b>firm bulk rate</b> — no monthly minimum.</p></div>
           </div>
-          <div className="hero-cta" style={{ marginTop: 26 }}>
-            <Link className="btn btn-light" to="/signup/firm">Set up your firm</Link>
+          <p style={{ marginTop: 22, fontSize: 15.5 }}>
+            How firms run it day to day: <a className="inline-link" href="/guides/property-manager-ho6-compliance-tracking.html" style={{ color: '#6FE3B6' }}>HO-6 compliance tracking for property managers</a>.
+          </p>
+          <div className="hero-cta" style={{ marginTop: 22 }}>
+            <Link className="btn btn-light" to="/signup/firm">Create a firm account</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
+          </div>
+        </div>
+      </section>
+
+      {/* WHO WE ARE — honest disclosure of the agency relationship, framed as
+          the trust asset it is. Keep claims verifiable: no years-in-business,
+          customer counts, or license numbers unless Randy/Troy supply them. */}
+      <section className="about" id="about">
+        <div className="wrap about-in">
+          <div className="reveal">
+            <span className="eyebrow">Who we are</span>
+            <h2 className="display">Built by a Florida condo insurance agency.</h2>
+            <p className="lede2">
+              condo.insure comes from the team behind <a className="inline-link" href="https://www.universalcondo.com" target="_blank" rel="noopener">universalcondo.com</a>,
+              a licensed Florida insurance agency. HO-6 policies, declaration pages, and association
+              insurance requirements are our day job — so the checks the software runs are the ones an
+              agent would run by hand.
+            </p>
+            <p className="lede2">
+              We’d rather tell you up front than have you find it in the fine print: yes, we sell
+              insurance. Here’s exactly how that touches your association.
+            </p>
+          </div>
+          <div className="about-pts reveal">
+            <div className="about-pt">
+              <div className="k">HO-6 know-how, built in</div>
+              <p>Coverage minimums, wind, <b>named insured, property address, policy in force</b> — the requirement checks were designed by people who read dec pages every day.</p>
+            </div>
+            <div className="about-pt">
+              <div className="k">Quotes are optional</div>
+              <p>Owner reminder emails include an optional link to request a free quote from our agency. Owners can <b>keep any carrier and any agent</b> — compliance never depends on where a policy is bought.</p>
+            </div>
+            <div className="about-pt">
+              <div className="k">Your data isn’t for sale</div>
+              <p>We <b>never sell</b> owner or association data. Read our <Link className="inline-link" to="/privacy">privacy policy</Link> and <a className="inline-link" href="/security.html">security overview</a>.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -550,7 +609,7 @@ export default function Landing() {
           <div className="faq-list reveal">
             <details className="faq-item" open>
               <summary>Do unit owners need to create an account?</summary>
-              <p>No. Owners simply forward their insurer’s email or use a secure one-time link to submit their declaration page. No account or password is required—we automatically match it to the correct unit.</p>
+              <p>Not to send in a policy. An owner can email their declaration page to docs@condo.insure from the address your association has on file, and it’s matched to their unit automatically—no login or password. Owners who prefer can set up a free owner login to upload, check their status, and download shared building documents.</p>
             </details>
             <details className="faq-item">
               <summary>What if we don’t have emails for every owner?</summary>
@@ -558,11 +617,11 @@ export default function Landing() {
             </details>
             <details className="faq-item">
               <summary>How long does setup take?</summary>
-              <p>Just a few minutes. Enter your association’s name and address, and we’ll build your owner list from public property records. You’ll be invited to review it—no spreadsheets or manual imports required.</p>
+              <p>For an association, the request form takes about a minute. Our team builds your unit and owner list from public property records and emails your admin invite within one business day—no spreadsheets or manual imports. A property management firm can create its account and start adding associations right away.</p>
             </details>
             <details className="faq-item">
               <summary>Is our association’s data secure?</summary>
-              <p>Yes. Access is limited to your association, and every owner can only view their own unit plus shared building documents. Your association’s records are never visible to other communities.</p>
+              <p>Yes. An association’s records are visible only to its own administrators and managers (and our support team), and each owner sees only their own unit plus shared building documents. Declaration pages are kept in private storage and opened through short-lived links. Details are in our <a className="inline-link" href="/security.html">security overview</a>.</p>
             </details>
             <details className="faq-item">
               <summary>What does it cost?</summary>
@@ -574,7 +633,11 @@ export default function Landing() {
             </details>
             <details className="faq-item">
               <summary>What insurance does it track?</summary>
-              <p>Unit-owner <a className="inline-link" href="/guides/ho6-vs-ho4-vs-wind-only.html">HO-6</a> policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits.</p>
+              <p>Unit-owner <a className="inline-link" href="/guides/ho6-vs-ho4-vs-wind-only.html">HO-6</a> policies. Our AI reads each <a className="inline-link" href="/guides/what-is-a-declarations-page.html">declaration page</a> and checks it against the requirements your association sets—Coverage A and liability minimums, wind/hurricane coverage, that the policy is in force, and that the named insured and property address match the unit.</p>
+            </details>
+            <details className="faq-item">
+              <summary>Who’s behind condo.insure—and will you try to sell our owners insurance?</summary>
+              <p>condo.insure is built by the team behind universalcondo.com, a licensed Florida insurance agency. Owner reminder emails include an optional link to request a free HO-6 quote from our agency. Owners can ignore it and keep any carrier or agent—compliance never depends on where a policy is bought. We never sell owner or association data.</p>
             </details>
           </div>
         </div>
@@ -584,9 +647,10 @@ export default function Landing() {
       <section className="cta">
         <div className="wrap reveal">
           <h2 className="display">Put your whole association on one dashboard.</h2>
-          <p>Set up your association in minutes. No credit card required.</p>
+          <p>90 days free, no credit card. Boards: request a setup and we’ll email your invite within one business day. Firms: create your account and start now.</p>
           <div className="hero-cta">
-            <Link className="btn btn-light" to="/signup">Start your free trial</Link>
+            <Link className="btn btn-light" to="/signup">Set up my association</Link>
+            <Link className="btn btn-light" to="/signup/firm">Create a firm account</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
             <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour
@@ -626,6 +690,26 @@ export default function Landing() {
               <div className="k">What compliance costs</div>
               <p>Your association's exact monthly and annual cost. No email address required.</p>
             </a>
+            <a className="res" href="/guides/property-manager-ho6-compliance-tracking.html">
+              <span className="tag">Property managers</span>
+              <div className="k">Tracking HO-6 across a portfolio</div>
+              <p>Requirement profiles, renewals, staff, and board reports across a portfolio of associations.</p>
+            </a>
+            <a className="res" href="/guides/florida-ho6-compliance-checklist.html">
+              <span className="tag">Checklist</span>
+              <div className="k">Florida HO-6 compliance checklist</div>
+              <p>One printable page: what to require, collect, verify, and track.</p>
+            </a>
+            <a className="res" href="/guides/what-is-a-declarations-page.html">
+              <span className="tag">Fundamentals</span>
+              <div className="k">Reading a declarations page</div>
+              <p>The six fields an association actually checks — and how a dec page differs from a COI.</p>
+            </a>
+            <a className="res" href="/guides/how-to-choose-hoa-insurance-tracking-software.html">
+              <span className="tag">Buyer's guide</span>
+              <div className="k">Choosing tracking software</div>
+              <p>Twelve questions to ask any vendor — including us — and the red flags to watch for.</p>
+            </a>
           </div>
           <p style={{ marginTop: 20, textAlign: 'center' }}>
             <a className="inline-link" href="/guides/index.html">See all guides →</a>
@@ -644,7 +728,7 @@ export default function Landing() {
           {/* Guides are STATIC HTML under public/guides/, not React Router routes — this
               must stay a plain <a> (a <Link> would hit the SPA catch-all). The other links
               here are correctly <Link>s. */}
-          <span className="lk"><a href="/guides/index.html">Guides</a><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
+          <span className="lk"><a href="/guides/index.html">Guides</a><Link to="/owners">Unit owners</Link><a href="/security.html">Security</a><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></span>
         </div>
       </footer>
 

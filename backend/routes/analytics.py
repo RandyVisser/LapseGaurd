@@ -40,6 +40,10 @@ _ALLOWED = {
     # organic search and AI-answer traffic, so their referrer is the whole point —
     # see /analytics/pages.
     "guide_view",
+    # /owners — the page printed on unit-owner mailers. Owners are not buyers,
+    # so these never feed the B2B funnel tickers; they measure the mailer and
+    # the agency-quote / tell-your-board referral paths.
+    "owner_view", "owner_quote_click", "owner_referral_email", "owner_referral_copy",
 }
 
 # Landing-page depth — how far down the page visitors get before leaving.
@@ -107,6 +111,9 @@ _ENGAGEMENT = [
     ("demo_click", "Demo clicks"),
     ("tour_play", "Tour plays"),
     ("vista_royale_view", "Vista Royale visits"),
+    ("owner_view", "Owner page visits (mailers)"),
+    ("owner_quote_click", "Owner quote clicks"),
+    ("owner_referral_email", "Owner 'tell my board' emails"),
 ]
 
 # Internal/founder/test accounts excluded from the invited/activated counts.

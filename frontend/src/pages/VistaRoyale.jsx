@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import useHeadTags from '../useHeadTags'
 import { Link } from 'react-router-dom'
 import { track, loadRb2b } from '../analytics'
 import './landing.css'
@@ -14,6 +15,9 @@ export default function VistaRoyale() {
   const [tourOpen, setTourOpen] = useState(false)
   const openTour = () => { track('tour_play'); setTourOpen(true) }
   useEffect(() => { track('vista_royale_view'); loadRb2b() }, [])
+  // Speculative prebuild for one association's mailer — not a page we want
+  // ranking (also deliberately absent from sitemap.xml).
+  useHeadTags({ robots: 'noindex, follow' })
 
   // Postalytics page-click tracking. Reads the _bn_d token Postalytics appends
   // to the personalized postcard URL (or a cookie), exposes it as a global, then
@@ -154,7 +158,7 @@ export default function VistaRoyale() {
       </section>
 
       <footer style={{ textAlign: 'center', padding: '32px 16px', fontSize: 13, color: 'var(--muted-2)' }}>
-        <p>© {new Date().getFullYear()} condo.insure · Insurance compliance for Florida condo associations.</p>
+        <p>condo.insure<sup style={{ fontSize: '.6em', fontWeight: 600, marginLeft: '1px' }}>™</sup> · Insurance compliance for Florida condo associations.</p>
         <p style={{ marginTop: 8 }}>
           <Link to="/privacy" style={{ color: 'var(--muted)', marginRight: 16 }}>Privacy</Link>
           <Link to="/terms" style={{ color: 'var(--muted)' }}>Terms</Link>

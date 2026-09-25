@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import FeedbackWidget from './components/FeedbackWidget'
 // Landing is eager: "/" is the most common entry point and the chunk is tiny,
@@ -12,6 +12,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
 const SignupFirm = lazy(() => import('./pages/SignupFirm'))
 const VistaRoyale = lazy(() => import('./pages/VistaRoyale'))
+const Owners = lazy(() => import('./pages/Owners'))
 const Join = lazy(() => import('./pages/Join'))
 const AdminSetup = lazy(() => import('./pages/AdminSetup'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -60,12 +61,23 @@ function RequireAuth({ role: requiredRole, children }) {
   return children
 }
 
-// Unknown URL: logged-in users go to their dashboard, visitors to the landing page
+// Unknown URL: logged-in users go to their dashboard, visitors to the landing page.
+// The query string is carried over so a campaign tag on a mistyped or retired
+// URL (/pricng?src=apollo) still reaches first-touch attribution on "/".
 function CatchAll() {
   const { loading, session, role } = useAuth()
+  const location = useLocation()
   if (loading) return <PageLoader />
-  if (!session) return <Navigate to="/" replace />
+  if (!session) return <Navigate to={{ pathname: '/', search: location.search }} replace />
   return <Navigate to={homeFor(role)} replace />
+}
+
+// Static pages in public/ (e.g. /security.html) are served by the file server
+// in prod, and serve.json 301s their extensionless alias. This only matters in
+// `vite dev` or if the SPA router ever sees the alias: hand off to the file.
+function StaticPage({ href }) {
+  useEffect(() => { window.location.replace(href + window.location.search) }, [href])
+  return <PageLoader />
 }
 
 export default function App() {
@@ -84,6 +96,10 @@ export default function App() {
                 Accept both underscore and hyphen spellings of the URL. */}
             <Route path="/vista_royale" element={<VistaRoyale />} />
             <Route path="/vista-royale" element={<VistaRoyale />} />
+            {/* Unit-owner page — destination for the owner postcard mailers */}
+            <Route path="/owners" element={<Owners />} />
+            <Route path="/owner" element={<Owners />} />
+            <Route path="/security" element={<StaticPage href="/security.html" />} />
             <Route path="/join/:token" element={<Join />} />
             <Route path="/admin-setup/:token" element={<AdminSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

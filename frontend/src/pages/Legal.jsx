@@ -25,7 +25,7 @@ function LegalShell({ title, updated, children }) {
 
 export function Privacy() {
   return (
-    <LegalShell title="Privacy Policy" updated="July 16, 2026">
+    <LegalShell title="Privacy Policy" updated="September 24, 2026">
       <section>
         <h2>What we collect</h2>
         <p>
@@ -39,12 +39,41 @@ export function Privacy() {
       <section>
         <h2>How we use it</h2>
         <p>
-          Your information is used solely to provide the service: verifying insurance coverage against
+          Your information is used to provide the service — verifying insurance coverage against
           your association's requirements, notifying you and your association about policy status, and
-          generating compliance reports for your association's board and management. Uploaded documents
+          generating compliance reports for your association's board and management — and, as described
+          under &ldquo;Our insurance agency relationship&rdquo; below, to offer optional insurance quotes. Uploaded documents
           are processed by an AI service (Anthropic) to extract policy details; extracted data is stored
           alongside your records. We do not sell your personal information.
         </p>
+      </section>
+      <section>
+        <h2>Our insurance agency relationship</h2>
+        <p>
+          condo.insure is built and operated by the team behind universalcondo.com, a licensed Florida
+          insurance agency. We want that to be clear, because it affects how we may use some information:
+        </p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li>
+            Reminder and notice emails to unit owners may include an optional link to request an insurance
+            quote from our agency. Requesting a quote is entirely voluntary; information you submit on the
+            quote form is used to prepare your quote.
+          </li>
+          <li>
+            Our team may use policy details held in condo.insure &mdash; such as a policy&rsquo;s expiration
+            date and insurer &mdash; to offer a unit owner a renewal quote from our agency. You can opt out of
+            quote offers at any time by emailing support@condo.insure; opting out does not affect your
+            association&rsquo;s use of the service.
+          </li>
+          <li>
+            You are never required to buy insurance through our agency. Your compliance status depends only
+            on whether your policy meets your association&rsquo;s requirements, not on where you buy it.
+          </li>
+          <li>
+            We do not sell your personal information, and we do not share it with other insurance agencies,
+            carriers, or third parties for their own marketing.
+          </li>
+        </ul>
       </section>
       <section>
         <h2>Who can see your data</h2>
@@ -52,8 +81,10 @@ export function Privacy() {
           Your association's authorized administrators and property managers can see the units, owners,
           and policy records for their association. Unit owners see only their own units and policies.
           Our infrastructure providers (Supabase for data hosting, Railway for application hosting,
-          Resend for email, Anthropic for document processing) process data on our behalf under their
-          respective terms.
+          Resend for email, Anthropic for document processing, Stripe for payments, Backblaze for
+          document backups) process data on our behalf under their respective terms. If you request a
+          quote, the details needed to quote your policy are shared with the insurance carriers our
+          agency quotes with, for that purpose only.
         </p>
       </section>
       <section>
@@ -82,7 +113,8 @@ export function Privacy() {
         <h2>Security</h2>
         <p>
           Data is encrypted in transit, access is role-restricted, and authentication is handled by
-          Supabase Auth. No method of storage is 100% secure; if we learn of a breach affecting your
+          Supabase Auth. See our <a href="/security.html" className="text-blue-600 hover:underline">security
+          overview</a> for details. No method of storage is 100% secure; if we learn of a breach affecting your
           personal information we will notify affected users promptly.
         </p>
       </section>

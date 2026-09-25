@@ -91,7 +91,7 @@ html{scroll-behavior:smooth}
 .lp #pricing{scroll-margin-top:22px}
 .lp .nav-in{display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block:14px}
 .lp .nav-links{display:flex; align-items:center; gap:6px}
-.lp .nav-links a.txt{padding:9px 13px; color:var(--muted); font-weight:600; font-size:15px; border-radius:var(--r-pill)}
+.lp .nav-links a.txt{white-space:nowrap; padding:9px 13px; color:var(--muted); font-weight:600; font-size:15px; border-radius:var(--r-pill)}
 .lp .nav-links a.txt:hover{color:var(--navy); background:#F4F6FA}
 
 /* hero */
@@ -405,6 +405,35 @@ html{scroll-behavior:smooth}
 .lp .ft .lk{display:flex; gap:18px}
 .lp .ft a:hover{color:var(--navy)}
 
+
+/* hero two-path split: board (setup request) vs PM firm (self-serve account) */
+.lp .hero .lede{max-width:42ch}
+.lp .paths{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:28px}
+.lp .path{display:flex; flex-direction:column; gap:6px; padding:16px 18px; border:1.5px solid var(--line-2); border-radius:var(--r); background:#fff; box-shadow:var(--shadow-sm); transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease}
+.lp .path:hover{border-color:var(--navy); transform:translateY(-2px); box-shadow:var(--shadow)}
+.lp .path .who{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:18.5px; letter-spacing:-.015em; color:var(--navy); line-height:1.15}
+.lp .path .what{font-size:14px; color:var(--muted); line-height:1.45}
+.lp .path .go{margin-top:auto; padding-top:6px; font-weight:700; font-size:14.5px; color:var(--blue)}
+.lp .hero-cta.sub{margin-top:14px}
+.lp .owner-hint{margin:16px 0 0; font-size:14.5px; color:var(--muted)}
+.lp .owner-hint a{color:var(--blue); font-weight:600}
+.lp .owner-hint a:hover{text-decoration:underline}
+.lp #start{scroll-margin-top:110px}
+.lp #firms{scroll-margin-top:60px}
+.lp .price-alt{display:block; margin-top:10px; text-align:center; font-size:14px; font-weight:600; color:var(--blue)}
+.lp .price-alt:hover{text-decoration:underline}
+
+/* who we are */
+.lp .about{padding-block:84px; background:linear-gradient(180deg,#F6F9FE 0%,#fff 100%); border-top:1px solid var(--line)}
+.lp .about-in{display:grid; grid-template-columns:1.05fr .95fr; gap:48px; align-items:start}
+.lp .about h2{font-size:clamp(28px,3.4vw,42px); margin:14px 0 0; max-width:18ch}
+.lp .about .lede2{color:var(--muted); font-size:17px; margin:16px 0 0; max-width:52ch}
+.lp .about-pts{display:grid; gap:14px}
+.lp .about-pt{border:1px solid var(--line); border-radius:var(--r); background:#fff; padding:18px 20px; box-shadow:var(--shadow-sm)}
+.lp .about-pt .k{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--green)}
+.lp .about-pt p{margin:8px 0 0; font-size:15px; color:var(--muted); line-height:1.5}
+.lp .about-pt b{color:var(--ink); font-weight:600}
+
 /* reveal */
 .lp .reveal{opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease}
 .lp .reveal.in{opacity:1; transform:none}
@@ -421,11 +450,14 @@ html{scroll-behavior:smooth}
   .lp .price-foot{grid-template-columns:1fr; max-width:560px}
   .lp .pf-right{border-left:0; border-top:1px solid var(--line)}
   .lp .price-list-2col{grid-template-columns:1fr}
+  .lp .about-in{grid-template-columns:1fr; gap:28px}
 }
 @media(max-width:560px){
   .lp{font-size:16px}
   .lp .nav-links a.txt[href^="#"]{display:none}
   .lp .nav-links .nav-section-link{display:none}  /* Vista Royale nav: hide section links on mobile */
+  .lp .nav-links .nav-owner{display:none}  /* the hero's "Unit owner?" line covers mobile */
+  .lp .paths{grid-template-columns:1fr}
   /* keep the enlarged desktop logo from crowding Sign in / Start free on mobile */
   .lp .nav .brand{gap:9px; font-size:20px}
   .lp .nav .brand img{height:30px}

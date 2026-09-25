@@ -117,6 +117,10 @@ export default function Login() {
             New association?{' '}
             <Link to="/signup" className="font-semibold text-[#014AC5] hover:underline">Get started free</Link>
           </p>
+          <p className="text-center text-sm text-[#54627A] mt-2">
+            Condo unit owner? Got our postcard?{' '}
+            <Link to="/owners" className="font-semibold text-[#014AC5] hover:underline">Owner page &rarr;</Link>
+          </p>
         </div>
       </div>
 

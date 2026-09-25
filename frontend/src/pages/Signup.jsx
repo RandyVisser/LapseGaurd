@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track, getAttribution } from '../analytics'
+import { readError, networkErrorMessage } from '../apiError'
+import usePageTitle from '../usePageTitle'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -26,13 +28,22 @@ export default function Signup() {
     ho6_coverage_a_min: 50000, ho6_coverage_e_min: 300000, ho6_wind_required: true, ho6_additional_interest_required: false,
     ho6_policy_in_force_required: true, ho6_named_insured_match_required: true, ho6_property_address_match_required: true,
     certify_authorized: false,
-    certify_records_access: false,
     agree_tos: false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  useEffect(() => track('signup_started'), [])
+  const startedRef = useRef(false)
+  usePageTitle('Set up your association')
+
+  // Funnel beacon fires on the first touch of the form, not on page load —
+  // a page view is not a started signup (matches SignupFirm).
+  function markStarted() {
+    if (!startedRef.current) {
+      startedRef.current = true
+      track('signup_started')
+    }
+  }
 
   function set(key) {
     return e => setForm(f => ({ ...f, [key]: e.target.value }))
@@ -73,13 +84,12 @@ export default function Signup() {
         }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Signup failed')
+        throw new Error(await readError(res, 'Signup failed — please try again.'))
       }
       setSuccess(true)
       track('signup_completed')
     } catch (err) {
-      setError(err.message)
+      setError(networkErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -92,11 +102,16 @@ export default function Signup() {
           <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mx-auto mb-8" />
           <div className="text-4xl mb-4">📬</div>
           <h1 className="text-2xl font-bold text-[#001842] mb-2" style={{ fontFamily: DISPLAY, letterSpacing: '-.02em' }}>
-            Thanks — we&rsquo;re setting up your association
+            Request received — we&rsquo;re setting up your association
           </h1>
-          <p className="text-[#54627A] mb-6">
-            We&rsquo;re building out {form.association_name || 'your association'} now. We&rsquo;ll email your
-            invite to <strong className="text-[#0B1B33]">{form.email}</strong> the same business day.
+          <p className="text-[#54627A] mb-4">
+            A person on our team is building out {form.association_name || 'your association'} from public
+            property records. We&rsquo;ll email your admin invite to{' '}
+            <strong className="text-[#0B1B33]">{form.email}</strong> within one business day.
+          </p>
+          <p className="text-sm text-[#54627A] mb-6">
+            Questions in the meantime? Email{' '}
+            <a href="mailto:support@condo.insure" className="text-[#014AC5] hover:underline">support@condo.insure</a>.
           </p>
           <Link to="/" className="text-[#014AC5] hover:underline text-sm">&larr; Back to home</Link>
         </div>
@@ -114,7 +129,10 @@ export default function Signup() {
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Set up your association
           </h1>
-          <p className="text-sm text-[#54627A] mb-6">Tell us about your association and we&rsquo;ll build it out and email you when it&rsquo;s ready.</p>
+          <p className="text-sm text-[#54627A] mb-6">
+            Tell us about your association. We build your unit and owner list from public property records,
+            then email you an invite to your dashboard within one business day. 90 days free, no credit card.
+          </p>
 
           <Link to="/signup/firm"
             className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-[#014AC5] hover:bg-blue-50 px-4 py-3 mb-6 transition-colors">
@@ -125,7 +143,7 @@ export default function Signup() {
             <span className="text-[#014AC5] text-sm font-semibold flex-shrink-0 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
           </Link>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} onFocusCapture={markStarted} className="space-y-4">
             {[
               { label: 'Association Name', key: 'association_name', placeholder: 'Sunset Villas Condo Association' },
               { label: 'Address', key: 'address', placeholder: '123 Palm Ave, Miami, FL 33101' },
@@ -194,16 +212,6 @@ export default function Signup() {
               <span>I certify that I&rsquo;m authorized to enroll this association in condo.insure.</span>
             </label>
 
-            <label className="flex items-start gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                required
-                checked={form.certify_records_access}
-                onChange={e => setForm(f => ({ ...f, certify_records_access: e.target.checked }))}
-                className="mt-0.5 rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5] flex-shrink-0"
-              />
-              <span>I understand this grants access to the association&rsquo;s insurance compliance records.</span>
-            </label>
 
             <label className="flex items-start gap-2 text-sm text-slate-600">
               <input
@@ -220,11 +228,11 @@ export default function Signup() {
 
             <button type="submit" disabled={loading}
               className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
-              {loading ? 'Submitting…' : 'Get Started'}
+              {loading ? 'Sending your request…' : 'Request my free setup'}
             </button>
 
             <p className="text-center text-xs text-slate-500">
-              No credit card required. We&rsquo;ll build your association dashboard and email your invite the same business day.
+              No credit card required. This sends a setup request — you&rsquo;ll get an email invite to your dashboard within one business day.
             </p>
           </form>
 
@@ -249,9 +257,9 @@ export default function Signup() {
             From a spreadsheet of unknowns to a dashboard that stays green.
           </h2>
           <ul className="mt-7 space-y-4 text-[15px] text-[#CBD8EC]">
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">1</span><span>Add your association — that&rsquo;s the whole form</span></li>
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">2</span><span>We build your owner list from public records</span></li>
-            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">3</span><span>Invite owners; they email their policy in</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">1</span><span>Tell us about your association — about a minute</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">2</span><span>We build your owner list from public records and email your invite within one business day</span></li>
+            <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">3</span><span>Invite owners; they email or upload their declaration page</span></li>
             <li className="flex gap-3"><span className="text-[#6FE3B6] font-extrabold">4</span><span>Watch every unit go compliant, hands-off</span></li>
           </ul>
           <p className="mt-8 pt-5 border-t border-white/15 text-sm text-[#AEC0DC]">

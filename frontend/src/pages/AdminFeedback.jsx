@@ -33,7 +33,7 @@ const DAILY_GROUPS = [
   ]],
 ]
 
-const ENGAGEMENT = new Set(['demo_click', 'tour_play', 'vista_royale_view'])
+const ENGAGEMENT = new Set(['demo_click', 'tour_play', 'vista_royale_view', 'owner_view', 'owner_quote_click', 'owner_referral_email'])
 
 function fmtDay(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {

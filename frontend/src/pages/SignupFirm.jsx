@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track, getAttribution } from '../analytics'
 import usePageTitle from '../usePageTitle'
+import { readError, networkErrorMessage } from '../apiError'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -63,13 +64,12 @@ export default function SignupFirm() {
         }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Signup failed')
+        throw new Error(await readError(res, 'Signup failed — please try again.'))
       }
       setSuccess(true)
       track('signup_completed')
     } catch (err) {
-      setError(err.message)
+      setError(networkErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -202,7 +202,7 @@ export default function SignupFirm() {
             </button>
 
             <p className="text-center text-xs text-slate-500">
-              No credit card required. Add associations whenever you&rsquo;re ready.
+              No credit card required. Your account is live as soon as you submit — add associations whenever you&rsquo;re ready.
             </p>
           </form>
 

@@ -61,15 +61,26 @@ Three ways to silently break them — all return HTTP 200, so nothing looks wron
   `-s` implies `cleanUrls`, which 301s `/foo.html` → `/foo`, which then hits the
   catch-all rewrite and returns `index.html`. Every guide becomes the SPA. The
   explicit `rewrites` entry in `public/serve.json` does the same SPA fallback
-  without that side effect; `"cleanUrls": false` is what keeps `.html` reachable.
+  without that side effect. `"cleanUrls": ["/"]` (an ARRAY, scoped to `/` only)
+  is what keeps `.html` reachable — **never change it to `true`**; `false` is also
+  wrong now (see the next bullet).
+- **The prerendered landing body is for `/` only.** `npm run build` writes two
+  shells: `dist/index.html` (landing markup prerendered for non-JS crawlers) and
+  `dist/app.html` (bare shell). `serve.json` rewrites every other path to
+  `/app.html`, and `cleanUrls: ["/"]` is how `/` gets `index.html` — serve-handler
+  applies rewrites in order, so a separate `/` rewrite gets eaten by the
+  catch-all. Before 2026-09-24 every route (invite links, `/owners`, `/login`)
+  first painted the board-facing landing pitch.
 - **`serve.json` rejects unknown keys** (`must NOT have additional properties`)
   and the container then refuses to boot — do not add comment keys to it.
 - URLs are `/guides/<slug>.html`. Extensionless and directory-index paths get
   swallowed by the catch-all; `/guides/` itself serves the SPA, which is why the
   index page is linked as `/guides/index.html`.
 
-Verify after touching any of this: `npx vite build && npx serve dist -l 4173`,
-then confirm a guide URL returns its own `<h1>` and contains **no** `id="root"`.
+Verify after touching any of this: `npm run build && npx serve@14 dist -l 4173`
+(`npm run build`, not bare `vite build` — the prerender step writes `app.html`),
+then confirm a guide URL returns its own `<h1>` and contains **no** `id="root"`,
+`/` contains the landing `<h1>`, and `/join/x` contains no landing markup.
 `robots.txt`, `sitemap.xml` and `llms.txt` live in `public/` and must return
 `text/plain` / `application/xml` / `text/plain` — if any returns `text/html`,
 the fallback has eaten them.

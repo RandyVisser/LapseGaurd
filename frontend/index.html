@@ -55,7 +55,7 @@
             "name": "condo.insure",
             "url": "https://www.condo.insure/",
             "logo": "https://www.condo.insure/assets/logo.png",
-            "description": "HO-6 insurance compliance tracking for condominium associations and property management firms.",
+            "description": "HO-6 insurance compliance tracking for condominium associations and property management firms, built by the team behind universalcondo.com, a licensed Florida insurance agency.",
             "areaServed": {
               "@type": "State",
               "name": "Florida"
@@ -66,7 +66,9 @@
             "@id": "https://www.condo.insure/#website",
             "url": "https://www.condo.insure/",
             "name": "condo.insure",
-            "publisher": { "@id": "https://www.condo.insure/#organization" }
+            "publisher": {
+              "@id": "https://www.condo.insure/#organization"
+            }
           },
           {
             "@type": "SoftwareApplication",
@@ -74,7 +76,9 @@
             "applicationCategory": "BusinessApplication",
             "operatingSystem": "Web",
             "url": "https://www.condo.insure/",
-            "publisher": { "@id": "https://www.condo.insure/#organization" },
+            "publisher": {
+              "@id": "https://www.condo.insure/#organization"
+            },
             "description": "Tracks unit-owner HO-6 insurance compliance for condominium associations. Parses declaration pages with AI, flags lapsed and expiring policies, and automates renewal reminders.",
             "offers": {
               "@type": "Offer",
@@ -87,63 +91,71 @@
             "@type": "FAQPage",
             "@id": "https://www.condo.insure/#faq",
             "mainEntity": [
-                      {
-                                    "@type": "Question",
-                                    "name": "Do unit owners need to create an account?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "No. Owners simply forward their insurer’s email or use a secure one-time link to submit their declaration page. No account or password is required—we automatically match it to the correct unit."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "What if we don’t have emails for every owner?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "That’s normal. We build your owner list from public property records during setup. You can add email addresses over time and invite owners whenever you’re ready."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "How long does setup take?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "Just a few minutes. Enter your association’s name and address, and we’ll build your owner list from public property records. You’ll be invited to review it—no spreadsheets or manual imports required."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "Is our association’s data secure?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "Yes. Access is limited to your association, and every owner can only view their own unit plus shared building documents. Your association’s records are never visible to other communities."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "What does it cost?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "Most associations pay $1 per unit, per month, with a $50/month minimum. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "We manage multiple associations — does this work as a portfolio?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "Yes. A property management firm gets one dashboard across every association it manages, with role-based access for staff and per-manager assignments. Billing is either one consolidated subscription for the firm or each association paying its own way at the firm’s bulk rate. Set up at condo.insure/signup/firm."
-                                    }
-                      },
-                      {
-                                    "@type": "Question",
-                                    "name": "What insurance does it track?",
-                                    "acceptedAnswer": {
-                                                  "@type": "Answer",
-                                                  "text": "Unit-owner HO-6 policies. Our AI reads each declaration page and verifies the coverages your association requires—such as Coverage A, Loss Assessment, wind/hurricane, deductibles, and other required limits."
-                                    }
-                      }
-        ]
+              {
+                "@type": "Question",
+                "name": "Do unit owners need to create an account?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Not to send in a policy. An owner can email their declaration page to docs@condo.insure from the address your association has on file, and it’s matched to their unit automatically—no login or password. Owners who prefer can set up a free owner login to upload, check their status, and download shared building documents."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What if we don’t have emails for every owner?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "That’s normal. We build your owner list from public property records during setup. You can add email addresses over time and invite owners whenever you’re ready."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How long does setup take?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "For an association, the request form takes about a minute. Our team builds your unit and owner list from public property records and emails your admin invite within one business day—no spreadsheets or manual imports. A property management firm can create its account and start adding associations right away."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is our association’s data secure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. An association’s records are visible only to its own administrators and managers (and our support team), and each owner sees only their own unit plus shared building documents. Declaration pages are kept in private storage and opened through short-lived links. Details are in our security overview."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What does it cost?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Most associations pay $1 per unit, per month, with a $50/month minimum. Larger portfolios receive automatic volume discounts. No setup fee, and you can start free."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "We manage multiple associations — does this work as a portfolio?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. A property management firm gets one dashboard across every association it manages, with role-based access for staff and per-manager assignments. Billing is either one consolidated subscription for the firm or each association paying its own way at the firm’s bulk rate. Set up at condo.insure/signup/firm."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What insurance does it track?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Unit-owner HO-6 policies. Our AI reads each declaration page and checks it against the requirements your association sets—Coverage A and liability minimums, wind/hurricane coverage, that the policy is in force, and that the named insured and property address match the unit."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Who’s behind condo.insure—and will you try to sell our owners insurance?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "condo.insure is built by the team behind universalcondo.com, a licensed Florida insurance agency. Owner reminder emails include an optional link to request a free HO-6 quote from our agency. Owners can ignore it and keep any carrier or agent—compliance never depends on where a policy is bought. We never sell owner or association data."
+                }
+              }
+            ]
           }
         ]
       }

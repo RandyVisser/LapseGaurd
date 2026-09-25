@@ -457,3 +457,159 @@ dd { margin: 0 0 10px; }
 @media print {
   .g-nav-cta, .g-cta, .g-toc { display: none; }
 }
+
+/* =====================================================================
+ * Additions 2026-09 — additive only. Existing class names above are used
+ * by pages other agents write; never rename or remove them.
+ * ===================================================================== */
+
+/* ---------- visible breadcrumb (mirrors the BreadcrumbList JSON-LD) ---------- */
+
+.g-crumbs {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted-2);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.g-crumbs a { color: var(--muted); text-decoration: none; }
+.g-crumbs a:hover { color: var(--blue); text-decoration: underline; }
+.g-crumbs .sep { margin: 0 6px; color: var(--line-2); }
+
+/* ---------- audience tag (eyebrow companion) ---------- */
+
+.g-aud {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--navy-mid);
+  background: #EEF3FB;
+  border: 1px solid #D6E1F3;
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin: 0 4px 6px 0;
+  vertical-align: middle;
+}
+.g-aud-owner { color: var(--green); background: var(--green-bg); border-color: #BFE5D5; }
+
+/* ---------- mid-article lead magnet (light card, checklist capture) ---------- */
+
+.g-magnet {
+  border: 1px solid var(--line-2);
+  border-left: 4px solid var(--green);
+  border-radius: 12px;
+  background: #F7FBF9;
+  padding: 20px 22px;
+  margin: 8px 0 30px;
+}
+.g-magnet .lab {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--green);
+  display: block;
+  margin-bottom: 6px;
+}
+.g-magnet h2,
+.g-magnet .g-magnet-h {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--navy);
+  margin: 0 0 8px;
+}
+.g-magnet p { font-size: 15.5px; margin: 0 0 10px; }
+.g-magnet ul { font-size: 15px; margin: 0 0 14px; padding-left: 20px; }
+.g-magnet li { margin-bottom: 4px; }
+.g-magnet form { margin: 0; }
+.g-magnet .g-lead-row input {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+}
+.g-magnet .g-lead-row input::placeholder { color: var(--muted-2); }
+.g-magnet .g-lead-row input:focus { outline: 2px solid var(--blue); border-color: transparent; }
+.g-magnet small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- owner CTA (unit owners → free HO-6 quote) ---------- */
+
+.g-cta-owner {
+  background: linear-gradient(150deg, #06331F 0%, #0B5A3E 60%, #0E8E68 150%);
+}
+.g-cta-owner p { color: #CFEADF; }
+.g-cta-owner .btn-primary { color: #06331F; }
+
+/* A secondary line under a CTA band's buttons (e.g. "On a board? …"). */
+.g-cta-sub {
+  margin: 18px 0 0 !important;
+  font-size: 14.5px !important;
+}
+.g-cta .g-cta-sub a { color: #fff; }
+
+/* Inline, low-key CTA inside article flow. */
+.g-inline-cta {
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 0 0 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+.g-inline-cta p { margin: 0; flex: 1 1 260px; font-size: 15.5px; }
+
+/* ---------- index: audience sections ---------- */
+
+.g-section-intro { color: var(--muted); margin-top: -4px; }
+.g-coming { color: var(--muted-2); font-size: 14.5px; font-style: italic; }
+
+/* Long source URLs must never force horizontal scroll. */
+.g-sources a, .g-related a, dd a { overflow-wrap: anywhere; }
+
+/* ---------- mobile polish ---------- */
+
+@media (max-width: 600px) {
+  body { font-size: 16px; line-height: 1.6; }
+  .g-nav-in { padding: 12px 16px; gap: 8px; }
+  .g-logo img { height: 26px; }
+  .g-logo span { font-size: 17px; }
+  .g-nav-cta { gap: 6px; }
+  .g-nav-cta .btn { padding: 8px 12px; font-size: 14px; }
+  .g-nav-cta .btn-ghost { display: none; }
+  .g-wrap { padding: 0 16px; }
+  .g-main { padding-top: 24px; }
+  .g-lede { font-size: 17.5px; padding-left: 14px; }
+  h2 { margin-top: 38px; }
+  .g-answer, .g-note, .g-warn, .g-magnet { padding: 14px 16px; }
+  .g-cta { padding: 24px 18px; border-radius: 12px; margin-top: 44px; }
+  .g-cta > .btn { display: block; text-align: center; margin: 0 0 10px; white-space: normal; }
+  .g-inline-cta .btn { width: 100%; text-align: center; }
+  .g-lead-row .btn { width: 100%; }
+  /* 16px inputs stop iOS Safari zooming the page on focus. */
+  .g-lead-row input { font-size: 16px; flex-basis: 100%; }
+  table { font-size: 14px; }
+  th, td { padding: 9px 10px; }
+  .g-stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .g-stat .n { font-size: 22px; }
+  .g-toc { border-top: 1px solid var(--line); padding-top: 24px; }
+  .g-toc a { padding: 4px 0; }
+  .g-foot { padding: 28px 16px 44px; margin-top: 48px; }
+  blockquote { margin: 0 0 18px; padding-left: 14px; border-left: 3px solid var(--line-2); }
+}
+
+@media print {
+  .g-magnet, .g-inline-cta, .g-crumbs { display: none; }
+}

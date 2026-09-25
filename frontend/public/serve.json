@@ -1,6 +1,10 @@
 {
-  "cleanUrls": false,
-  "rewrites": [{ "source": "**", "destination": "/index.html" }],
+  "cleanUrls": ["/"],
+  "redirects": [
+    { "source": "/security", "destination": "/security.html", "type": 301 }
+  ],
+  "directoryListing": false,
+  "rewrites": [{ "source": "/:path+", "destination": "/app.html" }],
   "headers": [
     {
       "source": "assets/**/*.@(js|css)",
@@ -15,13 +19,19 @@
       ]
     },
     {
-      "source": "index.html",
+      "source": "@(index|app).html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" }
       ]
     },
     {
       "source": "guides/**/*.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "security.html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]

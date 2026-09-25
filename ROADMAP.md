@@ -81,7 +81,9 @@ gets a mailer and then searches us finds substance. Realistic signal window is
       have worked before this (`ci.ref`).
 - [x] **OG social card** — shipped 2026-08-01: real 1200×630 card replacing the
       transparent logo PNG that cropped badly on social.
-- [ ] ⚠️ **REVIEW THE THREE LEGAL PAGES** — requirements, SIRS, loss assessment
+- [ ] ⚠️ **REVIEW THE LEGAL PAGES + 2026-09-24 CONTENT PASS** — see `docs/content-review-2026-09.md`
+      (five new guides, fact-freshness edits, agency disclosure, privacy policy). Original item:
+      **REVIEW THE THREE LEGAL PAGES** — requirements, SIRS, loss assessment
       are live and make statutory claims under our brand. All cited to
       flsenate.gov / leg.state.fl.us with not-legal-advice disclaimers, but
       Randy + Troy have not read them. **Only genuinely open risk in this work.**
@@ -97,7 +99,9 @@ gets a mailer and then searches us finds substance. Realistic signal window is
       inbound links won't rank however well it's crawled. LinkedIn company page
       (we have none), **Florida CAI chapter** (most relevant to real buyers),
       Crunchbase, Product Hunt.
-- [ ] **Prerender the landing SPA body** (M) — its `<head>` is crawlable now,
+- [x] **Prerender the landing SPA body** (M) — shipped 2026-08-23; 2026-09-24 scoped to `/`
+      only (other routes get a bare `app.html` shell).
+      Original note: — its `<head>` is crawlable now,
       which captures most of the value, but non-JS crawlers still see an empty
       root on `/`, `/privacy`, `/terms`.
 - [ ] **Pull the "65% of condo owners are underinsured" stat** (S) — no study
@@ -164,3 +168,14 @@ gets a mailer and then searches us finds substance. Realistic signal window is
       (Randy chose combined filter): new 'attention' filter covers
       lapsed+non_compliant+missing exactly, the deep link lands on it, and
       the action strip's header toggles it.
+
+## 2026-09-24 sales push (first cold deal by 12/31)
+
+Playbook lives in the Claude Doc "condo.insure — Playbook to close a first deal by Dec 31, 2026".
+- [x] Security: role only from app_metadata; 13 admin endpoints through `_assert_hoa_access`.
+- [ ] **Turn off Supabase public sign-up** (dashboard toggle; nothing uses it) + leaked-password protection.
+- [x] Landing rewrite (board / PM-firm split, Who-we-are, agency disclosure), /owners page for
+      unit-owner mailers, /security.html, five new guides, guide CTA + SEO pass.
+- [ ] **Signup confirmation email** to association prospects (new automated email — needs OK).
+- [ ] **Founding-customer offer** — 24-month rate lock by 12/31; annual prepay needs a live Stripe change.
+

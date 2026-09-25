@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Security &amp; Data Handling | condo.insure</title>
+<meta name="description" content="How condo.insure protects association and unit-owner data: Supabase Postgres and Auth, private document storage with short-lived signed links, role-based access, append-only document backups, TLS, and AI parsing through the Anthropic API." />
+<link rel="canonical" href="https://www.condo.insure/security.html" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="condo.insure" />
+<meta property="og:url" content="https://www.condo.insure/security.html" />
+<meta property="og:title" content="Security &amp; Data Handling at condo.insure" />
+<meta property="og:description" content="Where your association's data lives, who can see it, how documents are stored and backed up, and how AI parsing works." />
+<meta property="og:image" content="https://www.condo.insure/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="condo.insure — HO-6 compliance for condo associations" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="icon" type="image/png" href="/assets/logo-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<!-- Shares the guides' stylesheet read-only (static, crawlable, no JS needed).
+     Every statement on this page must stay TRUE of the running system — if the
+     stack changes (storage, backups, AI vendor, hosting), update this page. -->
+<link rel="stylesheet" href="/guides/guides.css" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Security & Data Handling",
+  "url": "https://www.condo.insure/security.html",
+  "dateModified": "2026-09-24",
+  "publisher": {
+    "@type": "Organization",
+    "name": "condo.insure",
+    "url": "https://www.condo.insure/",
+    "logo": { "@type": "ImageObject", "url": "https://www.condo.insure/assets/logo.png" }
+  }
+}
+</script>
+</head>
+<body>
+
+<header class="g-nav">
+  <div class="g-nav-in">
+    <a class="g-logo" href="/">
+      <img src="/assets/logo-mark.svg" alt="" />
+      <span>condo<i>.insure</i></span>
+    </a>
+    <div class="g-nav-cta">
+      <a class="btn btn-ghost" href="/">Product</a>
+      <a class="btn btn-primary" href="/signup">Start free</a>
+    </div>
+  </div>
+</header>
+
+<div class="g-wrap">
+<main class="g-main">
+<article>
+
+  <p class="g-eyebrow">Trust</p>
+  <h1>Security &amp; Data Handling</h1>
+
+  <p class="g-lede">
+    condo.insure holds unit-owner names, contact details, and insurance declaration pages for
+    condominium associations. This page describes, in plain terms, where that data lives, who can
+    see it, and how it is protected. It describes the system as it runs today &mdash; not a
+    certification we hold.
+  </p>
+  <p class="g-meta">Last updated 2026-09-24 · Questions: <a href="mailto:support@condo.insure">support@condo.insure</a></p>
+
+  <div class="g-answer">
+    <span class="lab">Short version</span>
+    <p>
+      Data is stored in a managed Postgres database (Supabase). Documents sit in private storage
+      and are only opened through short-lived signed links minted by our backend. Every request
+      is checked against the signed-in user's role and association. Traffic is encrypted in
+      transit (HTTPS/TLS). Uploaded documents are backed up nightly to a separate provider, and
+      that backup only ever adds files. We never sell owner or association data.
+    </p>
+  </div>
+
+  <h2 id="where">Where data lives</h2>
+  <ul>
+    <li><strong>Database and sign-in:</strong> <a href="https://supabase.com/security" rel="noopener">Supabase</a> &mdash; managed Postgres for records and Supabase Auth for accounts. We never store passwords ourselves; password resets use a one-time token.</li>
+    <li><strong>Application:</strong> hosted on <a href="https://railway.com" rel="noopener">Railway</a>, served over HTTPS only.</li>
+    <li><strong>Email:</strong> reminders and invites are sent through <a href="https://resend.com" rel="noopener">Resend</a> from a dedicated sending domain.</li>
+    <li><strong>Payments:</strong> handled by <a href="https://stripe.com" rel="noopener">Stripe</a> checkout and billing portal. Card numbers go to Stripe directly; we never see or store them.</li>
+  </ul>
+
+  <h2 id="documents">Documents</h2>
+  <p>
+    Declaration pages and shared association documents are kept in <strong>private</strong>
+    storage buckets &mdash; there is no public URL for any owner or association document.
+    When an authorized user opens one, our backend checks their access and issues a
+    <strong>short-lived signed link</strong> (valid for a few hours) for that single file.
+    Uploads are insert-only: an upload never silently overwrites an existing document.
+  </p>
+
+  <h2 id="access">Who can see what</h2>
+  <ul>
+    <li><strong>Association administrators</strong> see their own association's units, owners, and policy records.</li>
+    <li><strong>Property management firms</strong> see the associations they manage. Within a firm, owners and managers see the whole portfolio; members can be limited to the associations assigned to them.</li>
+    <li><strong>Unit owners</strong> see only their own unit and policies, plus documents their association shares with all owners.</li>
+    <li><strong>Our support team</strong> can access accounts to set them up and help when asked.</li>
+  </ul>
+  <p>
+    These rules are enforced on the server for every request, from the role stored in the
+    signed-in user's verified session &mdash; not by hiding buttons in the browser. Invitation
+    links can never set or reset the password on an existing account, so a forwarded invite
+    can't be used to take one over.
+  </p>
+
+  <h2 id="ai">AI document reading</h2>
+  <p>
+    To read declaration pages, we send the document's text (or, for scanned documents, the page
+    images) to Anthropic's Claude models through Anthropic's commercial API. Per Anthropic's
+    commercial terms, API inputs and outputs are not used to train their models by default. The
+    extracted fields (insurer, policy number, dates, coverage limits) are stored with the unit's
+    record so administrators can review them.
+  </p>
+
+  <h2 id="backups">Backups</h2>
+  <p>
+    Every night, the document buckets (declaration pages, leases, and shared association
+    documents) are copied to a separate storage provider, Backblaze B2. The job is deliberately
+    <strong>append-only</strong>: it adds new files and never deletes, so a document removed by
+    mistake in the app still exists in the backup.
+  </p>
+
+  <h2 id="export">Your data, your export</h2>
+  <p>
+    Administrators can download their association's compliance data as a CSV at any time &mdash;
+    units, owners, contact details, and policy status &mdash; and every stored document can be
+    downloaded from the dashboard. To have personal information deleted, email
+    <a href="mailto:support@condo.insure">support@condo.insure</a>; see the
+    <a href="/privacy">privacy policy</a> for details.
+  </p>
+
+  <h2 id="agency">The insurance agency relationship</h2>
+  <p>
+    condo.insure is built by the team behind <a href="https://www.universalcondo.com" rel="noopener">universalcondo.com</a>,
+    a licensed Florida insurance agency. Reminder emails to owners include an optional link to
+    request a quote from that agency. Owners are never required to use it, compliance status
+    never depends on where a policy is bought, and we never sell owner or association data.
+  </p>
+
+  <div class="g-note">
+    <span class="lab">Report a problem</span>
+    <p>
+      If you believe you've found a security issue, email
+      <a href="mailto:support@condo.insure">support@condo.insure</a> with "Security" in the
+      subject. If we learn of a breach affecting personal information, we notify affected users
+      promptly.
+    </p>
+  </div>
+
+  <section class="g-cta">
+    <h2>See it with your own association</h2>
+    <p>
+      90 days free, no credit card. Boards request a setup and get an invite within one business
+      day; management firms can create an account and start right away.
+    </p>
+    <a class="btn btn-primary" href="/signup">Set up my association</a>
+    <a class="btn btn-ghost" href="/signup/firm">Create a firm account</a>
+  </section>
+
+</article>
+</main>
+
+<aside class="g-toc">
+  <h2>On this page</h2>
+  <ol>
+    <li><a href="#where">Where data lives</a></li>
+    <li><a href="#documents">Documents</a></li>
+    <li><a href="#access">Who can see what</a></li>
+    <li><a href="#ai">AI document reading</a></li>
+    <li><a href="#backups">Backups</a></li>
+    <li><a href="#export">Your data, your export</a></li>
+    <li><a href="#agency">The agency relationship</a></li>
+  </ol>
+</aside>
+</div>
+
+<footer class="g-foot">
+  <div class="g-foot-in">
+    <p><strong>condo.insure™</strong> — Insurance Compliance. Simplified.</p>
+    <p>
+      <a href="/">Home</a> ·
+      <a href="/guides/index.html">Guides</a> ·
+      <a href="/privacy">Privacy</a> ·
+      <a href="/terms">Terms</a>
+    </p>
+  </div>
+</footer>
+
+<script src="/guides/guide-analytics.js" defer></script>
+</body>
+</html>
