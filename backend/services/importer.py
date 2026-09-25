@@ -356,3 +356,184 @@ _STATE_ABBR = {
     "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT", "vermont": "VT",
     "virginia": "VA", "washington": "WA", "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
 }
+
+
+# ── Add-Emails wizard: match an uploaded list onto EXISTING units ─────────────
+
+def _norm_unit_key(s: str | None) -> str:
+    """Same normalization as routes.hoa._norm_unit (kept here so the planner is
+    importable without the route module): '204', 'Apt 204', '#204' all match."""
+    s = (s or "").strip().upper()
+    s = re.sub(r"^(APT|UNIT|STE|SUITE|#)\.?\s*", "", s)
+    return s.replace("#", "").strip()
+
+
+def _norm_addr_key(s: str | None) -> str:
+    return re.sub(r"\s+", " ", (s or "").strip().upper())
+
+
+_CONTACT_TITLES = {"property manager", "admin"}
+_CONTACT_UNIT_NUMBERS = {"PM", "ADMIN"}
+
+
+def _is_owner_unit(u: dict) -> bool:
+    """Real owner units only: not a PM/ADMIN contact row and not a renter
+    sub-unit (parent_unit_id set) — those must never receive owner emails."""
+    if u.get("parent_unit_id"):
+        return False
+    if (u.get("assoc_title") or "").strip().lower() in _CONTACT_TITLES:
+        return False
+    if _norm_unit_key(u.get("unit_number")) in _CONTACT_UNIT_NUMBERS:
+        return False
+    return True
+
+
+def _is_blank_email(v: str | None) -> bool:
+    """Empty or an @condo.insure placeholder — safe to fill in."""
+    v = (v or "").strip().lower()
+    return not v or v.endswith("@condo.insure")
+
+
+def plan_email_fill(units: list[dict], rows: list[dict], mapping: dict,
+                    overwrite: bool = False) -> dict:
+    """Decide, row by row, what the Add-Emails wizard would do. Pure (no DB),
+    so the preview endpoint, the commit endpoint and the tests all share it.
+
+    Matching mirrors the importer's dedup key, (street_address, unit_number):
+    unit numbers repeat across buildings, so a unit number alone is only
+    trusted when exactly ONE owner unit in the association carries it.
+      - file row has an address → exact (address, unit) match; if the unit
+        number is unique in the association we still accept it when the
+        association has a single street address on file (formatting noise
+        like "Dr" vs "Drive"), otherwise it's refused as an address mismatch.
+      - file row has no address → unit number must be unique, else AMBIGUOUS.
+    Ambiguous rows are refused, never guessed.
+
+    "Fill in" semantics: an email column is only written when the unit's
+    current value is blank or a placeholder. A different existing email is a
+    CONFLICT and is kept — unless overwrite=True, which the preview must make
+    explicit to the admin.
+
+    Returns {"rows": [...per input row...], "counts": {...},
+             "updates": [{"unit_id", "email_primary"?, "email_secondary"?}]}."""
+    owner_units = [u for u in units if _is_owner_unit(u)]
+    by_key: dict = {}
+    by_unit: dict = {}
+    for u in owner_units:
+        nu = _norm_unit_key(u.get("unit_number"))
+        by_key.setdefault((_norm_addr_key(u.get("street_address")), nu), []).append(u)
+        by_unit.setdefault(nu, []).append(u)
+    distinct_addrs = {_norm_addr_key(u.get("street_address")) for u in owner_units
+                      if _norm_addr_key(u.get("street_address"))}
+    single_address = len(distinct_addrs) <= 1
+
+    out_rows: list = []
+    updates: list = []
+    claimed: dict = {}  # unit_id -> index of the file row that claimed it
+    counts = {k: 0 for k in ("fill", "replace", "unchanged", "conflict", "ambiguous",
+                              "no_match", "no_email", "invalid", "duplicate")}
+
+    for i, raw in enumerate(rows):
+        norm, _issues = normalize_row(raw, mapping)
+        unit = norm.get("unit_number")
+        street = norm.get("street_address")
+        email_p = (norm.get("email_primary") or "").strip() or None
+        email_s = (norm.get("email_secondary") or "").strip() or None
+        rec = {"row": i, "unit": unit, "street_address": street,
+               "email_primary": email_p, "email_secondary": email_s,
+               "status": None, "reason": None, "unit_id": None, "candidates": []}
+        out_rows.append(rec)
+
+        if not unit or (not email_p and not email_s):
+            rec["status"], rec["reason"] = "no_email", ("no unit number" if not unit else "no email")
+            counts["no_email"] += 1
+            continue
+        bad = [e for e in (email_p, email_s) if e and not _EMAIL_RE.match(e)]
+        if bad:
+            rec["status"], rec["reason"] = "invalid", f"'{bad[0]}' doesn't look like a valid email"
+            counts["invalid"] += 1
+            continue
+
+        nu = _norm_unit_key(unit)
+        candidates = by_unit.get(nu, [])
+        match = None
+        if street:
+            exact = by_key.get((_norm_addr_key(street), nu), [])
+            if len(exact) == 1:
+                match = exact[0]
+            elif len(exact) > 1:
+                rec["status"] = "ambiguous"
+                rec["reason"] = "more than one unit on file has this address and unit number"
+                rec["candidates"] = [c.get("street_address") for c in exact]
+            elif len(candidates) == 1 and (single_address or not _norm_addr_key(candidates[0].get("street_address"))):
+                match = candidates[0]
+            elif candidates:
+                rec["status"] = "ambiguous" if len(candidates) > 1 else "no_match"
+                rec["reason"] = (f"unit {unit} exists at a different address"
+                                 if len(candidates) == 1 else
+                                 f"unit {unit} exists at {len(candidates)} addresses, none matching this row")
+                rec["candidates"] = [c.get("street_address") for c in candidates]
+            else:
+                rec["status"], rec["reason"] = "no_match", "no unit with this number"
+        else:
+            if len(candidates) == 1:
+                match = candidates[0]
+            elif len(candidates) > 1:
+                rec["status"] = "ambiguous"
+                rec["reason"] = (f"unit {unit} exists at {len(candidates)} addresses — "
+                                 "add a street address column to tell them apart")
+                rec["candidates"] = [c.get("street_address") for c in candidates]
+            else:
+                rec["status"], rec["reason"] = "no_match", "no unit with this number"
+
+        if match is None:
+            counts[rec["status"]] += 1
+            continue
+
+        uid = str(match["id"])
+        rec["unit_id"] = uid
+        rec["matched_address"] = match.get("street_address")
+        if uid in claimed:
+            rec["status"] = "duplicate"
+            rec["reason"] = f"same unit as row {claimed[uid] + 1} of the file — first row wins"
+            counts["duplicate"] += 1
+            continue
+        claimed[uid] = i
+
+        upd: dict = {}
+        changes = []  # per-field outcome
+        for field, new in (("email_primary", email_p), ("email_secondary", email_s)):
+            if not new:
+                continue
+            cur = (match.get(field) or "").strip()
+            if cur.lower() == new.lower():
+                changes.append("unchanged")
+            elif _is_blank_email(cur):
+                upd[field] = new
+                changes.append("fill")
+            elif overwrite:
+                upd[field] = new
+                changes.append("replace")
+                rec.setdefault("replaces", {})[field] = cur
+            else:
+                changes.append("conflict")
+                rec.setdefault("existing", {})[field] = cur
+
+        if "replace" in changes:
+            status = "replace"
+        elif "fill" in changes:
+            status = "fill"
+        elif "conflict" in changes:
+            status = "conflict"
+        else:
+            status = "unchanged"
+        rec["status"] = status
+        if status == "conflict":
+            rec["reason"] = "unit already has a different email — kept"
+        elif status == "unchanged":
+            rec["reason"] = "already on file"
+        counts[status] += 1
+        if upd:
+            updates.append({"unit_id": uid, **upd})
+
+    return {"rows": out_rows, "counts": counts, "updates": updates}

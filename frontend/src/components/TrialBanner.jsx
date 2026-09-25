@@ -61,7 +61,9 @@ export default function TrialBanner({ hoaId }) {
     <div className="mb-4 rounded-xl border border-[#F0DDAE] bg-[#FDF8EC] px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
       <p className="text-sm text-[#6B4E0B]">
         <span className="font-semibold">
-          {data.trial_days_left} day{data.trial_days_left !== 1 ? 's' : ''} left in your free trial.
+          {data.trial_days_left === 0
+            ? 'Your free trial ends today.'
+            : `${data.trial_days_left} day${data.trial_days_left !== 1 ? 's' : ''} left in your free trial.`}
         </span>{' '}
         Subscribe now — billing won't start until the trial ends.
       </p>

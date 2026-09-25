@@ -40,7 +40,7 @@ from models.db import get_conn, get_pool
 from models.schemas import PolicyStatus
 from routes.units import _run_parsing
 from services.policy_parser import parse_dec_bytes
-from services.email import send_email
+from services.email import quote_link, send_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -635,18 +635,32 @@ def _no_attachment_email(name: str | None):
     return subject, html
 
 
+OWNERS_URL = "https://www.condo.insure/owners"
+
+
 def _unrecognized_sender_email():
-    """Sender isn't on file for any unit. Tell them how to get set up without
-    revealing anything about the platform's data."""
+    """Sender isn't on file for any unit. Explain how condo.insure works (it
+    runs through associations, not individual sign-ups), point them at the
+    owners page, and offer the agency quote link — without revealing anything
+    about the platform's data. Still the single reply this path already sent;
+    no new send."""
     subject = "We couldn't match your email to a unit"
+    quote_href = quote_link("inbound_unmatched")
     html = f"""
     <p>Hi there,</p>
     <p>Thanks for your message. We couldn't match your email address to a unit
     in our system, so we weren't able to file your document.</p>
-    <p>If your association uses condo.insure, please ask them to send you an
-    invite for your unit, then email your declaration page from the address they
-    invited — or forward it to your property manager, who can submit it for you.</p>
-    <p><a href="{APP_URL}">{APP_URL}</a></p>
+    <p><strong>How condo.insure works:</strong> condo associations and their
+    property managers use condo.insure to collect and track unit-owner
+    insurance. Owners don't sign up on their own — your association adds your
+    unit and sends you an invite.</p>
+    <p>If your association uses condo.insure, ask your property manager or
+    board to send you an invite for your unit, then email your declaration page
+    from the address they invited — or forward it to your property manager, who
+    can submit it for you.</p>
+    <p>More for owners: <a href="{OWNERS_URL}">{OWNERS_URL}</a></p>
+    <p>Shopping for condo (HO-6) coverage? You can
+    <a href="{quote_href}">get a free quote</a>.</p>
     """
     return subject, html
 

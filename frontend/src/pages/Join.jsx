@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { track } from '../analytics'
+import { supabase } from '../supabase'
 import usePageTitle from '../usePageTitle'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -43,6 +44,21 @@ export default function Join() {
         throw new Error(data.detail || 'Failed to create account')
       }
       track('invite_accepted')
+      // The account was just created (pre-confirmed) for the invite's email
+      // with the password the owner typed a second ago — sign them straight in
+      // instead of making them retype it on /login. Any hiccup falls back to
+      // the old path, where the welcome banner tells them to sign in.
+      try {
+        const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: invite.email, password: form.password,
+        })
+        if (!signInErr && data?.session) {
+          const role = data.user?.app_metadata?.role || 'tenant'
+          const isStaff = ['hoa_admin', 'super_user', 'property_manager'].includes(role)
+          navigate(isStaff ? '/admin/dashboard' : '/tenant/dashboard')
+          return
+        }
+      } catch { /* fall through to the sign-in page */ }
       navigate('/login?welcome=tenant')
     } catch (err) {
       setError(err.message)
@@ -65,14 +81,16 @@ export default function Join() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 max-w-sm w-full text-center">
           <img src="/assets/logo-full.svg" alt="condo.insure" className="h-9 mx-auto mb-6" />
-          <h1 className="text-lg font-bold text-slate-800 mb-2">Invalid Invite</h1>
+          <h1 className="text-lg font-bold text-slate-800 mb-2">
+            {alreadyUsed ? 'Invite already accepted' : errorStatus === 404 ? 'Invite not found' : 'Invalid invite'}
+          </h1>
           <p className="text-sm text-slate-500 mb-4">
             {alreadyUsed
               ? "You've already accepted this invite — sign in below."
               : 'Ask your association manager to resend your invite.'}
           </p>
           <Link to="/login" className="text-blue-600 hover:underline text-sm">Go to sign in →</Link>
-          <p className="text-xs text-slate-400 mt-4">{error}</p>
+          {!alreadyUsed && <p className="text-xs text-slate-400 mt-4">{error}</p>}
         </div>
       </div>
     )

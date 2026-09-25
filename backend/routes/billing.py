@@ -128,6 +128,25 @@ async def _firm_rate_for_hoa(conn: asyncpg.Connection, hoa_id: str):
     return firm, rate
 
 
+def trial_countdown(trial_ends_at, now: datetime | None = None) -> tuple[int | None, bool]:
+    """(days_left, active) for a trial end timestamp.
+
+    days_left is CALENDAR days in UTC — the same arithmetic as the trial-
+    reminder email (`trial_ends_at::date - CURRENT_DATE` in run_alerts.py), so
+    the banner and the email always name the same number. The old floored
+    timedelta `.days` read 0 ("trial ended") for the whole final day and was a
+    day behind the email the rest of the trial. `active` is the real instant
+    comparison, so on the last day the UI shows "ends today", not "ended"."""
+    if not trial_ends_at:
+        return None, False
+    now = now or datetime.now(timezone.utc)
+    if trial_ends_at.tzinfo is None:
+        trial_ends_at = trial_ends_at.replace(tzinfo=timezone.utc)
+    ends_date = trial_ends_at.astimezone(timezone.utc).date()
+    days_left = max((ends_date - now.astimezone(timezone.utc).date()).days, 0)
+    return days_left, now < trial_ends_at
+
+
 # ── Read: always works, even while dormant ──────────────────────────────────
 @router.get("/hoa/{hoa_id}/billing")
 async def get_billing(
@@ -149,10 +168,7 @@ async def get_billing(
         # the tier rate unless the $50 minimum dominates.
         rate = round(monthly / units) if units else DEFAULT_UNIT_RATE_CENTS
     trial_ends_at = hoa["trial_ends_at"]
-    trial_days_left = None
-    if trial_ends_at:
-        trial_days_left = max((trial_ends_at - datetime.now(timezone.utc)).days, 0)
-    trial_active = bool(trial_days_left)  # None (no trial set) and 0 (expired) both mean not active
+    trial_days_left, trial_active = trial_countdown(trial_ends_at)
     return {
         "enabled": BILLING_ENABLED,
         "status": hoa["billing_status"] or "none",
@@ -397,10 +413,7 @@ async def get_pm_billing(
         if portfolio_units else DEFAULT_UNIT_RATE_CENTS
     )
     trial_ends_at = _latest_trial_end(included)
-    trial_days_left = None
-    if trial_ends_at:
-        trial_days_left = max((trial_ends_at - datetime.now(timezone.utc)).days, 0)
-    trial_active = bool(trial_days_left)
+    trial_days_left, trial_active = trial_countdown(trial_ends_at)
 
     return {
         "enabled": BILLING_ENABLED,

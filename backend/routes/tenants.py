@@ -15,7 +15,10 @@ from services.compliance import evaluate_compliance
 from services.storage import signed_url
 import asyncio
 import os
-from services.email import send_email, admin_notify_html, invite_email_html, format_address
+from services.email import (
+    send_email, admin_notify_html, invite_email_html, format_address,
+    bounced_emails, deliverable_recipient, is_placeholder_email,
+)
 
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 
@@ -443,7 +446,7 @@ async def notify_tenant(
 ):
     row = await conn.fetchrow(
         """
-        SELECT t.id, t.name, t.email, u.unit_number, u.hoa_id, h.name AS hoa_name
+        SELECT t.id, t.name, t.email, u.email_primary, u.unit_number, u.hoa_id, h.name AS hoa_name
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -456,10 +459,21 @@ async def notify_tenant(
     from routes.hoa import _assert_hoa_access
     await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
+    # Same recipient rule as the alert cron: the dashboard-managed
+    # units.email_primary first, tenant-record email as fallback, never a
+    # placeholder or a bounced address.
+    recipient = deliverable_recipient(row["email_primary"], row["email"],
+                                      bounced=await bounced_emails(conn))
+    if not recipient:
+        raise HTTPException(
+            status_code=422,
+            detail="No deliverable email on file for this owner (missing, placeholder, or bouncing) — "
+                   "update the owner's email first.")
+
     subject, html = admin_notify_html(
         row["name"], row["unit_number"], row["hoa_name"], body.message
     )
-    sent = await send_email(row["email"], subject, html)
+    sent = await send_email(recipient, subject, html)
     if not sent:
         raise HTTPException(status_code=502, detail="Failed to send email")
 
@@ -498,7 +512,7 @@ async def bulk_notify_tenants(
 
     rows = await conn.fetch(
         """
-        SELECT t.id, t.name, t.email, u.unit_number, u.hoa_id, h.name AS hoa_name
+        SELECT t.id, t.name, t.email, u.email_primary, u.unit_number, u.hoa_id, h.name AS hoa_name
         FROM tenants t
         JOIN units u ON u.id = t.unit_id
         JOIN hoas h ON h.id = u.hoa_id
@@ -510,29 +524,45 @@ async def bulk_notify_tenants(
     if not rows:
         raise HTTPException(status_code=404, detail="No matching tenants found in this HOA")
 
+    # Recipient rule shared with the alert cron (services.email): email_primary
+    # first, tenant email fallback, skipping placeholders + bounced addresses.
+    # Resolved up front so the response can say who was skipped.
+    bounced = await bounced_emails(conn)
+    sendable = []  # (row, recipient)
+    skipped_units: list = []
+    for row in rows:
+        recipient = deliverable_recipient(row["email_primary"], row["email"], bounced=bounced)
+        if recipient:
+            sendable.append((row, recipient))
+        else:
+            skipped_units.append(row["unit_number"])
+
     async def _send_all():
         # Runs after the response is sent, so the request's `conn` is already
         # released back to the pool — acquire a fresh one for the bookkeeping.
         from models.db import get_pool
         pool = await get_pool()
         async with pool.acquire() as bg_conn:
-            for row in rows:
+            for row, recipient in sendable:
                 subject, html = admin_notify_html(
                     row["name"], row["unit_number"], row["hoa_name"], body.message
                 )
-                sent = await send_email(row["email"], subject, html)
+                sent = await send_email(recipient, subject, html)
                 if sent:
                     await bg_conn.execute(
                         "INSERT INTO alert_log (tenant_id, alert_type) VALUES ($1, 'admin_notify')",
                         row["id"],
                     )
             await log_audit(bg_conn, hoa_id, user.sub, user.email, "notify_bulk", {
-                "count": len(rows),
-                "tenant_ids": [str(r["id"]) for r in rows],
+                "count": len(sendable),
+                "tenant_ids": [str(r["id"]) for r, _ in sendable],
+                "skipped_no_address": len(skipped_units),
             })
 
-    background_tasks.add_task(_send_all)
-    return {"queued": len(rows)}
+    if sendable:
+        background_tasks.add_task(_send_all)
+    return {"queued": len(sendable), "skipped": len(skipped_units),
+            "skipped_units": skipped_units[:50]}
 
 
 class PolicyApproval(BaseModel):
@@ -752,18 +782,22 @@ _invite_all_jobs: dict[str, dict] = {}
 async def invite_all_owners(
     hoa_id: str,
     background_tasks: BackgroundTasks,
+    dry_run: bool = False,
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Invite every owner with an email on file who hasn't created an account
-    yet. Skips owners who already have an account and addresses we know have
-    bounced. Emails are sent by a rate-limited background job; poll
-    /hoa/{hoa_id}/invite-all/status for progress."""
+    yet. Skips owners who already have an account, @condo.insure placeholder
+    addresses and addresses we know have bounced. Emails are sent by a
+    rate-limited background job; poll /hoa/{hoa_id}/invite-all/status for
+    progress. ?dry_run=true returns the same counts WITHOUT creating invites or
+    sending anything — the dashboard's confirm dialog uses it to say exactly
+    how many emails will go out."""
     from routes.hoa import _assert_hoa_access
     await _assert_hoa_access(user, hoa_id, conn)
 
     job = _invite_all_jobs.get(hoa_id)
-    if job and not job["done"]:
+    if job and not job["done"] and not dry_run:
         raise HTTPException(status_code=409, detail="An invite run is already in progress for this association")
 
     units = await conn.fetch(
@@ -780,17 +814,15 @@ async def invite_all_owners(
         hoa_id,
     )
     if not units:
-        return {"queued": 0, "bounced": 0, "already_active": 0, "total": 0}
+        return {"queued": 0, "bounced": 0, "placeholder": 0, "already_active": 0, "total": 0}
 
-    bounced = {r["email"].lower() for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
-    sender = await _resolve_sender(conn, hoa_id)
-    sender_email = sender["email"] if sender else None
+    bounced = await bounced_emails(conn)
 
-    # Build the send list synchronously (DB), then hand it to the background job.
-    # Primary and secondary owners each get their own individually-addressed email.
-    to_send = []  # (email, subject, html, token)
+    # Pass 1 (read-only): decide who gets an invite. Primary and secondary
+    # owners each get their own individually-addressed email.
+    plan = []  # (unit row, email, recipient name, is_pm)
     seen_emails: set = set()
-    total = already_active = bounced_n = 0
+    total = already_active = bounced_n = placeholder_n = 0
     for u in units:
         is_pm = (u["assoc_title"] or "").strip().lower() == "property manager"
         recipients = [(u["email_primary"], u["owner_primary"]), (u["email_secondary"], u["owner_secondary"])]
@@ -805,32 +837,55 @@ async def invite_all_owners(
             if u["has_account"]:
                 already_active += 1
                 continue
+            if is_placeholder_email(email):
+                placeholder_n += 1  # no real inbox behind it
+                continue
             if email.lower() in bounced:
                 bounced_n += 1
                 continue
+            plan.append((u, email, name, is_pm))
+
+    counts = {"queued": len(plan), "bounced": bounced_n, "placeholder": placeholder_n,
+              "already_active": already_active, "total": total}
+    if dry_run:
+        # Any unit in the plan works for the preview link — the email body is
+        # the same template for every owner apart from name/unit/address.
+        # Prefer an owner unit over a PM contact row (PMs get a variant).
+        pick = next((p for p in plan if not p[3]), plan[0] if plan else None)
+        counts["preview_unit_id"] = str(pick[0]["unit_id"]) if pick else None
+        return counts
+
+    sender = await _resolve_sender(conn, hoa_id)
+    sender_email = sender["email"] if sender else None
+
+    # Pass 2: create/reuse invite tokens and render each email, then hand the
+    # list to the background job.
+    to_send = []  # (email, subject, html, token)
+    for u, email, name, is_pm in plan:
+        invite = await conn.fetchrow(
+            "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL "
+            "ORDER BY created_at DESC LIMIT 1",
+            u["unit_id"], email,
+        )
+        if not invite:
             invite = await conn.fetchrow(
-                "SELECT token FROM unit_invites WHERE unit_id = $1 AND email = $2 AND accepted_at IS NULL "
-                "ORDER BY created_at DESC LIMIT 1",
+                "INSERT INTO unit_invites (unit_id, email) VALUES ($1, $2) RETURNING token",
                 u["unit_id"], email,
             )
-            if not invite:
-                invite = await conn.fetchrow(
-                    "INSERT INTO unit_invites (unit_id, email) VALUES ($1, $2) RETURNING token",
-                    u["unit_id"], email,
-                )
-            subject, html = invite_email_html(
-                email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
-                is_property_manager=is_pm, sender_email=sender_email, recipient_name=name,
-                corp_name=sender["corp_name"] if sender else None,
-                sender_name=sender["name"] if sender else None,
-                sender_title=sender["title"] if sender else None,
-                unit_address=format_address(u["street_address"], u["city"], u["state"], u["zip"]),
-            )
-            to_send.append((email, subject, html, invite["token"]))
+        subject, html = invite_email_html(
+            email, u["unit_number"], u["hoa_name"], f"{APP_URL}/join/{invite['token']}",
+            is_property_manager=is_pm, sender_email=sender_email, recipient_name=name,
+            corp_name=sender["corp_name"] if sender else None,
+            sender_name=sender["name"] if sender else None,
+            sender_title=sender["title"] if sender else None,
+            unit_address=format_address(u["street_address"], u["city"], u["state"], u["zip"]),
+        )
+        to_send.append((email, subject, html, invite["token"]))
 
     job = {
         "queued": len(to_send), "sent": 0, "failed": 0,
-        "bounced": bounced_n, "already_active": already_active, "total": total,
+        "bounced": bounced_n, "placeholder": placeholder_n,
+        "already_active": already_active, "total": total,
         "done": len(to_send) == 0,
     }
     _invite_all_jobs[hoa_id] = job
@@ -855,7 +910,8 @@ async def invite_all_owners(
 
     if to_send:
         background_tasks.add_task(_send_all)
-    return {"queued": len(to_send), "bounced": bounced_n, "already_active": already_active, "total": total}
+    return {"queued": len(to_send), "bounced": bounced_n, "placeholder": placeholder_n,
+            "already_active": already_active, "total": total}
 
 
 @router.get("/hoa/{hoa_id}/invite-all/status")

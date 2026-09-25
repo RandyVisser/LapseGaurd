@@ -26,6 +26,7 @@ from services.email import (
 )
 from services.importer import (
     parse_upload, ai_suggest_mapping, build_preview, normalize_row, flexible_date,
+    plan_email_fill,
 )
 
 
@@ -521,11 +522,73 @@ async def compliance_summary(
     return await build_compliance_summary(conn, hoa_id)
 
 
-async def build_compliance_summary(conn: asyncpg.Connection, hoa_id: str) -> ComplianceSummary:
-    """One association's compliance summary. Shared by the per-HOA endpoint and
-    the firm console's portfolio aggregation, so their numbers always agree."""
+def tally_compliance(rows, statuses: dict, approved: dict) -> dict:
+    """Bucket each unit exactly as the dashboard does. Pure (no DB) so the
+    dashboard summary, the firm console and the board report all count the
+    same way — the board report used to run its own loop and disagreed.
+
+    rows: dicts with assoc_title, is_rental, tenant_id, has_invite and
+    (optionally) unit_number / display_name. Returns the counts plus
+    `attention`: the owner units that are lapsed, need attention, are pending
+    review or are missing a policy (the board report's list)."""
+    t = {k: 0 for k in (
+        "total_units", "board_members", "rented_units", "compliant", "expiring", "lapsed",
+        "non_compliant", "pending_review", "missing", "property_managers", "admins",
+        "manually_approved", "invite_sent", "not_invited")}
+    attention: list = []
+    for r in rows:
+        title = (r.get("assoc_title") or "").strip().lower()
+        if title == "property manager":
+            t["property_managers"] += 1
+            continue
+        if title == "admin":
+            t["admins"] += 1
+            continue
+        t["total_units"] += 1
+        if r.get("is_rental"):
+            t["rented_units"] += 1
+        if r.get("assoc_title"):
+            t["board_members"] += 1
+        status = statuses.get(r.get("tenant_id"), PolicyStatus.missing.value)
+        bucket = None
+        if approved.get(r.get("tenant_id")):
+            # Manually approved by a PM/Admin — counted separately from genuinely
+            # compliant units so "Meets Reqs" reflects only real passes.
+            t["manually_approved"] += 1
+        elif status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
+            t["compliant"] += 1  # expiring = still meets requirements, sub-indicator only
+            if status == PolicyStatus.expiring.value:
+                t["expiring"] += 1  # tracked separately for the sub-badge count
+        elif status == PolicyStatus.non_compliant.value:
+            t["non_compliant"] += 1
+            bucket = "Needs attention"
+        elif status == PolicyStatus.lapsed.value:
+            t["lapsed"] += 1
+            bucket = "Lapsed"
+        elif status == PolicyStatus.pending_review.value:
+            t["pending_review"] += 1
+            bucket = "Pending review"
+        else:
+            t["missing"] += 1
+            bucket = "Missing policy"
+            # No policy on file — split by whether an invite has been sent
+            if r.get("has_invite"):
+                t["invite_sent"] += 1
+            else:
+                t["not_invited"] += 1
+        if bucket:
+            attention.append({"unit_number": r.get("unit_number"),
+                              "tenant_name": r.get("display_name"), "status": bucket})
+    t["attention"] = attention
+    return t
+
+
+async def _compliance_rows(conn: asyncpg.Connection, hoa_id: str):
+    """(rows, statuses, approved) for one association — the single source both
+    build_compliance_summary and build_board_report tally from."""
     rows = await conn.fetch(
         """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, u.is_rental, t.id AS tenant_id,
+                  u.unit_number, COALESCE(t.name, u.owner_primary, 'No owner') AS display_name,
                   EXISTS(SELECT 1 FROM unit_invites i WHERE i.unit_id = u.id) AS has_invite
            FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
            WHERE u.hoa_id = $1
@@ -533,50 +596,25 @@ async def build_compliance_summary(conn: asyncpg.Connection, hoa_id: str) -> Com
            ORDER BY u.id, t.id""",
         hoa_id,
     )
-
+    rows = [dict(r) for r in rows]
     tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
     hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
-    statuses, exp_dates, approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
+    statuses, _exp_dates, approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
+    return rows, statuses, approved
 
-    total_units = board_members = rented_units = 0
-    compliant = expiring = lapsed = non_compliant = pending_review = missing = property_managers = admins = 0
-    manually_approved_count = 0
-    invite_sent = not_invited = 0
-    for r in rows:
-        title = (r["assoc_title"] or "").strip().lower()
-        if title == "property manager":
-            property_managers += 1
-            continue
-        if title == "admin":
-            admins += 1
-            continue
-        total_units += 1
-        if r["is_rental"]:
-            rented_units += 1
-        if r["assoc_title"] and (r["assoc_title"] or "").strip().lower() != "property manager":
-            board_members += 1
-        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-        if approved.get(r["tenant_id"]):
-            # Manually approved by a PM/Admin — counted separately from genuinely
-            # compliant units so "Meets Reqs" reflects only real passes.
-            manually_approved_count += 1
-        elif status in (PolicyStatus.active.value, PolicyStatus.expiring.value):
-            compliant += 1  # expiring = still meets requirements, sub-indicator only
-            if status == PolicyStatus.expiring.value:
-                expiring += 1  # tracked separately for the sub-badge count
-        elif status == PolicyStatus.non_compliant.value:
-            non_compliant += 1
-        elif status == PolicyStatus.lapsed.value:
-            lapsed += 1
-        elif status == PolicyStatus.pending_review.value:
-            pending_review += 1
-        else:
-            missing += 1
-            # No policy on file — split by whether an invite has been sent
-            if r["has_invite"]:
-                invite_sent += 1
-            else:
-                not_invited += 1
+
+async def build_compliance_summary(conn: asyncpg.Connection, hoa_id: str) -> ComplianceSummary:
+    """One association's compliance summary. Shared by the per-HOA endpoint,
+    the firm console's portfolio aggregation and the board report, so their
+    numbers always agree."""
+    rows, statuses, approved = await _compliance_rows(conn, hoa_id)
+    t = tally_compliance(rows, statuses, approved)
+    total_units, board_members, rented_units = t["total_units"], t["board_members"], t["rented_units"]
+    compliant, expiring, lapsed = t["compliant"], t["expiring"], t["lapsed"]
+    non_compliant, pending_review, missing = t["non_compliant"], t["pending_review"], t["missing"]
+    property_managers, admins = t["property_managers"], t["admins"]
+    manually_approved_count = t["manually_approved"]
+    invite_sent, not_invited = t["invite_sent"], t["not_invited"]
 
     invites_sent = await conn.fetchval(
         "SELECT COUNT(*) FROM unit_invites i JOIN units u ON u.id = i.unit_id WHERE u.hoa_id = $1",
@@ -1380,55 +1418,43 @@ async def delete_hoa(
 
 async def build_board_report(conn: asyncpg.Connection, hoa_id: str) -> dict | None:
     """Build the compliance board report for one HOA. Returns
-    {"to_email", "subject", "html"} or None if the HOA doesn't exist.
-    Shared by the manual send route and the scheduled cron run."""
+    {"to_email", "subject", "html", "summary", "has_activity"} or None if the
+    HOA doesn't exist. Shared by the manual send route, the firm fan-out and
+    the scheduled cron run.
+
+    Numbers come from the same tally as the dashboard (tally_compliance), so the
+    board sees exactly what the manager sees: compliant = approved + manual
+    approvals, the same percentage as the hero gauge. `has_activity` is False
+    when the association has sent no invites and has no policies on file — the
+    cron skips those (a "0% compliant" report tells a board the tool does
+    nothing; it just hasn't been started)."""
     hoa_row = await conn.fetchrow("SELECT name, admin_email FROM hoas WHERE id = $1", hoa_id)
     if not hoa_row:
         return None
 
-    rows = await conn.fetch(
-        """SELECT DISTINCT ON (u.id) u.id AS unit_id, u.assoc_title, t.id AS tenant_id,
-                  u.unit_number, COALESCE(t.name, u.owner_primary, 'No owner') AS display_name
-           FROM units u LEFT JOIN tenants t ON t.unit_id = u.id
-           WHERE u.hoa_id = $1
-             AND u.parent_unit_id IS NULL  -- exclude rental sub-units from association counts/billing
-           ORDER BY u.id, t.id""",
+    rows, statuses, approved = await _compliance_rows(conn, hoa_id)
+    t = tally_compliance(rows, statuses, approved)
+    invites_sent = await conn.fetchval(
+        "SELECT COUNT(*) FROM unit_invites i JOIN units u ON u.id = i.unit_id WHERE u.hoa_id = $1",
         hoa_id,
-    )
-
-    tenant_ids = [r["tenant_id"] for r in rows if r["tenant_id"] is not None]
-    hoa_reqs = dict(await conn.fetchrow("SELECT ho6_coverage_a_min, ho6_coverage_e_min, ho6_wind_required, ho4_liability_min, rental_endorsement_required, lease_min_term_days, ho4_required FROM hoas WHERE id = $1", hoa_id) or {})
-    statuses, exp_dates, _approved = await _compliance_status_by_tenant(conn, tenant_ids, hoa_reqs)
-
-    total_units = compliant = expiring = lapsed = missing = 0
-    lapsed_units = []
-    for r in rows:
-        if (r["assoc_title"] or "").strip().lower() == "property manager":
-            continue
-        total_units += 1
-        status = statuses.get(r["tenant_id"], PolicyStatus.missing.value)
-        if status == PolicyStatus.active.value:
-            compliant += 1
-        elif status == PolicyStatus.expiring.value:
-            expiring += 1
-        elif status in (PolicyStatus.lapsed.value, PolicyStatus.non_compliant.value, PolicyStatus.pending_review.value):
-            lapsed += 1
-            lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
-        else:
-            missing += 1
-            lapsed_units.append({"unit_number": r["unit_number"], "tenant_name": r["display_name"]})
+    ) or 0
+    policies_on_file = t["total_units"] - t["missing"]
 
     subject, html = board_report_html(
         hoa_name=hoa_row["name"],
-        total_units=total_units,
-        compliant=compliant,
-        expiring=expiring,
-        lapsed=lapsed,
-        missing=missing,
-        lapsed_unit_list=lapsed_units,
+        total_units=t["total_units"],
+        compliant=t["compliant"] + t["manually_approved"],
+        expiring=t["expiring"],
+        lapsed=t["lapsed"],
+        missing=t["missing"],
+        lapsed_unit_list=t["attention"],
+        non_compliant=t["non_compliant"],
+        pending_review=t["pending_review"],
+        manually_approved=t["manually_approved"],
     )
 
-    return {"to_email": hoa_row["admin_email"], "subject": subject, "html": html}
+    return {"to_email": hoa_row["admin_email"], "subject": subject, "html": html,
+            "summary": t, "has_activity": bool(invites_sent or policies_on_file)}
 
 
 @router.post("/hoa/{hoa_id}/report/send")
@@ -1778,44 +1804,72 @@ def _norm_addr(s: str | None) -> str:
     return re.sub(r"\s+", " ", (s or "").strip().upper())
 
 
-@router.post("/hoa/{hoa_id}/units/emails/commit")
-async def add_emails_commit(
+class EmailFillRequest(BaseModel):
+    mapping: dict
+    rows: List[dict]
+    # Replace a unit's existing (different) email instead of keeping it. Off by
+    # default — the wizard only "fills in"; the admin must opt in explicitly.
+    overwrite: bool = False
+
+
+async def _email_fill_plan(conn, hoa_id: str, body: EmailFillRequest) -> dict:
+    units = [dict(r) for r in await conn.fetch(
+        """SELECT id, unit_number, street_address, assoc_title, parent_unit_id,
+                  email_primary, email_secondary
+           FROM units WHERE hoa_id = $1""", hoa_id)]
+    return plan_email_fill(units, body.rows, body.mapping, overwrite=body.overwrite)
+
+
+@router.post("/hoa/{hoa_id}/units/emails/preview")
+async def add_emails_preview(
     hoa_id: str,
-    body: ImportCommit,
+    body: EmailFillRequest,
     user: AuthUser = Depends(require_hoa_admin),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Fill in unit-owner email addresses on EXISTING units, matched by unit
-    number. Only touches the email columns — never inserts a unit and never
-    changes names, addresses, or anything else. Rows with no matching unit are
-    reported back, not created."""
+    """Dry run of the Add-Emails commit: per-row match/fill/conflict/ambiguous
+    status computed by the SAME planner the commit uses, so what the admin
+    sees is exactly what will be written. Writes nothing."""
     await _assert_hoa_access(user, hoa_id, conn)
-    rows_db = await conn.fetch(
-        "SELECT id, unit_number FROM units WHERE hoa_id = $1 "
-        "AND lower(coalesce(assoc_title,'')) <> 'property manager'", hoa_id)
-    by_norm: dict = {}
-    for r in rows_db:
-        by_norm.setdefault(_norm_unit(r["unit_number"]), r["id"])
+    plan = await _email_fill_plan(conn, hoa_id, body)
+    return {"rows": plan["rows"], "counts": plan["counts"]}
 
-    updated = skipped = 0
-    unmatched: list = []
-    for raw in body.rows:
-        norm, _issues = normalize_row(raw, body.mapping)
-        unit = norm.get("unit_number")
-        email_p = (norm.get("email_primary") or "").strip() or None
-        email_s = (norm.get("email_secondary") or "").strip() or None
-        if not unit or (not email_p and not email_s):
-            skipped += 1
-            continue
-        uid = by_norm.get(_norm_unit(unit))
-        if uid is None:
-            unmatched.append(unit)
-            continue
-        if email_p and email_s:
-            await conn.execute("UPDATE units SET email_primary=$2, email_secondary=$3 WHERE id=$1", uid, email_p, email_s)
-        elif email_p:
-            await conn.execute("UPDATE units SET email_primary=$2 WHERE id=$1", uid, email_p)
-        else:
-            await conn.execute("UPDATE units SET email_secondary=$2 WHERE id=$1", uid, email_s)
-        updated += 1
-    return {"updated": updated, "skipped": skipped, "unmatched": unmatched[:50], "unmatched_count": len(unmatched)}
+
+@router.post("/hoa/{hoa_id}/units/emails/commit")
+async def add_emails_commit(
+    hoa_id: str,
+    body: EmailFillRequest,
+    user: AuthUser = Depends(require_hoa_admin),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Fill in unit-owner email addresses on EXISTING owner units, matched on
+    (street address, unit number) exactly like the importer — see
+    services.importer.plan_email_fill. Only touches the email columns — never
+    inserts a unit and never changes names, addresses, or anything else.
+    Ambiguous rows (same unit number in several buildings, no address to tell
+    them apart) are refused, not guessed. PM/ADMIN contact rows and renter
+    sub-units are never matched. A unit's existing different email is kept
+    unless overwrite=true."""
+    await _assert_hoa_access(user, hoa_id, conn)
+    plan = await _email_fill_plan(conn, hoa_id, body)
+    async with conn.transaction():
+        for upd in plan["updates"]:
+            fields = [f for f in ("email_primary", "email_secondary") if f in upd]
+            set_clause = ", ".join(f"{f} = ${i + 2}" for i, f in enumerate(fields))
+            await conn.execute(f"UPDATE units SET {set_clause} WHERE id = $1",
+                               upd["unit_id"], *[upd[f] for f in fields])
+    c = plan["counts"]
+    unmatched = [r["unit"] for r in plan["rows"] if r["status"] == "no_match"]
+    ambiguous = [r["unit"] for r in plan["rows"] if r["status"] == "ambiguous"]
+    await log_audit(conn, hoa_id, user.sub, user.email, "emails_bulk_fill", {
+        "updated": len(plan["updates"]), "overwrite": body.overwrite,
+        "conflicts_kept": c["conflict"], "ambiguous": c["ambiguous"],
+    })
+    return {
+        "updated": len(plan["updates"]),
+        "replaced": c["replace"],
+        "skipped": c["no_email"] + c["invalid"] + c["duplicate"] + c["unchanged"],
+        "conflicts": c["conflict"],
+        "ambiguous": ambiguous[:50], "ambiguous_count": len(ambiguous),
+        "unmatched": unmatched[:50], "unmatched_count": len(unmatched),
+    }

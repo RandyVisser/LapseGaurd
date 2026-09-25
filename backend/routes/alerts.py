@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 import asyncpg
 import hmac
+import logging
 import os
+
+import sentry_sdk
 
 from models.db import get_conn
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
@@ -26,12 +30,26 @@ async def run_alerts(
         process_alerts, process_invite_reminders, process_noncompliant_reminders,
         process_lease_alerts, process_trial_reminders, process_billing_sync,
     )
-    count = await process_alerts(conn)
-    reminders = await process_invite_reminders(conn)
-    noncompliant = await process_noncompliant_reminders(conn)
-    lease = await process_lease_alerts(conn)
-    trials = await process_trial_reminders(conn)
-    billing = await process_billing_sync(conn)
+    # Each processor is isolated: one blowing up (a bad row, a Resend outage,
+    # a Stripe hiccup) must not silently skip every processor after it. The
+    # failure is logged + sent to Sentry and reported in the response.
+    errors: dict[str, str] = {}
+
+    async def _isolated(name, coro, fallback=0):
+        try:
+            return await coro
+        except Exception as e:  # noqa: BLE001 — deliberate: keep the run going
+            logger.warning("alerts/run: processor %s failed: %s", name, e)
+            sentry_sdk.capture_exception(e)
+            errors[name] = f"{type(e).__name__}: {e}"
+            return fallback
+
+    count = await _isolated("alerts", process_alerts(conn))
+    reminders = await _isolated("invite_reminders", process_invite_reminders(conn))
+    noncompliant = await _isolated("noncompliant_reminders", process_noncompliant_reminders(conn))
+    lease = await _isolated("lease_alerts", process_lease_alerts(conn))
+    trials = await _isolated("trial_reminders", process_trial_reminders(conn))
+    billing = await _isolated("billing_sync", process_billing_sync(conn), fallback={"error": "failed"})
     return {
         "alerts_sent": count,
         "invite_reminders_sent": reminders,
@@ -39,6 +57,7 @@ async def run_alerts(
         "lease_reminders_sent": lease,
         "trial_reminders_sent": trials,
         "billing_sync": billing,
+        "errors": errors,
     }
 
 
@@ -70,6 +89,7 @@ async def run_board_reports(
     bounced = await _bounced_emails(conn)
 
     sent = skipped = 0
+    inactive = 0
     for h in hoas:
         hoa_id = str(h["id"])
         if hoa_id in recently_sent:
@@ -78,6 +98,15 @@ async def run_board_reports(
         report = await build_board_report(conn, hoa_id)
         if not report or not report["to_email"]:
             continue
+        if not report["has_activity"]:
+            # No invites sent and no policies on file: a "0% compliant" report
+            # tells the board the tool does nothing when it simply hasn't been
+            # started. Skip (logged) until the association has activity.
+            logger.info("board report skipped for hoa %s — no invites sent and no policies on file", hoa_id)
+            await log_audit(conn, hoa_id, None, "system", "board_report_skipped",
+                            {"reason": "no_activity", "trigger": "cron"})
+            inactive += 1
+            continue
         if report["to_email"].strip().lower() in bounced:
             skipped += 1
             continue
@@ -85,4 +114,4 @@ async def run_board_reports(
             await log_audit(conn, hoa_id, None, "system", "board_report_sent",
                             {"to": report["to_email"], "trigger": "cron"})
             sent += 1
-    return {"reports_sent": sent, "skipped": skipped}
+    return {"reports_sent": sent, "skipped": skipped, "skipped_no_activity": inactive}

@@ -15,7 +15,7 @@ import asyncpg
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from services.audit import log_audit
-from services.email import send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, trial_ending_html, format_address
+from services.email import bounced_emails, deliverable_recipient, send_email, renewal_notice_html, renewal_reminder_html, expired_email_html, invite_email_html, admin_notify_html, noncompliant_email_html, lease_expiration_html, trial_ending_html, format_address
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/lapseguard")
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
@@ -34,28 +34,40 @@ async def _bounced_emails(conn) -> set[str]:
     """Addresses Resend has reported bounced/complained (email_bounces) — we
     never mail these again; the fix is the admin correcting the address, which
     the dashboard's Bounced badge and needs-attention pill point them at."""
-    return {r["email"] for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
+    return await bounced_emails(conn)
 
 
 def _alert_recipient(row, bounced: set[str] = frozenset()) -> str | None:
     """Send to the owner at the email the admin manages on the dashboard
     (units.email_primary), falling back to the tenant record's email. Skips
     placeholder @condo.insure addresses (no real inbox) and addresses that
-    have bounced — a bounced primary falls back to the tenant email."""
-    for addr in (row.get("email_primary"), row.get("tenant_email")):
-        a = (addr or "").strip()
-        if a and not a.lower().endswith("@condo.insure") and a.lower() not in bounced:
-            return a
-    return None
+    have bounced — a bounced primary falls back to the tenant email.
+    (Implementation shared with admin-triggered sends: services.email.)"""
+    return deliverable_recipient(row.get("email_primary"), row.get("tenant_email"), bounced=bounced)
+
+
+# Automatic invite reminders stop after this many re-sends per invite. An
+# owner who ignored the invite plus three reminders is not going to act on a
+# fourth — continuing just trains their mail filter to junk the sending domain.
+# Manual re-sends from the dashboard are not counted and not capped.
+INVITE_REMINDER_CAP = 3
+
+
+def _invite_reminder_due(sent_so_far: int, cap: int = INVITE_REMINDER_CAP) -> bool:
+    return sent_so_far < cap
 
 
 async def process_invite_reminders(conn: asyncpg.Connection) -> int:
     """Re-send pending invites to unit owners who haven't accepted yet, spaced by
     each association's invite_reminder_days (default 7). Runs every cron tick;
-    an invite is re-sent only once its last send is older than that window."""
+    an invite is re-sent only once its last send is older than that window, and
+    at most INVITE_REMINDER_CAP times in total. Each automatic re-send is
+    recorded in admin_audit_log (action 'invite_reminder_sent', details
+    {"token": ...}) — the same audit-table pattern the trial reminders use, so
+    the cap needs no migration."""
     rows = await conn.fetch(
         """
-        SELECT i.token, i.email, u.unit_number, u.assoc_title,
+        SELECT i.token, i.email, u.hoa_id, u.unit_number, u.assoc_title,
                u.owner_primary, u.owner_secondary, u.email_primary, u.email_secondary,
                u.street_address, u.city, u.state, u.zip,
                h.name AS hoa_name,
@@ -75,9 +87,24 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
               < NOW() - (COALESCE(h.invite_reminder_days, 7) * INTERVAL '1 day')
         """,
     )
+    if not rows:
+        return 0
+    sent_counts = {
+        r["token"]: int(r["n"])
+        for r in await conn.fetch(
+            """SELECT details->>'token' AS token, count(*) AS n
+               FROM admin_audit_log
+               WHERE action = 'invite_reminder_sent'
+                 AND details->>'token' = ANY($1::text[])
+               GROUP BY 1""",
+            [str(r["token"]) for r in rows],
+        )
+    }
     bounced = await _bounced_emails(conn)
     count = 0
     for row in rows:
+        if not _invite_reminder_due(sent_counts.get(str(row["token"]), 0)):
+            continue  # reminder cap reached — the invite stays pending, just quiet
         addr = (row["email"] or "").strip().lower()
         if addr in bounced:
             print(f"[alerts] Skipped invite reminder to {row['email']} — address has bounced")
@@ -101,6 +128,8 @@ async def process_invite_reminders(conn: asyncpg.Connection) -> int:
             await conn.execute(
                 "UPDATE unit_invites SET last_sent_at = NOW() WHERE token = $1", row["token"]
             )
+            await log_audit(conn, str(row["hoa_id"]), None, None,
+                            "invite_reminder_sent", {"token": str(row["token"])})
             count += 1
             print(f"[alerts] Re-sent invite to {row['email']} (Unit {row['unit_number']})")
     return count

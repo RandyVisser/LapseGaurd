@@ -6,7 +6,6 @@ actions: invite, revoke, remove, rename; every member can view the roster.
 """
 import logging
 import secrets
-from datetime import datetime, timezone
 
 import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -291,6 +290,7 @@ async def pm_associations(
     if user.role != "property_manager":
         raise HTTPException(status_code=403, detail="Property-manager account required")
     from routes.hoa import build_compliance_summary
+    from routes.billing import trial_countdown
     firm, hoas = await _visible_portfolio(conn, user.sub)
     if not firm:
         raise HTTPException(status_code=400, detail="No firm found for this account yet.")
@@ -309,7 +309,7 @@ async def pm_associations(
     for h in hoas:
         s = await build_compliance_summary(conn, str(h["id"]))
         ok = s.compliant + s.manually_approved
-        trial_active = h["trial_ends_at"] and h["trial_ends_at"] > datetime.now(timezone.utc)
+        trial_left, trial_active = trial_countdown(h["trial_ends_at"])
         out.append({
             "id": str(h["id"]),
             "name": h["name"],
@@ -320,8 +320,7 @@ async def pm_associations(
             "billing_status": h["billing_status"] or "none",
             "has_subscription": bool(h["stripe_subscription_id"]),
             "trial_active": bool(trial_active),
-            "trial_days_left": max((h["trial_ends_at"] - datetime.now(timezone.utc)).days, 0)
-                               if trial_active else None,
+            "trial_days_left": trial_left if trial_active else None,
         })
     return {"firm_billing_mode": firm["billing_mode"], "role": firm["role"],
             "open_visibility": firm["open_visibility"], "hoas": out}

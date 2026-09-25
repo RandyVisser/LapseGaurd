@@ -18,6 +18,42 @@ FROM_NAME = (os.environ.get("FROM_NAME") or "").strip() or "condo.insure"
 QUOTE_FORM_URL = "https://www.universalcondo.com/quote"
 # Renters get an HO-4-specific quote page.
 HO4_QUOTE_URL = "https://www.universalcondo.com/ho4quote.html"
+
+
+def is_placeholder_email(addr: str | None) -> bool:
+    """@condo.insure addresses on owner rows are placeholders (no real inbox)."""
+    return (addr or "").strip().lower().endswith("@condo.insure")
+
+
+def deliverable_recipient(*candidates: str | None, bounced=frozenset()) -> str | None:
+    """THE owner-recipient rule, shared by the alert cron and admin-triggered
+    sends: the first candidate (callers pass units.email_primary first, then
+    the tenant record's email) that is non-blank, not an @condo.insure
+    placeholder, and not a bounced address. None = nobody deliverable."""
+    for addr in candidates:
+        a = (addr or "").strip()
+        if a and not is_placeholder_email(a) and a.lower() not in bounced:
+            return a
+    return None
+
+
+async def bounced_emails(conn) -> set[str]:
+    """Lower-cased addresses Resend reported bounced/complained (email_bounces).
+    A bounced address is never mailed again; the fix is the admin correcting it."""
+    return {r["email"] for r in await conn.fetch("SELECT lower(email) AS email FROM email_bounces")}
+
+
+def quote_link(campaign: str, is_renter: bool = False, extra: dict | None = None) -> str:
+    """Agency quote URL tagged so the agency can attribute the lead: every quote
+    link in a condo.insure email carries utm_source=condo.insure,
+    utm_medium=email, utm_campaign=<the alert type that sent it>. `extra`
+    (e.g. the form-prefill tenant_name/unit) is appended after the UTM params."""
+    from urllib.parse import urlencode
+    base = HO4_QUOTE_URL if is_renter else QUOTE_FORM_URL
+    params = {"utm_source": "condo.insure", "utm_medium": "email", "utm_campaign": campaign}
+    params.update({k: v for k, v in (extra or {}).items() if v is not None})
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}{urlencode(params)}"
 APP_URL = os.environ.get("APP_URL", "https://www.condo.insure")
 # Dec-page email-in intake address shown to owners who'd rather email their
 # document than upload it. docs@condo.insure IS live: Google Workspace holds
@@ -131,7 +167,7 @@ def renewal_notice_html(
         body = (f"Your condo insurance policy expires on <strong>{exp_str}</strong>, about "
                 f"<strong>30 days</strong> from now. Now is a great time to renew.")
 
-    quote_url = _build_quote_url(tenant_name, unit_number)
+    quote_url = _build_quote_url(tenant_name, unit_number, "renewal_notice")
     portal_url = f"{APP_URL}/tenant/dashboard"
 
     html = f"""
@@ -182,10 +218,13 @@ def renewal_reminder_html(
 
     if days_until is not None and days_until <= 1:
         when, subject = "tomorrow", f"Final reminder — your policy renews tomorrow ({hoa_name})"
+        renewal_campaign = "renewal_1"
     elif days_until is not None and days_until <= 7:
         when, subject = "in 7 days", f"Reminder — your policy renews in 7 days ({hoa_name})"
+        renewal_campaign = "renewal_7"
     else:
         when, subject = "in 30 days", f"Reminder — your policy renews in 30 days ({hoa_name})"
+        renewal_campaign = "renewal_30"
 
     policy_word = "HO-4 renters insurance policy" if is_renter else "insurance policy"
     quote_btn = "Get an HO-4 Quote" if is_renter else "Get a Quote"
@@ -194,7 +233,7 @@ def renewal_reminder_html(
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
+    quote_href = quote_link(renewal_campaign, is_renter=is_renter)
     contact_parts = [
         (sender_name or "").strip() or None,
         (sender_title or "").strip() or None,
@@ -223,7 +262,7 @@ def renewal_reminder_html(
         coverage at the best rate. You can get a free quote directly through Condo.insure:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_btn}</a>
       </div>
@@ -359,7 +398,7 @@ def expired_email_html(
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
+    quote_href = quote_link("lapsed", is_renter=is_renter)
     contact_parts = [
         (sender_name or "").strip() or None,
         (sender_title or "").strip() or None,
@@ -393,7 +432,7 @@ def expired_email_html(
         you can get a free quote directly through Condo.insure.
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{"Get a HO-4 Quote →" if is_renter else "Get a Quote →"}</a>
       </div>
@@ -440,7 +479,7 @@ def admin_notify_html(
     admin_message: str | None = None,
 ) -> tuple[str, str]:
     subject = f"Reminder — please update your condo insurance policy"
-    quote_url = _build_quote_url(tenant_name, unit_number)
+    quote_url = _build_quote_url(tenant_name, unit_number, "admin_notify")
     portal_url = f"{APP_URL}/tenant/dashboard"
 
     custom_block = ""
@@ -480,10 +519,16 @@ def trial_ending_html(hoa_name: str, days_left: int, ends_at, settings_url: str)
     except (AttributeError, ValueError):
         date_str = str(ends_at)
 
-    if days_left <= 0:
+    if days_left < 0:
         subject = f"Your condo.insure free trial has ended ({hoa_name})"
         lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ended on "
                 f"<strong>{date_str}</strong>.")
+    elif days_left == 0:
+        # days_left is calendar days (trial_ends_at::date - CURRENT_DATE), so 0
+        # is the final day — the trial is still running until the end time.
+        subject = f"Your condo.insure free trial ends today ({hoa_name})"
+        lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ends "
+                f"<strong>today</strong>, {date_str}.")
     elif days_left == 1:
         subject = f"Your condo.insure free trial ends tomorrow ({hoa_name})"
         lead = (f"Your 90-day free trial for <strong>{hoa_name}</strong> ends "
@@ -538,7 +583,7 @@ def invite_email_html(
                             (f"Unit {unit_number}" if unit_number else "")] if p]
     re_line = (f'<p style="color:#111827;font-weight:600;margin-bottom:16px">Re: '
                f'{", ".join(re_parts)}</p>') if re_parts else ""
-    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
+    quote_href = quote_link("invite", is_renter=is_renter)
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
@@ -698,7 +743,7 @@ def invite_email_html(
         {quote_intro}
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_btn_label}</a>
       </div>
@@ -759,7 +804,7 @@ def noncompliant_email_html(
         (sender_email or "").strip() or None,
     ]
     contact = "<br>".join(p for p in contact_parts if p)
-    quote_link = HO4_QUOTE_URL if is_renter else (QUOTE_FORM_URL or "https://www.universalcondo.com/quote")
+    quote_href = quote_link("non_compliant", is_renter=is_renter)
     quote_label = "Get a New HO-4 Quote" if is_renter else "Get a New HO-6 Quote"
     quote_word = "HO-4" if is_renter else "HO-6"
 
@@ -793,7 +838,7 @@ def noncompliant_email_html(
         no-obligation {quote_word} quote in minutes:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_link}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_label}</a>
       </div>
@@ -895,7 +940,7 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
           Questions while you're getting set up? Just reply to this email.
         </p>
         {_footer()}
-      </div></body></html>"""
+      </div></div></body></html>"""
     return subject, html
 
 
@@ -921,7 +966,7 @@ def pm_team_invite_html(firm_name: str, inviter_email: str, setup_url: str) -> t
           Didn't expect this? You can ignore this email and nothing will happen.
         </p>
         {_footer()}
-      </div></body></html>"""
+      </div></div></body></html>"""
     return subject, html
 
 
@@ -1094,45 +1139,54 @@ def board_report_html(
     lapsed: int,
     missing: int,
     lapsed_unit_list: list,
+    non_compliant: int = 0,
+    pending_review: int = 0,
+    manually_approved: int = 0,
 ) -> tuple[str, str]:
+    """Monthly board summary. `compliant` is the dashboard's headline number
+    (approved + manual approvals) so the percentage matches the hero gauge;
+    `expiring` is a subset of compliant (still covered, renewing soon)."""
     pct = round(100 * compliant / total_units) if total_units > 0 else 0
     subject = f"Monthly compliance report — {hoa_name}"
     dashboard_url = f"{APP_URL}/admin/dashboard"
 
     lapsed_block = ""
     if lapsed_unit_list:
-        items = "".join(
-            f'<li style="color:#374151">{_html.escape(u.get("unit_number", ""))} — {_html.escape(u.get("tenant_name") or "No owner on file")}</li>'
-            for u in lapsed_unit_list[:8]
-        )
+        def _li(u):
+            label = _html.escape(u.get("unit_number") or "")
+            name = _html.escape(u.get("tenant_name") or "No owner on file")
+            status = f' <span style="color:#6b7280">({_html.escape(u["status"])})</span>' if u.get("status") else ""
+            return f'<li style="color:#374151">{label} — {name}{status}</li>'
+        items = "".join(_li(u) for u in lapsed_unit_list[:8])
         more = f'<li style="color:#6b7280;font-style:italic">…and {len(lapsed_unit_list) - 8} more</li>' if len(lapsed_unit_list) > 8 else ""
         lapsed_block = f'<p style="color:#374151;font-weight:600;margin-top:16px">Units requiring attention:</p><ul style="color:#374151;padding-left:20px;line-height:2">{items}{more}</ul>'
+
+    def _row(label, value, color, shade, last=False):
+        border = "" if last else "border-bottom:1px solid #e5e7eb"
+        bg = ' style="background:#f8fafc"' if shade else ""
+        return (f'<tr{bg}><td style="padding:10px 16px;color:#374151;font-weight:600;{border}">{label}</td>'
+                f'<td style="padding:10px 16px;color:{color};font-weight:700;{border}">{value}</td></tr>')
+
+    compliant_note = f" · {manually_approved} by manual approval" if manually_approved else ""
+    table_rows = [
+        ("Total Units", total_units, "#374151"),
+        ("Compliant", f"{compliant} ({pct}%){compliant_note}", "#16a34a"),
+        ("&nbsp;&nbsp;of which expiring soon", expiring, "#ca8a04"),
+        ("Needs Attention", non_compliant, "#dc2626"),
+        ("Lapsed", lapsed, "#dc2626"),
+    ]
+    if pending_review:
+        table_rows.append(("Pending Review", pending_review, "#ca8a04"))
+    table_rows.append(("Missing Policy", missing, "#dc2626"))
+    table_html = "".join(_row(l, v, c, i % 2 == 0, i == len(table_rows) - 1)
+                         for i, (l, v, c) in enumerate(table_rows))
 
     html = f"""
     <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Here's the compliance summary for <strong>{_html.escape(hoa_name)}</strong>:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #e5e7eb;border-radius:8px">
-        <tr style="background:#f8fafc">
-          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Total Units</td>
-          <td style="padding:10px 16px;color:#374151;border-bottom:1px solid #e5e7eb">{total_units}</td>
-        </tr>
-        <tr>
-          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Compliant</td>
-          <td style="padding:10px 16px;color:#16a34a;font-weight:700;border-bottom:1px solid #e5e7eb">{compliant} ({pct}%)</td>
-        </tr>
-        <tr style="background:#f8fafc">
-          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Expiring Soon</td>
-          <td style="padding:10px 16px;color:#ca8a04;font-weight:700;border-bottom:1px solid #e5e7eb">{expiring}</td>
-        </tr>
-        <tr>
-          <td style="padding:10px 16px;color:#374151;font-weight:600;border-bottom:1px solid #e5e7eb">Lapsed</td>
-          <td style="padding:10px 16px;color:#dc2626;font-weight:700;border-bottom:1px solid #e5e7eb">{lapsed}</td>
-        </tr>
-        <tr style="background:#f8fafc">
-          <td style="padding:10px 16px;color:#374151;font-weight:600">Missing</td>
-          <td style="padding:10px 16px;color:#dc2626;font-weight:700">{missing}</td>
-        </tr>
+        {table_html}
       </table>
       {lapsed_block}
       {_btn(dashboard_url, "View Full Dashboard")}
@@ -1142,8 +1196,5 @@ def board_report_html(
     return subject, html
 
 
-def _build_quote_url(tenant_name: str, unit_number: str) -> str:
-    from urllib.parse import urlencode
-    params = urlencode({"tenant_name": tenant_name or "", "unit": unit_number or ""})
-    sep = "&" if "?" in QUOTE_FORM_URL else "?"
-    return f"{QUOTE_FORM_URL}{sep}{params}"
+def _build_quote_url(tenant_name: str, unit_number: str, campaign: str = "email") -> str:
+    return quote_link(campaign, extra={"tenant_name": tenant_name or "", "unit": unit_number or ""})

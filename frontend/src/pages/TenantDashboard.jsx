@@ -11,6 +11,9 @@ import usePageTitle from '../usePageTitle'
 // page uses so it always shows, even if VITE_QUOTE_FORM_URL isn't set on Railway.
 // Quote link points at the agency quote page.
 const QUOTE_FORM_URL = 'https://www.universalcondo.com/quote'
+// Renters carry an HO-4 — the agency has a dedicated HO-4 quote page (same
+// one the backend emails link to).
+const HO4_QUOTE_URL = 'https://www.universalcondo.com/ho4quote.html'
 // Subrental owner steps — hidden until the rentals feature is switched on.
 const RENTALS_ENABLED = import.meta.env.VITE_RENTALS_ENABLED === 'true'
 // Email-in intake address — docs@condo.insure is live (Workspace forwards to
@@ -288,16 +291,24 @@ export default function TenantDashboard() {
   const flags = policy?.parsed_at && policy?.extracted_data?.validation?.passed === false
     ? (policy.extracted_data.validation.flags || [])
     : []
-  const needsQuote = !policy || status === 'lapsed' || status === 'missing' || status === 'non_compliant'
-  const quoteUrl = `${QUOTE_FORM_URL}?${new URLSearchParams({
-    tenant_name: user?.user_metadata?.name || user?.email || '',
-    unit: unitId || '',
-    hoa: hoaId || '',
-  })}`
   const history = allPolicies.filter(p => p.id !== policy?.id)
   const activeUnit = tenantUnits.find(u => u.unit_id === unitId)
   // Renters carry an HO-4, not an HO-6 — the upload card copy follows suit.
   const isRenter = RENTALS_ENABLED && activeUnit?.is_renter
+  // Owners who aren't covered get the quote card up front; compliant owners
+  // still see it, but as a quiet secondary link (it's the agency lead channel,
+  // so it never disappears — see CLAUDE.dad.md).
+  const needsQuote = !policy || status === 'lapsed' || status === 'missing' || status === 'non_compliant'
+  // Human-readable prefill (unit number + association name, not raw UUIDs) and
+  // UTM tags so the agency can attribute the lead to the owner portal.
+  const quoteUrl = `${isRenter ? HO4_QUOTE_URL : QUOTE_FORM_URL}?${new URLSearchParams({
+    utm_source: 'condo.insure',
+    utm_medium: 'portal',
+    utm_campaign: needsQuote ? `owner_dashboard_${status}` : 'owner_dashboard_covered',
+    tenant_name: user?.user_metadata?.name || user?.email || '',
+    unit: activeUnit?.unit_number || '',
+    hoa: activeUnit?.hoa_name || '',
+  })}`
 
   if (!unitId) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -595,16 +606,26 @@ export default function TenantDashboard() {
           </form>
         </section>
 
-        {/* Quote card — shown for covered owners and those with no policy yet */}
-        {QUOTE_FORM_URL && (
+        {/* Quote card — prominent when the owner isn't covered (no policy,
+            lapsed, needs attention); a quiet secondary link once they're
+            compliant, so it never nags a covered owner but never disappears. */}
+        {QUOTE_FORM_URL && needsQuote && (
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-between bg-white border border-[#E8ECF2] rounded-2xl px-5 py-4 mb-5 hover:border-[#7CA9E8] transition-colors">
             <div>
-              <p className="text-sm font-semibold text-[#0B1B33]">Get a new HO-6 (condo unit-owner insurance) Quote</p>
-              <p className="text-xs text-[#8493A8] mt-0.5">Get a free HO-6 insurance quote sent via email</p>
+              <p className="text-sm font-semibold text-[#0B1B33]">{isRenter ? 'Get an HO-4 (renters insurance) quote' : 'Get a new HO-6 (condo unit-owner insurance) Quote'}</p>
+              <p className="text-xs text-[#8493A8] mt-0.5">{isRenter ? 'Get a free HO-4 insurance quote sent via email' : 'Get a free HO-6 insurance quote sent via email'}</p>
             </div>
-            <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">Request a HO-6 quote →</span>
+            <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">{isRenter ? 'Request an HO-4 quote →' : 'Request a HO-6 quote →'}</span>
           </a>
+        )}
+        {QUOTE_FORM_URL && !needsQuote && (
+          <p className="text-xs text-[#8493A8] mb-5 px-1">
+            Shopping your renewal?{' '}
+            <a href={quoteUrl} target="_blank" rel="noopener noreferrer" className="text-[#014AC5] hover:underline font-medium">
+              Compare a free {isRenter ? 'HO-4' : 'HO-6'} quote →
+            </a>
+          </p>
         )}
 
         {/* ── History, collapsed ──────────────────────────────────────── */}

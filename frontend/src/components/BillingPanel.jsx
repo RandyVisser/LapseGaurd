@@ -76,8 +76,8 @@ export default function BillingPanel({ hoaId }) {
           {!data.has_subscription && data.trial_ends_at && (
             <p className={`text-sm mb-4 ${data.trial_active ? 'text-[#54627A]' : 'text-[#C0492F] font-medium'}`}>
               {data.trial_active
-                ? <>Free trial — {data.trial_days_left} day{data.trial_days_left !== 1 ? 's' : ''} left
-                    (ends {new Date(data.trial_ends_at).toLocaleDateString()}). Subscribe now and billing
+                ? <>Free trial — {data.trial_days_left === 0 ? 'ends today' : `${data.trial_days_left} day${data.trial_days_left !== 1 ? 's' : ''} left`}
+                    {' '}(ends {new Date(data.trial_ends_at).toLocaleDateString()}). Subscribe now and billing
                     starts when the trial ends.</>
                 : 'Your free trial has ended — subscribe to keep compliance tracking running.'}
             </p>

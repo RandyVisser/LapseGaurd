@@ -342,7 +342,7 @@ function GettingStartedPanel({ summary, requirementsSet, onImportClick, onAddEma
   const steps = [
     {
       title: 'Review Units and Add Emails',
-      detail: 'Review the units we built for your association and add unit-owner email addresses so you can invite them. Upload a list and we match it to your units by unit number — no duplicates.',
+      detail: 'Review the units we built for your association and add unit-owner email addresses so you can invite them. Upload a list and we match it to your existing units by street address and unit number — it only fills in emails and never creates units.',
       done: summary.total_units > 0,
       action: { label: 'Add emails', onClick: onAddEmailsClick },
     },
@@ -823,6 +823,16 @@ export default function AdminDashboard() {
   const creatingTenantRef = useRef(null)
   const [exporting, setExporting] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
+  // Bulk-invite confirmation: the dry-run counts ({queued, already_active,
+  // bounced, placeholder, preview_unit_id}) while the dialog is open, plus the
+  // resolver for the promise handleInviteAll awaits on.
+  const [inviteAllConfirm, setInviteAllConfirm] = useState(null)
+  const inviteAllResolveRef = useRef(null)
+  function resolveInviteAllConfirm(ok) {
+    setInviteAllConfirm(null)
+    inviteAllResolveRef.current?.(ok)
+    inviteAllResolveRef.current = null
+  }
 
   async function openInvitePreview(unitId) {
     try {
@@ -1112,7 +1122,8 @@ export default function AdminDashboard() {
     setBulkSuccess('')
     try {
       const result = await apiPost(`/hoa/${hoaId}/notify-bulk`, { tenant_ids: tenantIds })
-      setBulkSuccess(`Notified ${result.queued} owner${result.queued !== 1 ? 's' : ''}.`)
+      setBulkSuccess(`Notified ${result.queued} owner${result.queued !== 1 ? 's' : ''}.` +
+        (result.skipped ? ` ${result.skipped} skipped — no deliverable email (missing, placeholder, or bouncing).` : ''))
       setSelectedTenantIds(new Set())
       setTimeout(() => setBulkSuccess(''), 4000)
     } catch (err) {
@@ -1124,9 +1135,26 @@ export default function AdminDashboard() {
 
   async function handleInviteAll() {
     if (!hoaId || hoaId === '__all__') return
-    if (!window.confirm("Send an invite to every owner with an email on file who hasn't signed up yet?")) return
     setInvitingAll(true); setInviteAllMsg('')
     try {
+      // Dry run first so the confirmation can say exactly how many emails go
+      // out (and offer a preview of the email) — nothing is created or sent.
+      const plan = await apiPost(`/hoa/${hoaId}/invite-all?dry_run=true`, {})
+      if (!plan.queued) {
+        const why = []
+        if (plan.already_active) why.push(`${plan.already_active} already signed up`)
+        if (plan.bounced) why.push(`${plan.bounced} bouncing`)
+        if (plan.placeholder) why.push(`${plan.placeholder} placeholder address${plan.placeholder !== 1 ? 'es' : ''}`)
+        setInviteAllMsg(`No invites to send${why.length ? ` — ${why.join(' · ')}` : ' — add owner emails first'}.`)
+        clearTimeout(inviteAllMsgTimerRef.current)
+        inviteAllMsgTimerRef.current = setTimeout(() => setInviteAllMsg(''), 8000)
+        return
+      }
+      const ok = await new Promise(resolve => {
+        inviteAllResolveRef.current = resolve
+        setInviteAllConfirm(plan)
+      })
+      if (!ok) return
       const r = await apiPost(`/hoa/${hoaId}/invite-all`, {})
       // Sends run in a rate-limited background job (large HOAs take minutes) —
       // poll for progress until it reports done.
@@ -1139,6 +1167,7 @@ export default function AdminDashboard() {
       const parts = [`${status.sent} invite${status.sent !== 1 ? 's' : ''} sent`]
       if (r.already_active) parts.push(`${r.already_active} already active`)
       if (r.bounced) parts.push(`${r.bounced} skipped (bad address)`)
+      if (r.placeholder) parts.push(`${r.placeholder} skipped (placeholder address)`)
       if (status.failed) parts.push(`${status.failed} failed`)
       setInviteAllMsg(parts.join(' · '))
       const [s, u] = await Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
@@ -1579,7 +1608,7 @@ export default function AdminDashboard() {
         )}
         {/* Add-emails follow-through: offer the invite step right away instead
             of relying on the admin to remember the separate toolbar button.
-            handleInviteAll's own confirm is the single confirmation (it also
+            handleInviteAll's own confirm dialog is the single confirmation (it also
             clarifies the send goes to every not-yet-signed-up owner with an
             email, not only the newly added ones). */}
         {emailsAdded > 0 && !firmListView && hoaId && hoaId !== ALL_HOAS && (
@@ -1643,13 +1672,11 @@ export default function AdminDashboard() {
         {addEmailsOpen && hoaId && hoaId !== '__all__' && (
           <AddEmailsWizard
             hoaId={hoaId}
-            existingUnits={units}
             onClose={() => setAddEmailsOpen(false)}
             onDone={res => {
-              // The wizard doesn't pass its commit result today, so fall back
-              // to the delta of real emails across the refetch — it drives the
-              // "invite these owners now" banner (blank-filling only; an
-              // email overwritten in place doesn't change the count).
+              // The wizard passes its commit result ({updated, ...}); the
+              // delta of real emails across the refetch is only a fallback.
+              // It drives the "invite these owners now" banner.
               const before = countOwnerEmails(units)
               Promise.all([apiGet(`/hoa/${hoaId}/compliance`), apiGet(`/hoa/${hoaId}/units`)])
                 .then(([s, u]) => {
@@ -1998,6 +2025,44 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {inviteAllConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={() => resolveInviteAllConfirm(false)}>
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <h2 className="font-semibold text-[#0B1B33] mb-2">
+                Send {inviteAllConfirm.queued} invite email{inviteAllConfirm.queued !== 1 ? 's' : ''}?
+              </h2>
+              <p className="text-sm text-[#54627A] mb-3">
+                Each owner with an email on file who hasn't signed up yet gets a link to their own unit
+                page to upload their insurance. It doesn't grant dashboard access.
+              </p>
+              {(inviteAllConfirm.already_active > 0 || inviteAllConfirm.bounced > 0 || inviteAllConfirm.placeholder > 0) && (
+                <p className="text-xs text-[#8493A8] mb-3">
+                  Not emailed:{' '}
+                  {[
+                    inviteAllConfirm.already_active > 0 && `${inviteAllConfirm.already_active} already signed up`,
+                    inviteAllConfirm.bounced > 0 && `${inviteAllConfirm.bounced} bouncing address${inviteAllConfirm.bounced !== 1 ? 'es' : ''}`,
+                    inviteAllConfirm.placeholder > 0 && `${inviteAllConfirm.placeholder} placeholder address${inviteAllConfirm.placeholder !== 1 ? 'es' : ''}`,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              {inviteAllConfirm.preview_unit_id && (
+                <button type="button" onClick={() => openInvitePreview(inviteAllConfirm.preview_unit_id)}
+                  className="text-sm text-[#014AC5] hover:underline font-medium mb-4">
+                  Preview the invite email →
+                </button>
+              )}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => resolveInviteAllConfirm(false)}
+                  className="text-sm text-[#54627A] hover:text-[#0B1B33] px-4 py-2">Cancel</button>
+                <button type="button" onClick={() => resolveInviteAllConfirm(true)}
+                  className="text-sm bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold px-4 py-2 rounded-lg">
+                  Send {inviteAllConfirm.queued} invite{inviteAllConfirm.queued !== 1 ? 's' : ''}
+                </button>
+              </div>
             </div>
           </div>
         )}
