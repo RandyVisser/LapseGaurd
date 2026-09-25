@@ -165,8 +165,8 @@ async def get_tenant_detail(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     policy_rows = await conn.fetch(
         """SELECT * FROM policies WHERE tenant_id = $1
@@ -405,8 +405,8 @@ async def update_tenant(
     )
     if not access:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    if user.hoa_id and str(access["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(access["hoa_id"]), conn)
 
     # Update tenants table
     tenant_fields = {k: v for k, v in {"name": body.name, "email": body.email, "phone": body.phone}.items() if v is not None}
@@ -453,8 +453,8 @@ async def notify_tenant(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     subject, html = admin_notify_html(
         row["name"], row["unit_number"], row["hoa_name"], body.message
@@ -559,8 +559,8 @@ async def set_policy_approval(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     overrides = row["review_overrides"]
     if isinstance(overrides, str):
@@ -608,8 +608,8 @@ async def set_policy_review(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     overrides = row["review_overrides"]
     if isinstance(overrides, str):
@@ -643,8 +643,8 @@ async def create_tenant_record(
     )
     if not unit:
         raise HTTPException(status_code=404, detail="Unit not found")
-    if user.hoa_id and str(unit["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(unit["hoa_id"]), conn)
 
     existing = await conn.fetchrow("SELECT id FROM tenants WHERE unit_id = $1", unit_id)
     if existing:
@@ -733,8 +733,8 @@ async def delete_tenant(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     await conn.execute("DELETE FROM alert_log WHERE tenant_id = $1", tenant_id)
     await conn.execute("DELETE FROM policies WHERE tenant_id = $1", tenant_id)
@@ -889,8 +889,8 @@ async def invite_preview(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Unit not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
     is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
     is_renter = row["parent_unit_id"] is not None
     sender = await _resolve_sender(conn, row["hoa_id"])
@@ -929,8 +929,8 @@ async def invite_tenant(
         raise HTTPException(status_code=404, detail="Unit not found")
     is_pm = (row["assoc_title"] or "").strip().lower() == "property manager"
     is_renter = row["parent_unit_id"] is not None
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    from routes.hoa import _assert_hoa_access
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     # Reuse an existing pending invite for the same email+unit, or create a new one
     invite = await conn.fetchrow(

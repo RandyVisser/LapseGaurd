@@ -37,8 +37,7 @@ export function AuthProvider({ children }) {
   }, [session?.user?.id])
 
   const appMeta = session?.user?.app_metadata || {}
-  const userMeta = session?.user?.user_metadata || {}
-  const role = appMeta.role || userMeta.role || 'tenant'
+  const role = appMeta.role || 'tenant'
   const hoaId = appMeta.hoa_id || null
 
   useEffect(() => {

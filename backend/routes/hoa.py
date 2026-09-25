@@ -55,6 +55,9 @@ async def _assert_hoa_access(user: AuthUser, hoa_id: str, conn: asyncpg.Connecti
         if not await firm_manages_hoa(conn, user.sub, hoa_id):
             raise HTTPException(status_code=403, detail="Access denied to this HOA")
         return
+    if user.role == "hoa_admin" and user.hoa_id != hoa_id:
+        # Fails closed: an hoa_admin with no hoa_id sees nothing, not everything.
+        raise HTTPException(status_code=403, detail="Access denied to this HOA")
     if user.hoa_id and user.hoa_id != hoa_id:
         raise HTTPException(status_code=403, detail="Access denied to this HOA")
 

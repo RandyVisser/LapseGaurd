@@ -60,10 +60,12 @@ async def get_current_user(
     payload = decode_token(credentials.credentials)
     sub = payload.get("sub", "")
     email = payload.get("email", "")
+    # Role and hoa_id come ONLY from app_metadata, which only the service role
+    # can write. user_metadata is editable by the user with the anon key, so
+    # trusting it would let anyone sign up as super_user.
     app_meta = payload.get("app_metadata", {}) or {}
-    user_meta = payload.get("user_metadata", {}) or {}
-    role = app_meta.get("role") or user_meta.get("role", "tenant")
-    hoa_id = app_meta.get("hoa_id") or user_meta.get("hoa_id")
+    role = app_meta.get("role") or "tenant"
+    hoa_id = app_meta.get("hoa_id")
 
     return AuthUser(sub=sub, email=email, role=role, hoa_id=hoa_id)
 

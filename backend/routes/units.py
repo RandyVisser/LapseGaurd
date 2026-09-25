@@ -676,8 +676,7 @@ async def edit_policy(
     )
     if row is None:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     updates: dict = {}
 
@@ -755,8 +754,7 @@ async def delete_policy(
     )
     if row is None:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     await conn.execute("DELETE FROM policies WHERE id = $1", policy_id)
     return {"deleted": True}
@@ -778,8 +776,7 @@ async def approve_policy(
     )
     if row is None:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
 
     new_status = _compute_status(row["expiration_date"])
 
@@ -813,8 +810,7 @@ async def run_ai_on_policy(
     )
     if row is None:
         raise HTTPException(status_code=404, detail="Policy not found")
-    if user.hoa_id and str(row["hoa_id"]) != user.hoa_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await _assert_hoa_access(user, str(row["hoa_id"]), conn)
     if not row["document_url"]:
         raise HTTPException(status_code=422, detail="This policy has no attached document to parse")
 
