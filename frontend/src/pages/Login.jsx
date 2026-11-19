@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
 
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
@@ -15,10 +16,25 @@ const SQUARES = {
   WebkitMaskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
   maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
 }
-const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base sm:text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 // Email-in intake address — docs@condo.insure is live (Workspace forwards to
 // the Resend inbound subdomain). Env var overrides.
 const INBOUND = import.meta.env.VITE_INBOUND_ADDRESS || 'docs@condo.insure'
+
+// Supabase's raw auth messages ("Invalid login credentials") read as jargon;
+// map the common ones to something a board member or owner can act on.
+function friendlyAuthError(err) {
+  const msg = (err && err.message) || ''
+  if (/invalid login credentials/i.test(msg)) {
+    return 'That email and password don\u2019t match. Check for typos, or use \u201cForgot password?\u201d below to set a new one.'
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return 'This account\u2019s email hasn\u2019t been confirmed yet. Email support@condo.insure and we\u2019ll sort it out.'
+  }
+  if (/rate limit|too many/i.test(msg)) return 'Too many sign-in attempts. Please wait a few minutes and try again.'
+  if (/fetch|network/i.test(msg)) return 'We couldn\u2019t reach our servers. Check your connection and try again.'
+  return msg || 'Sign-in failed. Please try again.'
+}
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -29,6 +45,7 @@ export default function Login() {
   const [params] = useSearchParams()
   const welcome = params.get('welcome')
   usePageTitle('Sign in')
+  useHeadTags({ description: 'Sign in to condo.insure — for association admins, property managers, and condo unit owners.' })
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -36,7 +53,7 @@ export default function Login() {
     setError('')
     const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(friendlyAuthError(err)); return }
 
     const role = data.user?.app_metadata?.role || 'tenant'
     const isAdmin = ['hoa_admin', 'super_user', 'property_manager'].includes(role)
@@ -49,15 +66,20 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12">
         <div className="w-full max-w-sm mx-auto">
           <Link to="/" className="text-sm text-[#54627A] hover:text-[#001842] mb-7 inline-block">&larr; Back</Link>
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[108px] mb-9" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mb-6" />
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Sign in to condo.insure
           </h1>
-          <p className="text-sm text-[#54627A] mb-6">Sign in to your condo.insure account.</p>
+          <p className="text-sm text-[#54627A] mb-6">For association admins, property managers, and unit owners.</p>
 
           {welcome === '1' && (
             <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
               Account created! Sign in to access your dashboard.
+            </div>
+          )}
+          {welcome === 'admin' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4 text-sm text-green-700">
+              Your account is set up! Sign in with the password you just chose.
             </div>
           )}
           {welcome === 'tenant' && (
@@ -72,15 +94,18 @@ export default function Login() {
           )}
           {welcome === 'existing' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm text-blue-800">
-              You already have a condo.insure account — the new association was added to it. Sign in with your existing password. Forgot it? Use “Forgot password” below.
+              You already have a condo.insure account — the new association was added to it. Sign in with your existing password. Forgot it? Use “Forgot password?” below.
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">Email</label>
+              <label htmlFor="login-email" className="block text-sm font-medium text-[#0B1B33] mb-1.5">Email</label>
               <input
+                id="login-email"
                 type="email"
+                autoComplete="email"
+                inputMode="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -89,16 +114,18 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">Password</label>
+              <label htmlFor="login-password" className="block text-sm font-medium text-[#0B1B33] mb-1.5">Password</label>
               <input
+                id="login-password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className={INPUT}
               />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
             <button
               type="submit"
               disabled={loading}
@@ -107,7 +134,7 @@ export default function Login() {
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
             <div className="text-center">
-              <Link to="/forgot-password" className="text-sm text-[#54627A] hover:text-[#001842]">
+              <Link to="/forgot-password" className="inline-block py-1 text-sm text-[#54627A] hover:text-[#001842]">
                 Forgot password?
               </Link>
             </div>
@@ -118,8 +145,8 @@ export default function Login() {
             <Link to="/signup" className="font-semibold text-[#014AC5] hover:underline">Get started free</Link>
           </p>
           <p className="text-center text-sm text-[#54627A] mt-2">
-            Condo unit owner? Got our postcard?{' '}
-            <Link to="/owners" className="font-semibold text-[#014AC5] hover:underline">Owner page &rarr;</Link>
+            Got our postcard?{' '}
+            <Link to="/owners" className="font-semibold text-[#014AC5] hover:underline">Info for unit owners &rarr;</Link>
           </p>
         </div>
       </div>

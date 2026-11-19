@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
 
 const DISPLAY = '"Bricolage Grotesque", sans-serif'
 const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
-const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base sm:text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -13,6 +15,8 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  usePageTitle('Set a new password')
+  useHeadTags({ robots: 'noindex' })
 
   useEffect(() => {
     let active = true
@@ -65,6 +69,10 @@ export default function ResetPassword() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!active) return
       if (session) setStatus('ready')
+      // No token, no code, no session: opened without a (valid) reset link.
+      // Without this the page sat on "Verifying reset link…" forever. The
+      // functional update never overrides a PASSWORD_RECOVERY 'ready'.
+      else setStatus(s => (s === 'ready' ? s : 'invalid'))
     }
     verify()
 
@@ -74,8 +82,8 @@ export default function ResetPassword() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (password !== confirm) { setError('Passwords do not match'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (password !== confirm) { setError('The two passwords don\u2019t match.'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setLoading(true)
     const { error: err } = await supabase.auth.updateUser({ password })
     setLoading(false)
@@ -85,7 +93,7 @@ export default function ResetPassword() {
   }
 
   if (status === 'verifying') return (
-    <div className="min-h-screen bg-white flex items-center justify-center text-[#54627A] text-sm" style={{ fontFamily: BODY }}>
+    <div className="min-h-screen bg-white flex items-center justify-center text-[#54627A] text-sm" style={{ fontFamily: BODY }} role="status">
       Verifying reset link…
     </div>
   )
@@ -94,14 +102,14 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
       <div className="w-full max-w-sm">
         <Link to="/" className="inline-block mb-8">
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px]" />
         </Link>
         <h1 className="text-2xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
-          Reset link expired
+          This reset link isn&rsquo;t valid
         </h1>
         <p className="text-sm text-[#54627A] mb-6">
-          {error || 'This password reset link is no longer valid.'} Reset links can
-          only be used once and expire after a short time — please request a new one.
+          {error ? <>{error.replace(/\.?$/, '.')} </> : null}Reset links can only be used once and expire
+          after a short time &mdash; request a new one and use the most recent email.
         </p>
         <button onClick={() => navigate('/forgot-password')}
           className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors">
@@ -115,7 +123,7 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
       <div className="w-full max-w-sm">
         <Link to="/" className="inline-block mb-8">
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px]" />
         </Link>
         <h1 className="text-2xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
           Set a new password
@@ -124,9 +132,11 @@ export default function ResetPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">New Password</label>
+            <label htmlFor="rp-password" className="block text-sm font-medium text-[#0B1B33] mb-1.5">New password</label>
             <input
+              id="rp-password"
               type="password"
+              autoComplete="new-password"
               required
               minLength={8}
               value={password}
@@ -136,9 +146,11 @@ export default function ResetPassword() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#0B1B33] mb-1.5">Confirm Password</label>
+            <label htmlFor="rp-confirm" className="block text-sm font-medium text-[#0B1B33] mb-1.5">Confirm new password</label>
             <input
+              id="rp-confirm"
               type="password"
+              autoComplete="new-password"
               required
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
@@ -146,10 +158,10 @@ export default function ResetPassword() {
               className={INPUT}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
           <button type="submit" disabled={loading}
             className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
-            {loading ? 'Saving…' : 'Set Password'}
+            {loading ? 'Saving…' : 'Set password'}
           </button>
         </form>
       </div>

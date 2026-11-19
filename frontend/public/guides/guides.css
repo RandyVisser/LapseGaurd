@@ -613,3 +613,93 @@ dd { margin: 0 0 10px; }
 @media print {
   .g-magnet, .g-inline-cta, .g-crumbs { display: none; }
 }
+
+/* =====================================================================
+ * Polish pass 2026-09-24 — additive only (see header note above).
+ * ===================================================================== */
+
+/* Quoted statute / form text. Previously styled on mobile only, so desktop
+ * fell back to the browser's 40px indent with no rule. */
+blockquote {
+  margin: 0 0 20px;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--line-2);
+  color: var(--ink);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+/* CTA band buttons: inline-block siblings only had a whitespace gap. */
+.g-cta > .btn { margin: 0 8px 10px 0; }
+.g-cta > .btn:last-of-type { margin-right: 0; }
+@media (max-width: 600px) { .g-cta > .btn { margin: 0 0 10px; } }
+
+/* Scroll affordance for wide tables: a soft edge shadow appears only on the
+ * side that has more content (background-attachment: local covers it at the
+ * scroll ends). Pure CSS, no effect when the table fits. */
+.g-table-wrap {
+  background:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left center / 40px 100% no-repeat local,
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right center / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 24, 66, 0.14), rgba(0, 24, 66, 0)) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 24, 66, 0.14), rgba(0, 24, 66, 0)) right center / 12px 100% no-repeat scroll;
+}
+
+/* Text-heavy tables (many columns of prose) read badly as a 390px-wide grid.
+ * Add class="g-table-wrap g-table-stack" and a data-label on each <td>; on
+ * phones each row becomes a labeled card. Without data-label it still stacks. */
+@media (max-width: 600px) {
+  .g-table-stack { background: none; }
+  .g-table-stack table { min-width: 0; }
+  .g-table-stack table,
+  .g-table-stack tbody,
+  .g-table-stack tr,
+  .g-table-stack td { display: block; width: 100%; }
+  .g-table-stack caption { display: block; }
+  .g-table-stack thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .g-table-stack tr {
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    padding: 10px 14px 8px;
+    margin: 0 0 12px;
+  }
+  .g-table-stack td,
+  .g-table-stack tbody tr:last-child td { border: 0; padding: 5px 0; }
+  .g-table-stack td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted-2);
+    margin-bottom: 1px;
+  }
+  .g-table-stack td:first-child { color: var(--navy); }
+}
+
+/* Print: link-heavy guides print cleanly without the lead forms/headers. */
+@media print {
+  .g-lead { display: none; }
+  .g-wrap { display: block; }
+  .g-table-wrap { overflow: visible; background: none; }
+  table { min-width: 0; }
+  a { color: inherit; }
+}
+
+/* Bold text inside CTA bands inherited the global navy <strong> colour and
+ * vanished on the navy/green gradient. */
+.g-cta strong, .g-cta-sub strong { color: #fff; }
+
+/* Footer content now lines up with the article column: .g-wrap is 1080px
+ * including 24px side padding, the footer adds its own 24px outside. */
+.g-foot-in { max-width: 1032px; }
+
+/* An odd stat card at the end of a 2-up mobile grid spans the row instead of
+ * sitting orphaned at half width. */
+@media (max-width: 600px) {
+  .g-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

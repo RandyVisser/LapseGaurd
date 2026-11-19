@@ -3,6 +3,7 @@ import Nav from '../components/Nav'
 import { apiGet, apiPost, apiDelete, supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 import usePageTitle from '../usePageTitle'
+import useIsMobile from '../hooks/useIsMobile'
 
 const DOC_TYPES = [
   'Wind Mitigation',
@@ -51,6 +52,8 @@ const ALL_HOAS = '__all__'
 export default function AdminDocuments() {
   const { hoaId, role, availableHoas, setSelectedHoaId } = useAuth()
   usePageTitle('Documents')
+  const isMobile = useIsMobile()
+  const [helperExpanded, setHelperExpanded] = useState(false)
   const [docs, setDocs] = useState([])
   const [hoaFieldType, setHoaFieldType] = useState('name')
   const [hoaFieldValue, setHoaFieldValue] = useState('')
@@ -242,9 +245,22 @@ export default function AdminDocuments() {
     <div className="min-h-screen bg-slate-50">
       <Nav role="hoa_admin" />
       {nextSteps.length > 0 && (
-        <div className={`fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 sm:w-80 bg-white rounded-2xl shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-[#BFE3D2]' : 'border-[#C7DBF5]'}`}>
-          <div className={`px-4 py-3 flex items-center gap-2 ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}>
+        // Mobile: a small tappable pill (the full panel covered the documents
+        // table on a phone); desktop: the full panel, bottom-right.
+        isMobile && !helperExpanded ? (
+          <button
+            onClick={() => setHelperExpanded(true)}
+            className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}
+          >
+            {nextSteps[0]?.success ? '✓ Done' : 'Next Steps'}
+          </button>
+        ) : (
+        <div className={`fixed z-50 bg-white shadow-xl overflow-hidden border ${nextSteps[0]?.success ? 'border-[#BFE3D2]' : 'border-[#C7DBF5]'} ${isMobile ? 'bottom-0 inset-x-0 rounded-t-2xl max-h-[55vh] overflow-y-auto' : 'bottom-6 right-6 w-80 rounded-2xl'}`}>
+          <div className={`px-4 py-3 flex items-center justify-between gap-2 ${nextSteps[0]?.success ? 'bg-[#0E8E68]' : 'bg-[#014AC5]'}`}>
             <span className="text-white font-semibold text-sm">{nextSteps[0]?.success ? '✓ Done' : 'Next Steps'}</span>
+            {isMobile && (
+              <button onClick={() => setHelperExpanded(false)} aria-label="Collapse" className="text-white/90 hover:text-white text-xl leading-none">×</button>
+            )}
           </div>
           <ul className="p-4 space-y-3">
             {nextSteps.map((s, i) => (
@@ -258,6 +274,7 @@ export default function AdminDocuments() {
             ))}
           </ul>
         </div>
+        )
       )}
       <main className="max-w-full mx-auto px-4 pt-8 pb-44">
         {(() => { const selectedHoa = availableHoas.find(h => h.id === hoaId); return (
@@ -518,7 +535,7 @@ export default function AdminDocuments() {
 
         <div className="bg-white rounded-xl border-2 border-[#C7DBF5] shadow-sm overflow-x-auto">
           <div className="px-4 py-3 bg-[#001842]">
-            <h2 className="font-semibold text-white">Documents Available to Unit-Owners</h2>
+            <h2 className="font-semibold text-white">Documents Available to Unit Owners</h2>
           </div>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-[#E8ECF2]">

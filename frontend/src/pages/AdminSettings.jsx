@@ -350,8 +350,8 @@ export default function AdminSettings() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-white rounded-xl border border-[#E8ECF2] shadow-sm p-6 space-y-4">
               <p className="font-semibold text-[#0B1B33]">Association Info</p>
-              <div className="grid grid-cols-4 gap-3">
-                <div className="col-span-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-3">
                   <label className="block text-sm font-medium text-[#0B1B33] mb-1">Association Name</label>
                   <input
                     type="text"
@@ -372,7 +372,7 @@ export default function AdminSettings() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-[#0B1B33] mb-1">DPBR Lic #</label>
                   <input
@@ -383,7 +383,7 @@ export default function AdminSettings() {
                     className="w-full border border-[#DCE3EC] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#0B1B33] mb-1">SunBiz Corp Name</label>
                   <input
                     type="text"
@@ -413,7 +413,7 @@ export default function AdminSettings() {
                 {PREVIEW_ROWS.map(row => (
                   <div key={row.label}>
                     <p className="text-[11px] font-semibold text-[#8493A8] uppercase tracking-widest mb-1">{row.label}</p>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
+                    <div className="flex flex-wrap gap-2 pb-2">
                       {row.items.map(b => (
                         <button key={b.key} type="button"
                           onClick={async () => { await openEmailPreviews(); setPreviewKind(b.key) }}
@@ -543,7 +543,7 @@ export default function AdminSettings() {
                     onChange={e => setForm(f => ({ ...f, noncompliant_reminders_enabled: e.target.checked }))}
                     className="rounded border-[#DCE3EC] text-[#014AC5] focus:ring-[#014AC5]"
                   />
-                  NON-COMPLIANT: If a unit owner is Active · Non-Compliant, keep reminding them
+                  NON-COMPLIANT: If an owner's policy doesn't meet your requirements, keep reminding them
                 </label>
                 {form.noncompliant_reminders_enabled && (
                   <div className="flex items-center gap-3 mt-2 ml-6">
@@ -653,9 +653,9 @@ export default function AdminSettings() {
 
               {[
                 { key: 'ho6_policy_in_force_required', label: 'Require an in-force policy on file' },
-                { key: 'ho6_named_insured_match_required', label: 'Require named insured to match unit-owner' },
+                { key: 'ho6_named_insured_match_required', label: 'Require named insured to match the unit owner' },
                 { key: 'ho6_property_address_match_required', label: 'Require property address to match unit' },
-                { key: 'ho6_wind_required', label: 'Require wind coverage (HO6 with wind, or HO6 + separate wind-only policy)' },
+                { key: 'ho6_wind_required', label: 'Require wind coverage (HO-6 with wind, or HO-6 + separate wind-only policy)' },
                 {
                   key: 'ho6_additional_interest_required',
                   label: 'Require association to be listed as Additional Interest',
@@ -688,7 +688,7 @@ export default function AdminSettings() {
 
               {RENTALS_ENABLED && (
                 <div className="mt-2 pt-4 border-t border-[#E8ECF2] space-y-3">
-                  <p className="text-sm font-semibold text-[#0B1B33]">If a Unit is flagged as RENTED, require the following:</p>
+                  <p className="text-sm font-semibold text-[#0B1B33]">If a unit is flagged as rented, require the following:</p>
 
                   <div>
                     <label className="flex items-center gap-2 text-sm text-[#0B1B33]">

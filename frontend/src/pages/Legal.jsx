@@ -1,31 +1,63 @@
 import { Link } from 'react-router-dom'
+import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
 
 // Privacy policy + terms of service. Template-grade for the pilot —
 // have counsel review before broad commercial launch.
+// Presentation follows the public-page pattern (Owners.jsx / BRANDING.md §5):
+// plain Tailwind + inline font constants, brand navy/blue, full logo header.
 
-function LegalShell({ title, updated, children }) {
+const DISPLAY = '"Bricolage Grotesque", sans-serif'
+const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
+
+function LegalShell({ title, updated, description, canonical, children }) {
+  usePageTitle(title)
+  useHeadTags({ description, canonical })
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-blue-800 text-white px-4 sm:px-6 py-3">
-        <Link to="/" className="font-bold text-lg tracking-tight">condo.insure</Link>
-      </nav>
-      <main className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
-        <p className="text-xs text-slate-400 mt-1 mb-8">Last updated {updated}</p>
-        <div className="space-y-6 text-sm text-slate-600 leading-relaxed [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-800 [&_h2]:mb-2">
+    <div className="min-h-screen bg-white text-[#0B1B33]" style={{ fontFamily: BODY }}>
+      <header className="border-b border-slate-200">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <Link to="/" aria-label="condo.insure home">
+            <img src="/assets/logo-full.svg" alt="condo.insure" className="h-9 sm:h-11" />
+          </Link>
+          <Link to="/" className="text-sm font-semibold text-[#54627A] hover:text-[#001842] whitespace-nowrap py-2">
+            &larr; Home
+          </Link>
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-10 sm:py-12">
+        <h1 className="text-3xl sm:text-[34px] leading-tight text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>{title}</h1>
+        <p className="text-xs text-[#54627A] mt-2 mb-8">Last updated {updated}</p>
+        <div className="space-y-6 text-[15px] text-[#3A475C] leading-relaxed [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-[#001842] [&_h2]:mb-2 [&_a]:text-[#014AC5] [&_a:hover]:underline">
           {children}
         </div>
-        <p className="text-xs text-slate-400 mt-10 pt-6 border-t border-slate-200">
-          Questions? Contact us at <a href="mailto:support@condo.insure" className="text-blue-600 hover:underline">support@condo.insure</a>.
+        <p className="text-sm text-[#54627A] mt-10 pt-6 border-t border-slate-200">
+          Questions? Contact us at <a href="mailto:support@condo.insure" className="text-[#014AC5] hover:underline">support@condo.insure</a>.
         </p>
       </main>
+      <footer className="border-t border-slate-200">
+        <div className="max-w-3xl mx-auto px-4 py-6 text-sm text-[#8493A8] flex flex-wrap gap-x-5 gap-y-2 items-center justify-between">
+          <span>condo.insure<sup className="text-[.6em] font-semibold ml-px">™</sup> · Insurance Compliance. Simplified.</span>
+          <span className="flex gap-4">
+            <a href="/guides/index.html" className="hover:text-[#001842]">Guides</a>
+            <a href="/security.html" className="hover:text-[#001842]">Security</a>
+            <Link to="/privacy" className="hover:text-[#001842]">Privacy</Link>
+            <Link to="/terms" className="hover:text-[#001842]">Terms</Link>
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }
 
 export function Privacy() {
   return (
-    <LegalShell title="Privacy Policy" updated="September 24, 2026">
+    <LegalShell
+      title="Privacy Policy"
+      updated="September 24, 2026"
+      description="How condo.insure collects, uses, and protects association, unit-owner, and insurance-document data — including our partner insurance agency."
+      canonical="https://www.condo.insure/privacy"
+    >
       <section>
         <h2>What we collect</h2>
         <p>
@@ -42,31 +74,32 @@ export function Privacy() {
           Your information is used to provide the service — verifying insurance coverage against
           your association's requirements, notifying you and your association about policy status, and
           generating compliance reports for your association's board and management — and, as described
-          under &ldquo;Our insurance agency relationship&rdquo; below, to offer optional insurance quotes. Uploaded documents
+          under &ldquo;Our partner insurance agency&rdquo; below, to offer optional insurance quotes. Uploaded documents
           are processed by an AI service (Anthropic) to extract policy details; extracted data is stored
           alongside your records. We do not sell your personal information.
         </p>
       </section>
       <section>
-        <h2>Our insurance agency relationship</h2>
+        <h2>Our partner insurance agency</h2>
         <p>
-          condo.insure is built and operated by the team behind universalcondo.com, a licensed Florida
-          insurance agency. We want that to be clear, because it affects how we may use some information:
+          condo.insure partners with universalcondo.com, a licensed Florida insurance agency affiliated with
+          our founders, to offer unit owners optional HO-6 quotes. We want that to be clear, because it affects
+          how we may use some information:
         </p>
         <ul className="list-disc pl-5 space-y-1 mt-2">
           <li>
             Reminder and notice emails to unit owners may include an optional link to request an insurance
-            quote from our agency. Requesting a quote is entirely voluntary; information you submit on the
+            quote from our partner agency. Requesting a quote is entirely voluntary; information you submit on the
             quote form is used to prepare your quote.
           </li>
           <li>
             Our team may use policy details held in condo.insure &mdash; such as a policy&rsquo;s expiration
-            date and insurer &mdash; to offer a unit owner a renewal quote from our agency. You can opt out of
+            date and insurer &mdash; to offer a unit owner a renewal quote from our partner agency. You can opt out of
             quote offers at any time by emailing support@condo.insure; opting out does not affect your
             association&rsquo;s use of the service.
           </li>
           <li>
-            You are never required to buy insurance through our agency. Your compliance status depends only
+            You are never required to buy insurance through our partner agency. Your compliance status depends only
             on whether your policy meets your association&rsquo;s requirements, not on where you buy it.
           </li>
           <li>
@@ -105,7 +138,7 @@ export function Privacy() {
         <h2>Retention &amp; deletion</h2>
         <p>
           We retain records while your association maintains an account. To request deletion of your
-          personal information, contact your association manager or email us directly and we will
+          personal information, contact your association manager or email us at support@condo.insure and we will
           respond within 30 days.
         </p>
       </section>
@@ -113,7 +146,7 @@ export function Privacy() {
         <h2>Security</h2>
         <p>
           Data is encrypted in transit, access is role-restricted, and authentication is handled by
-          Supabase Auth. See our <a href="/security.html" className="text-blue-600 hover:underline">security
+          Supabase Auth. See our <a href="/security.html" className="text-[#014AC5] hover:underline">security
           overview</a> for details. No method of storage is 100% secure; if we learn of a breach affecting your
           personal information we will notify affected users promptly.
         </p>
@@ -123,7 +156,7 @@ export function Privacy() {
 }
 
 function Sub({ children }) {
-  return <h3 className="text-sm font-semibold text-slate-700 mt-4 mb-1">{children}</h3>
+  return <h3 className="text-[15px] font-semibold text-[#0B1B33] mt-4 mb-1">{children}</h3>
 }
 function Bullets({ items }) {
   return <ul className="list-disc pl-5 space-y-1 mt-1">{items.map((t, i) => <li key={i}>{t}</li>)}</ul>
@@ -131,8 +164,13 @@ function Bullets({ items }) {
 
 export function Terms() {
   return (
-    <LegalShell title="Terms of Service" updated="June 23, 2025">
-      <p className="text-xs text-slate-400 -mt-4">condo.insure Insurance Compliance Platform · Effective June 23, 2025</p>
+    <LegalShell
+      title="Terms of Service"
+      updated="June 23, 2025"
+      description="The terms that govern use of the condo.insure insurance compliance platform."
+      canonical="https://www.condo.insure/terms"
+    >
+      <p className="text-xs text-[#54627A] -mt-4">condo.insure Insurance Compliance Platform · Effective June 23, 2025</p>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900 font-medium">
         IMPORTANT NOTICE: By accessing or using the condo.insure Platform, you agree to be bound by these
@@ -235,7 +273,7 @@ export function Terms() {
         <Sub>6.2 Data Security</Sub>
         <p>We implement commercially reasonable technical and organizational security measures to protect Your Data. However, no method of transmission over the internet or electronic storage is 100% secure. You acknowledge that you provide Your Data at your own risk.</p>
         <Sub>6.3 Privacy Policy</Sub>
-        <p>Your use of the Platform is also governed by our <Link to="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>, which is incorporated by reference into these Terms. Please review our Privacy Policy carefully.</p>
+        <p>Your use of the Platform is also governed by our <Link to="/privacy" className="text-[#014AC5] hover:underline">Privacy Policy</Link>, which is incorporated by reference into these Terms. Please review our Privacy Policy carefully.</p>
         <Sub>6.4 Data Accuracy</Sub>
         <p>You are solely responsible for the accuracy, completeness, and legality of all data you submit to the Platform, including insurance policy information, unit owner data, and association records.</p>
       </section>
@@ -314,7 +352,7 @@ export function Terms() {
         <Sub>12.1 Entire Agreement</Sub>
         <p>These Terms, together with our Privacy Policy and any other agreements incorporated by reference, constitute the entire agreement between you and condo.insure with respect to the Platform and supersede all prior agreements, understandings, and representations.</p>
         <Sub>12.2 Modifications</Sub>
-        <p>We reserve the right to modify these Terms at any time. We will provide notice of material changes by updating the "Last Updated" date above and, where appropriate, by sending you an email notification. Your continued use of the Platform following notice of changes constitutes your acceptance of the revised Terms.</p>
+        <p>We reserve the right to modify these Terms at any time. We will provide notice of material changes by updating the "Last updated" date above and, where appropriate, by sending you an email notification. Your continued use of the Platform following notice of changes constitutes your acceptance of the revised Terms.</p>
         <Sub>12.3 Severability</Sub>
         <p>If any provision of these Terms is found to be invalid, illegal, or unenforceable, the remaining provisions shall continue in full force and effect.</p>
         <Sub>12.4 Waiver</Sub>
@@ -330,8 +368,8 @@ export function Terms() {
       <section>
         <h2>13. Contact Information</h2>
         <p>If you have questions about these Terms of Service, please contact us at:</p>
-        <p className="mt-1">Email: <a href="mailto:support@condo.insure" className="text-blue-600 hover:underline">support@condo.insure</a><br />Website: <a href="https://condo.insure" className="text-blue-600 hover:underline">https://condo.insure</a></p>
-        <p className="text-xs text-slate-400 mt-4">© 2025 condo.insure. All Rights Reserved. Unauthorized reproduction or distribution of these Terms is prohibited.</p>
+        <p className="mt-1">Email: <a href="mailto:support@condo.insure" className="text-[#014AC5] hover:underline">support@condo.insure</a><br />Website: <a href="https://www.condo.insure" className="text-[#014AC5] hover:underline">www.condo.insure</a></p>
+        <p className="text-xs text-[#54627A] mt-4">© 2025 condo.insure. All Rights Reserved. Unauthorized reproduction or distribution of these Terms is prohibited.</p>
       </section>
     </LegalShell>
   )

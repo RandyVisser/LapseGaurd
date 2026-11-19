@@ -611,12 +611,12 @@ export default function TenantDashboard() {
             compliant, so it never nags a covered owner but never disappears. */}
         {QUOTE_FORM_URL && needsQuote && (
           <a href={quoteUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-between bg-white border border-[#E8ECF2] rounded-2xl px-5 py-4 mb-5 hover:border-[#7CA9E8] transition-colors">
+            className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap bg-white border border-[#E8ECF2] rounded-2xl px-5 py-4 mb-5 hover:border-[#7CA9E8] transition-colors">
             <div>
-              <p className="text-sm font-semibold text-[#0B1B33]">{isRenter ? 'Get an HO-4 (renters insurance) quote' : 'Get a new HO-6 (condo unit-owner insurance) Quote'}</p>
+              <p className="text-sm font-semibold text-[#0B1B33]">{isRenter ? 'Get an HO-4 (renters insurance) quote' : 'Get a new HO-6 (condo unit owner insurance) quote'}</p>
               <p className="text-xs text-[#8493A8] mt-0.5">{isRenter ? 'Get a free HO-4 insurance quote sent via email' : 'Get a free HO-6 insurance quote sent via email'}</p>
             </div>
-            <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">{isRenter ? 'Request an HO-4 quote →' : 'Request a HO-6 quote →'}</span>
+            <span className="bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold text-sm px-4 py-2 rounded-lg flex-shrink-0">{isRenter ? 'Request an HO-4 quote →' : 'Request an HO-6 quote →'}</span>
           </a>
         )}
         {QUOTE_FORM_URL && !needsQuote && (

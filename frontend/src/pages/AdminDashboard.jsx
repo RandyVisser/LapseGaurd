@@ -62,8 +62,13 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
     const range = (Math.max(...vals) - min) || 1
     return vals.map((v, i) => `${(i / (vals.length - 1)) * 130},${30 - ((v - min) / range) * 26}`).join(' ')
   })() : null
-  const deltaPts = sparkPoints && total > 0
-    ? Math.round((((trendData[trendData.length - 1].compliant ?? 0) - (trendData[0].compliant ?? 0)) / total) * 100)
+  // Percentage points against EACH month's own owner count — dividing the raw
+  // count delta by today's unit total mixed denominators (the trend counts
+  // owner records, renters included) and could print "+100 pts" beside a 60%
+  // gauge. A month with no owners on file counts as 0%.
+  const monthPct = d => (d?.total > 0 ? ((d.compliant ?? 0) / d.total) * 100 : 0)
+  const deltaPts = sparkPoints
+    ? Math.round(monthPct(trendData[trendData.length - 1]) - monthPct(trendData[0]))
     : null
 
   return (
@@ -117,7 +122,7 @@ function ComplianceHero({ summary, activeFilter, setActiveFilter, trendData, tre
         </div>
 
         {sparkPoints && (
-          <button onClick={onToggleTrend} className="text-left lg:text-right flex-shrink-0" title={trendOpen ? 'Hide the 6-month trend' : 'Show the 6-month trend'}>
+          <button onClick={onToggleTrend} className="text-left lg:text-right flex-shrink-0" title={trendOpen ? 'Hide the 6-month trend' : 'Show the 6-month trend (share of owners with an unexpired policy on file)'}>
             {deltaPts != null && (
               <span
                 className={`flex items-center gap-1.5 lg:justify-end text-[13px] font-semibold mb-1.5 ${deltaPts >= 0 ? 'text-[#6FE3B6]' : 'text-[#F0C4B4]'}`}
@@ -2174,7 +2179,7 @@ export default function AdminDashboard() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name, unit, or address…"
+                placeholder={isMobile ? "Search units…" : "Search by name, unit, or address…"}
                 className="w-full border border-[#DCE3EC] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#014AC5]"
               />
               {search && (

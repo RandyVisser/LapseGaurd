@@ -51,7 +51,7 @@ condominium insurance and compliance.
 - [Security](https://www.condo.insure/security.html): How owner and association data is stored, who can see it, how documents are protected, and how AI parsing is handled.
 - [For unit owners](https://www.condo.insure/owners): What condo.insure is for owners — why associations ask for HO-6 proof, how to send a declarations page, and an optional free HO-6 quote.
 
-condo.insure is built by the team behind universalcondo.com, a Florida condominium insurance agency. Unit owners may be offered an optional renewal quote; they are never required to use the agency, and condo.insure does not sell personal data.
+condo.insure is compliance software built by a team from Florida condominium insurance. Unit owners may be offered an optional HO-6 quote from its partner agency, universalcondo.com; they are never required to use it, and condo.insure does not sell personal data.
 
 ## Optional
 

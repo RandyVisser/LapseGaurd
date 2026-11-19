@@ -119,7 +119,7 @@ async def send_email(to_email: str, subject: str, html: str, reply_to: str | Non
 
 def _btn(url: str, label: str) -> str:
     return f"""
-    <a href="{url}" style="display:inline-block;background:#1d4ed8;color:#ffffff;
+    <a href="{url}" style="display:inline-block;background:#014AC5;color:#ffffff;
        font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
        text-decoration:none;margin:16px 0">{label}</a>"""
 
@@ -128,13 +128,14 @@ def _footer() -> str:
     return """
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0">
     <p style="color:#9ca3af;font-size:12px">
-      condo.insure — Condo Association Insurance Compliance
+      <a href="https://www.condo.insure" style="color:#8493A8;text-decoration:none">condo.insure</a>
+      — Condo Association Insurance Compliance
     </p>"""
 
 
 def _header() -> str:
     return """
-    <div style="background:#1e40af;padding:20px 24px;border-radius:8px 8px 0 0">
+    <div style="background:#001842;padding:20px 24px;border-radius:8px 8px 0 0">
       <span style="color:#ffffff;font-size:20px;font-weight:700">condo.insure</span>
     </div>
     <div style="background:#ffffff;padding:24px;border-radius:0 0 8px 8px;
@@ -169,11 +170,12 @@ def renewal_notice_html(
 
     quote_url = _build_quote_url(tenant_name, unit_number, "renewal_notice")
     portal_url = f"{APP_URL}/tenant/dashboard"
+    greeting = _html.escape((tenant_name or "").strip()) or "there"
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
-      <p style="color:#374151">Hi {tenant_name},</p>
+      <p style="color:#374151">Hi {greeting},</p>
       <p style="color:#374151">{body}</p>
       <p style="color:#374151">
         <strong>Unit:</strong> {unit_number}<br>
@@ -185,7 +187,7 @@ def renewal_notice_html(
       </p>
       {_btn(quote_url, "Request a Free Quote")}
       <p style="margin-top:8px">
-        <a href="{portal_url}" style="color:#1d4ed8;font-size:13px">
+        <a href="{portal_url}" style="color:#014AC5;font-size:13px">
           Or log in to upload an existing policy →
         </a>
       </p>
@@ -251,7 +253,7 @@ def renewal_reminder_html(
       </p>
       <p style="color:#374151">
         To ensure continued compliance with your Association's insurance requirements,
-        please log in to the Condo.insure portal and upload your updated Declaration
+        please log in to the condo.insure portal and upload your updated Declaration
         Page once your policy renews.
       </p>
       {_btn(portal_url, "Upload Updated Documents")}
@@ -259,16 +261,16 @@ def renewal_reminder_html(
       <p style="color:#111827;font-weight:700;margin-top:20px">Looking to Review Your Coverage?</p>
       <p style="color:#374151">
         Now is a great time to shop your policy and make sure you have the right
-        coverage at the best rate. You can get a free quote directly through Condo.insure:
+        coverage at the best rate. You can get a free quote directly through condo.insure:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#001842;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_btn}</a>
       </div>
 
       <p style="color:#6b7280;font-size:13px;margin-top:16px">
-        Please note that Condo.insure does not provide insurance advice or recommend
+        Please note that condo.insure does not provide insurance advice or recommend
         specific coverage. We are only verifying compliance with the insurance
         requirements established by the Association.
       </p>
@@ -277,17 +279,17 @@ def renewal_reminder_html(
       </p>
       <p style="color:#374151">{contact or hoa_name}</p>
       <p style="color:#374151">
-        Thank you for staying on top of your coverage — we look forward to receiving
-        your updated documentation.
+        We appreciate you staying on top of your coverage and look forward to
+        receiving your updated documentation.
       </p>
       <p style="color:#374151;margin-top:20px">
         Thank you,<br>
-        Condo.insure Compliance Team<br>
+        condo.insure Compliance Team<br>
         On behalf of {corp_name or hoa_name}
       </p>"""
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       {body}
       {_footer()}
@@ -359,12 +361,12 @@ def lease_expiration_html(
       <p style="color:#374151">{contact or hoa_name}</p>
       <p style="color:#374151;margin-top:20px">
         Thank you,<br>
-        Condo.insure Compliance Team<br>
+        condo.insure Compliance Team<br>
         On behalf of {corp_name or hoa_name}
       </p>"""
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       {body}
       {_footer()}
@@ -422,19 +424,19 @@ def expired_email_html(
       <p style="color:#111827;font-weight:700;margin-top:20px">1. Upload Your Renewed Declaration Page</p>
       <p style="color:#374151">
         If your policy has already been renewed, please upload your updated Declaration
-        Page through the Condo.insure portal.
+        Page through the condo.insure portal.
       </p>
       {_btn(portal_url, "Upload Updated Documents")}
 
       <p style="color:#111827;font-weight:700;margin-top:20px">2. Get a New Quote</p>
       <p style="color:#374151">
         If your policy has not yet been renewed or you are looking to switch providers,
-        you can get a free quote directly through Condo.insure.
+        you can get a free quote directly through condo.insure.
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#001842;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
-           text-decoration:none">{"Get a HO-4 Quote →" if is_renter else "Get a Quote →"}</a>
+           text-decoration:none">{"Get an HO-4 Quote →" if is_renter else "Get a Quote →"}</a>
       </div>
 
       <p style="color:#374151">
@@ -443,7 +445,7 @@ def expired_email_html(
         refer to your governing documents or contact your Association for more information.
       </p>
       <p style="color:#6b7280;font-size:13px;margin-top:12px">
-        Please note that Condo.insure does not provide insurance advice or recommend
+        Please note that condo.insure does not provide insurance advice or recommend
         specific coverage. We are only verifying compliance with the insurance
         requirements established by the Association.
       </p>
@@ -459,12 +461,12 @@ def expired_email_html(
       </p>
       <p style="color:#374151;margin-top:20px">
         Thank you,<br>
-        Condo.insure Compliance Team<br>
+        condo.insure Compliance Team<br>
         On behalf of {corp_name or hoa_name}
       </p>"""
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       {body}
       {_footer()}
@@ -478,31 +480,32 @@ def admin_notify_html(
     hoa_name: str,
     admin_message: str | None = None,
 ) -> tuple[str, str]:
-    subject = f"Reminder — please update your condo insurance policy"
+    subject = "Reminder — please update your condo insurance policy"
     quote_url = _build_quote_url(tenant_name, unit_number, "admin_notify")
+    greeting = _html.escape((tenant_name or "").strip()) or "there"
     portal_url = f"{APP_URL}/tenant/dashboard"
 
     custom_block = ""
     if admin_message:
         safe_msg = _html.escape(admin_message)
-        custom_block = f'<p style="color:#374151;background:#f8fafc;border-left:3px solid #1d4ed8;padding:12px 16px;border-radius:4px">{safe_msg}</p>'
+        custom_block = f'<p style="color:#374151;background:#f8fafc;border-left:3px solid #014AC5;padding:12px 16px;border-radius:4px">{safe_msg}</p>'
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
-      <p style="color:#374151">Hi {tenant_name},</p>
+      <p style="color:#374151">Hi {greeting},</p>
       <p style="color:#374151">
-        Your condo association (<strong>{hoa_name}</strong>) has sent you a reminder
+        Your condo association (<strong>{_html.escape(hoa_name or "")}</strong>) has sent you a reminder
         to update your insurance policy for <strong>Unit {unit_number}</strong>.
       </p>
       {custom_block}
       <p style="color:#374151">
         If you need a new or updated policy, you can request a free quote below.
-        Once you have your dec page, upload it to your tenant portal to stay compliant.
+        Once you have your declaration page, upload it to your owner portal to stay compliant.
       </p>
       {_btn(quote_url, "Request a Free Quote")}
       <p style="margin-top:8px">
-        <a href="{portal_url}" style="color:#1d4ed8;font-size:13px">
+        <a href="{portal_url}" style="color:#014AC5;font-size:13px">
           Already have a policy? Upload it here →
         </a>
       </p>
@@ -539,7 +542,7 @@ def trial_ending_html(hoa_name: str, days_left: int, ends_at, settings_url: str)
                 f"<strong>{days_left} days</strong>, on <strong>{date_str}</strong>.")
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Hi,</p>
       <p style="color:#374151">{lead}</p>
@@ -587,23 +590,23 @@ def invite_email_html(
 
     # Property managers get a short admin invite; unit owners get the full notice
     if is_property_manager:
-        subject = f"Welcome to Condo.insure — {hoa_name}"
+        subject = f"Welcome to condo.insure — {hoa_name}"
         pm_greeting = "Dear " + ((recipient_name or "").strip() or "Property Manager")
         body = f"""
       <p style="color:#374151">{pm_greeting},</p>
       <p style="color:#374151">
-        Welcome to Condo.insure! You have been added as a Property Manager for
+        Welcome to condo.insure! You have been added as a Property Manager for
         <strong>{hoa_name}</strong>. We're excited to have you on board and wanted to
         take a moment to introduce you to the platform and walk you through getting started.
       </p>
 
-      <p style="color:#111827;font-weight:700;margin-top:20px">What is Condo.insure?</p>
+      <p style="color:#111827;font-weight:700;margin-top:20px">What is condo.insure?</p>
       <p style="color:#374151">
-        Condo.insure is an insurance compliance management platform designed to simplify
+        condo.insure is an insurance compliance management platform designed to simplify
         the process of collecting, reviewing, and tracking unit owner insurance
         documentation on behalf of homeowner and condominium associations.
       </p>
-      <p style="color:#374151">With Condo.insure, you can:</p>
+      <p style="color:#374151">With condo.insure, you can:</p>
       <ul style="color:#374151;padding-left:20px">
         <li>Collect and store unit owner Declaration Pages in one centralized place</li>
         <li>Automatically verify that unit owner policies meet the Association's insurance requirements</li>
@@ -621,7 +624,7 @@ def invite_email_html(
       <p style="color:#374151">Follow these steps to get started:</p>
       <p style="color:#111827;font-weight:600;margin-top:12px">1. Create Your Account</p>
       <p style="color:#374151">
-        Click the button below to set up your Condo.insure account. If you already have
+        Click the button below to set up your condo.insure account. If you already have
         an account, simply log in and your new association will appear in your dashboard.
       </p>
       {_btn(invite_url, "Create Account / Log In")}
@@ -633,8 +636,8 @@ def invite_email_html(
       </p>
       <p style="color:#111827;font-weight:600;margin-top:12px">3. Get Added to Additional Associations</p>
       <p style="color:#374151">
-        If you manage other associations, you can bring them onto Condo.insure too. If
-        an association is already using Condo.insure, simply have its administrator add
+        If you manage other associations, you can bring them onto condo.insure too. If
+        an association is already using condo.insure, simply have its administrator add
         your account email. If it isn't set up yet, you can sign it up to get started.
         Either way, all of your communities will be accessible from your single dashboard.
       </p>
@@ -645,7 +648,7 @@ def invite_email_html(
       </p>
       <p style="color:#374151;margin-top:20px">
         Thank you,<br>
-        The Condo.insure Team
+        The condo.insure Team
       </p>
       <p style="color:#9ca3af;font-size:12px;margin-top:12px">
         This link is unique to you ({email}) and can only be used once.
@@ -660,7 +663,7 @@ def invite_email_html(
         ]
         signature = "<br>".join(line for line in sig_lines if line)
         # Renter (HO-4) vs unit-owner (HO-6) wording
-        track_line = ("collect and track renter's insurance information." if is_renter
+        track_line = ("collect and track renters insurance information." if is_renter
                       else "collect and track unit-owner insurance information.")
         why_para = (
             "The Association's governing documents require renters to maintain liability "
@@ -687,7 +690,7 @@ def invite_email_html(
       <p style="color:#374151">
         <strong>Prefer not to create an account?</strong> You can simply email your
         Declaration Page or Certificate of Insurance to
-        <a href="mailto:{INBOUND_ADDRESS}" style="color:#1d4ed8">{INBOUND_ADDRESS}</a>
+        <a href="mailto:{INBOUND_ADDRESS}" style="color:#014AC5">{INBOUND_ADDRESS}</a>
         and we'll add it to your unit's record for you. <strong>Please send it from
         this same email address ({email})</strong> — that's how we match your document
         to {match_target}, so a message from a different address won't be routed correctly.
@@ -698,7 +701,7 @@ def invite_email_html(
       <p style="color:#374151">
         To help maintain accurate insurance records and simplify compliance with our
         condominium insurance requirements, the Association has partnered with
-        <strong>Condo.insure</strong>, a secure online insurance compliance platform.
+        <strong>condo.insure</strong>, a secure online insurance compliance platform.
       </p>
 
       <p style="color:#111827;font-weight:700;margin-top:20px">Why am I receiving this notice?</p>
@@ -706,7 +709,7 @@ def invite_email_html(
         {why_para}
       </p>
       <p style="color:#374151">
-        To streamline this process, the Association will now use Condo.insure to
+        To streamline this process, the Association will now use condo.insure to
         {track_line}
       </p>
 
@@ -743,7 +746,7 @@ def invite_email_html(
         {quote_intro}
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#001842;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_btn_label}</a>
       </div>
@@ -760,7 +763,7 @@ def invite_email_html(
       </p>"""
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       {body}
       {_footer()}
@@ -811,7 +814,7 @@ def noncompliant_email_html(
     body = f"""
       {re_line}
       <p style="color:#374151">{greeting},</p>
-      <p style="color:#374151">Thank you for submitting your insurance information through Condo.insure.</p>
+      <p style="color:#374151">Thank you for submitting your insurance information through condo.insure.</p>
       <p style="color:#374151">
         We have completed our review of the Declaration Page provided and have
         determined that the policy does not currently meet one or more of the
@@ -823,13 +826,13 @@ def noncompliant_email_html(
       </p>
 
       <p style="color:#111827;font-weight:700;margin-top:20px">Items Requiring Attention</p>
-      <ul style="color:#b91c1c;padding-left:20px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding-top:10px;padding-bottom:10px">
+      <ul style="color:#C0492F;padding-left:20px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding-top:10px;padding-bottom:10px">
         {items_html}
       </ul>
 
       <p style="color:#374151">
         Once the requested changes have been made, please upload an updated
-        Declaration Page through the Condo.insure portal for review.
+        Declaration Page through the condo.insure portal for review.
       </p>
       {_btn(portal_url, "Upload Updated Documents")}
 
@@ -838,13 +841,13 @@ def noncompliant_email_html(
         no-obligation {quote_word} quote in minutes:
       </p>
       <div style="text-align:center;margin:4px 0 8px">
-        <a href="{quote_href}" style="display:inline-block;background:#111827;color:#ffffff;
+        <a href="{quote_href}" style="display:inline-block;background:#001842;color:#ffffff;
            font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;
            text-decoration:none">{quote_label}</a>
       </div>
 
       <p style="color:#6b7280;font-size:13px;margin-top:16px">
-        Please note that Condo.insure does not provide insurance advice or recommend
+        Please note that condo.insure does not provide insurance advice or recommend
         specific coverage. We are only verifying compliance with the insurance
         requirements established by the Association.
       </p>
@@ -861,12 +864,12 @@ def noncompliant_email_html(
       </p>
       <p style="color:#374151;margin-top:20px">
         Thank you,<br>
-        Condo.insure Compliance Team<br>
+        condo.insure Compliance Team<br>
         On behalf of {corp_name or hoa_name}
       </p>"""
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       {body}
       {_footer()}
@@ -879,7 +882,7 @@ def _step(num: str, title: str, desc: str) -> str:
     <tr>
       <td valign="top" style="width:34px;padding:6px 0">
         <div style="width:26px;height:26px;line-height:26px;text-align:center;
-             background:#1d4ed8;color:#ffffff;border-radius:50%;font-size:13px;
+             background:#014AC5;color:#ffffff;border-radius:50%;font-size:13px;
              font-weight:700">{num}</div>
       </td>
       <td valign="top" style="padding:6px 0 6px 4px">
@@ -905,14 +908,14 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
     # Email-in option only when an intake address is configured.
     step3_desc = (
         f"They can upload through the portal, <strong>or simply email their dec page to "
-        f"<a href='mailto:{INBOUND_ADDRESS}' style='color:#1d4ed8'>{INBOUND_ADDRESS}</a></strong> "
+        f"<a href='mailto:{INBOUND_ADDRESS}' style='color:#014AC5'>{INBOUND_ADDRESS}</a></strong> "
         "and it files itself. Even forwarding it to you works — you can submit on their behalf."
         if INBOUND_ADDRESS else
         "They can upload through the portal in a couple of clicks. Even forwarding it to "
         "you works — you can submit on their behalf."
     )
     html = f"""
-    <html><body style="margin:0;background:#f1f5f9;
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f1f5f9;
           font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
       <div style="max-width:600px;margin:0 auto;padding:24px 12px">
         {_header()}
@@ -926,7 +929,7 @@ def welcome_admin_html(admin_name: str, hoa_name: str, setup_url: str | None = N
                  "Import your owner list in seconds — drop in a <strong>CSV or Excel</strong> file "
                  "exactly as you have it. Your columns don't need to match ours; we read them "
                  "automatically. (Or add units one at a time.)")}
-          {_step("2", "Invite your unit-owners",
+          {_step("2", "Invite your unit owners",
                  "Send each owner a secure link to upload their declaration page.")}
           {_step("3", "Owners send in their dec pages — their way", step3_desc)}
           {_step("4", "Watch compliance update on its own",
@@ -951,7 +954,7 @@ def pm_team_invite_html(firm_name: str, inviter_email: str, setup_url: str) -> t
     inviter = _html.escape(inviter_email or "a colleague")
     subject = f"You've been added to {firm_name or 'your team'} on condo.insure"
     html = f"""
-    <html><body style="margin:0;background:#f1f5f9;
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f1f5f9;
           font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
       <div style="max-width:600px;margin:0 auto;padding:24px 12px">
         {_header()}
@@ -979,7 +982,7 @@ def staff_added_to_association_html(hoa_name: str, accept_url: str, recipient_na
     safe_hoa = _html.escape(hoa_name or "a new association")
     subject = f"You've been added to {hoa_name} on condo.insure"
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Hi {greeting},</p>
       <p style="color:#374151">
@@ -1022,7 +1025,7 @@ def new_association_notification_html(
         for label, value in rows
     )
     html = f"""
-    <html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
       <p style="color:#111827;font-size:16px;font-weight:600;margin:0 0 12px">A new association just signed up</p>
       <table cellpadding="0" cellspacing="0" style="border-collapse:collapse">{cells}</table>
     </body></html>"""
@@ -1052,7 +1055,7 @@ def staff_activated_notification_html(
         for label, value in rows
     )
     html = f"""
-    <html><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px 0">
       <p style="color:#111827;font-size:16px;font-weight:600;margin:0 0 12px">A {role_label} just accepted their invite and signed in</p>
       <table cellpadding="0" cellspacing="0" style="border-collapse:collapse">{cells}</table>
     </body></html>"""
@@ -1064,7 +1067,7 @@ def email_changed_html(hoa_name: str, new_email: str) -> tuple[str, str]:
     is changed, so the prior address is alerted in case it wasn't authorized."""
     subject = "Your condo.insure sign-in email was changed"
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">
         The sign-in email for your condo.insure account (managing <strong>{hoa_name}</strong>)
@@ -1072,7 +1075,7 @@ def email_changed_html(hoa_name: str, new_email: str) -> tuple[str, str]:
       </p>
       <p style="color:#9ca3af;font-size:13px;margin-top:16px">
         If you didn't expect this change, contact us right away at
-        <a href="mailto:support@condo.insure" style="color:#1d4ed8">support@condo.insure</a>.
+        <a href="mailto:support@condo.insure" style="color:#014AC5">support@condo.insure</a>.
       </p>
       {_footer()}
     </div></body></html>"""
@@ -1087,11 +1090,11 @@ def policy_upload_notification_html(
 ) -> tuple[str, str]:
     subject = f"New policy uploaded — Unit {unit_number} needs review"
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">
-        <strong>{tenant_name}</strong> (Unit {unit_number}) just uploaded a new policy for
-        <strong>{hoa_name}</strong> and it's waiting for your review.
+        <strong>{_html.escape((tenant_name or "").strip() or "An owner")}</strong> (Unit {_html.escape(unit_number or "")}) just uploaded a new policy for
+        <strong>{_html.escape(hoa_name or "")}</strong> and it's waiting for your review.
       </p>
       {_btn(tenant_url, "Review Policy")}
       {_footer()}
@@ -1118,7 +1121,7 @@ def document_share_html(
     type_html = f" &middot; {_html.escape(doc_type)}" if doc_type else ""
     from_line = f"<strong>{hoa_e}</strong> has" if hoa_e else "Your association has"
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Hello,</p>
       <p style="color:#374151">{from_line} shared a document with you via condo.insure:</p>
@@ -1155,7 +1158,9 @@ def board_report_html(
         def _li(u):
             label = _html.escape(u.get("unit_number") or "")
             name = _html.escape(u.get("tenant_name") or "No owner on file")
-            status = f' <span style="color:#6b7280">({_html.escape(u["status"])})</span>' if u.get("status") else ""
+            # Same word the dashboard uses for this bucket ("Expired" pill/badge).
+            shown = {"Lapsed": "Expired"}.get(u.get("status"), u.get("status"))
+            status = f' <span style="color:#6b7280">({_html.escape(shown)})</span>' if shown else ""
             return f'<li style="color:#374151">{label} — {name}{status}</li>'
         items = "".join(_li(u) for u in lapsed_unit_list[:8])
         more = f'<li style="color:#6b7280;font-style:italic">…and {len(lapsed_unit_list) - 8} more</li>' if len(lapsed_unit_list) > 8 else ""
@@ -1170,19 +1175,19 @@ def board_report_html(
     compliant_note = f" · {manually_approved} by manual approval" if manually_approved else ""
     table_rows = [
         ("Total Units", total_units, "#374151"),
-        ("Compliant", f"{compliant} ({pct}%){compliant_note}", "#16a34a"),
-        ("&nbsp;&nbsp;of which expiring soon", expiring, "#ca8a04"),
-        ("Needs Attention", non_compliant, "#dc2626"),
-        ("Lapsed", lapsed, "#dc2626"),
+        ("Compliant", f"{compliant} ({pct}%){compliant_note}", "#0E8E68"),
+        ("&nbsp;&nbsp;of which expiring soon", expiring, "#946410"),
+        ("Needs Attention", non_compliant, "#C0492F"),
+        ("Expired", lapsed, "#C0492F"),
     ]
     if pending_review:
-        table_rows.append(("Pending Review", pending_review, "#ca8a04"))
-    table_rows.append(("Missing Policy", missing, "#dc2626"))
+        table_rows.append(("Pending Review", pending_review, "#946410"))
+    table_rows.append(("Missing Policy", missing, "#C0492F"))
     table_html = "".join(_row(l, v, c, i % 2 == 0, i == len(table_rows) - 1)
                          for i, (l, v, c) in enumerate(table_rows))
 
     html = f"""
-    <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
+    <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px 0">
       {_header()}
       <p style="color:#374151">Here's the compliance summary for <strong>{_html.escape(hoa_name)}</strong>:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid #e5e7eb;border-radius:8px">

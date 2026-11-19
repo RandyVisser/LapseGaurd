@@ -27,12 +27,18 @@
 <style>
   .calc { border: 1px solid var(--line-2); border-radius: 12px; padding: 22px; margin: 0 0 28px; background: #fff; }
   .calc .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 18px; }
+  /* Inputs line up along the bottom even when a hint wraps to two lines. */
+  .calc .row > div { display: flex; flex-direction: column; }
+  .calc .row > div > label { flex: 1 0 auto; }
   .calc label { display: block; font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
   .calc .hint { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted-2); margin-top: 3px; }
   .calc input, .calc select {
     width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: 15px;
     padding: 9px 11px; border: 1px solid var(--line-2); border-radius: 8px; color: var(--ink); background: #fff;
   }
+  .calc select { font-family: var(--body); }
+  /* 16px stops iOS Safari zooming the page when an input is focused. */
+  @media (max-width: 600px) { .calc input, .calc select { font-size: 16px; } }
   .calc input:focus, .calc select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
   .out { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 4px; }
   .out .big { font-family: var(--mono); font-weight: 700; font-size: 30px; line-height: 1.1; color: var(--navy); }
@@ -151,8 +157,8 @@
           <span class="hint">Hurricane deductibles are usually a percentage</span>
         </label>
         <select id="mode">
-          <option value="pct">A percentage of insured value</option>
-          <option value="flat">A flat dollar amount</option>
+          <option value="pct">Percentage of insured value</option>
+          <option value="flat">Flat dollar amount</option>
         </select>
       </div>
       <div id="wrapValue">
@@ -200,12 +206,12 @@
           <div class="lbl">Uncovered by their HO-6</div>
         </div>
       </div>
-      <div class="verdict" id="oVerdict"></div>
+      <div class="verdict" id="oVerdict" aria-live="polite"></div>
     </div>
   </div>
 
   <div class="g-inline-cta">
-    <p><strong>Short on your share?</strong> Ask what loss assessment limit you can carry — free, no-obligation HO-6 quote from a Florida condo insurance agency.</p>
+    <p><strong>Short on your share?</strong> Ask what loss assessment limit you can carry. Get a free HO-6 quote from our partner agency — no cost, no obligation.</p>
     <a class="btn btn-primary" href="/owners">Get a free HO-6 quote</a>
   </div>
 
@@ -299,13 +305,14 @@
   <section class="g-cta g-cta-owner">
     <h2>Close the gap before the storm</h2>
     <p>
-      The limit that pays is the one in force the day before the loss. Get a free HO-6 quote and
-      ask what loss assessment limit you can carry. No cost, no obligation.
+      The limit that pays is the one in force the day before the loss. Get a free HO-6 quote from
+      our partner agency, universalcondo.com, and ask what loss assessment limit you can carry.
+      No cost, no obligation — and it's entirely optional.
     </p>
     <a class="btn btn-primary" href="/owners">Get a free HO-6 quote</a>
     <p class="g-cta-sub">
-      On the board or a manager? condo.insure reads every owner's dec page and shows which
-      owners are at $2,000 while there's still time to tell them.
+      On the board or a manager? condo.insure keeps every owner's current dec page on file and
+      chases renewals, so you can check loss assessment limits while there's still time to tell owners.
       <a href="/signup">Start a 90-day free trial</a> or
       <a href="https://calendar.app.google/FomLtiZGYqtmt8jUA" target="_blank" rel="noopener">book a 15-min walkthrough</a>.
     </p>
@@ -320,7 +327,7 @@
         <a href="https://www.flsenate.gov/Laws/Statutes/2026/718.111">flsenate.gov — § 718.111</a>
       </li>
       <li id="s2">
-        Fla. Stat. § 627.714 (2026), Condominium unit owner policies; loss assessment coverage.
+        Fla. Stat. § 627.714 (2026), Residential condominium unit owner coverage; loss assessment coverage required.
         <a href="https://www.flsenate.gov/Laws/Statutes/2026/627.714">flsenate.gov — § 627.714</a>
       </li>
     </ol>
@@ -380,7 +387,7 @@
       ? (parseFloat($('value').value) || 0) * ((parseFloat($('pct').value) || 0) / 100)
       : (parseFloat($('flat').value) || 0)
     var units = Math.max(1, parseInt($('units').value, 10) || 1)
-    var limit = parseFloat($('limit').value) || 0
+    var limit = Math.max(0, parseFloat($('limit').value) || 0)
 
     var share = total / units
     var gap = Math.max(0, share - limit)
@@ -397,7 +404,8 @@
       v.className = 'verdict gap'
       v.innerHTML = 'An owner carrying <b>' + usd(limit) + '</b> of loss assessment coverage would be '
         + '<b>' + usd(gap) + '</b> short on an average share of <b>' + usd(share) + '</b>'
-        + (limit <= 2000 ? ' — and ' + usd(limit) + ' is at or below Florida’s statutory minimum.' : '.')
+        + (limit < 2000 ? ' — and ' + usd(limit) + ' is below Florida’s $2,000 statutory minimum, so check the figure on the dec page.'
+          : limit === 2000 ? ' — and $2,000 is only the bare statutory minimum.' : '.')
         + ' <a href="/owners">Ask what limit you can carry →</a>'
     } else {
       v.className = 'verdict ok'

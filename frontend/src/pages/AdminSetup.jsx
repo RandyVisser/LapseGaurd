@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
+import { readError, networkErrorMessage } from '../apiError'
 
 const API = import.meta.env.VITE_API_URL || '/api'
+
+// Auth-page presentation constants (BRANDING.md §5).
+const DISPLAY = '"Bricolage Grotesque", sans-serif'
+const BODY = '"Hanken Grotesk", ui-sans-serif, system-ui, sans-serif'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base sm:text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
+const H1 = { fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }
 
 export default function AdminSetup() {
   const { token } = useParams()
@@ -14,13 +23,19 @@ export default function AdminSetup() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [errorStatus, setErrorStatus] = useState(null)
   usePageTitle('Accept your invite')
+  useHeadTags({ robots: 'noindex' })
 
   useEffect(() => {
     fetch(`${API}/admin-invite/${token}`)
-      .then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.detail) }))
+      .then(async r => {
+        if (r.ok) return r.json()
+        setErrorStatus(r.status)
+        throw new Error(await readError(r, 'This setup link could not be loaded.'))
+      })
       .then(setInvite)
-      .catch(e => setError(e.message))
+      .catch(e => setError(networkErrorMessage(e)))
       .finally(() => setLoading(false))
   }, [token])
 
@@ -39,56 +54,88 @@ export default function AdminSetup() {
           : { password, agree_tos: agreeTos }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Could not set up your account')
+        throw new Error(await readError(res, 'We couldn\u2019t set up your account. Please try again.'))
       }
       const data = await res.json().catch(() => ({}))
       // If the email already had an account, we did NOT change its password —
       // send them to sign in with their existing one rather than implying reset.
       navigate(data.existing_account ? '/login?welcome=existing' : '/login?welcome=admin')
     } catch (err) {
-      setError(err.message)
+      setError(networkErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-sm">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center text-[#54627A] text-sm" style={{ fontFamily: BODY }} role="status">
       Loading your invite…
     </div>
   )
 
-  if (error && !invite) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 max-w-sm w-full text-center">
-        <img src="/assets/logo-full.svg" alt="condo.insure" className="h-9 mx-auto mb-6" />
-        <h1 className="text-lg font-bold text-slate-800 mb-2">Invalid setup link</h1>
-        <p className="text-sm text-slate-500 mb-4">{error}</p>
-        <Link to="/login" className="text-blue-600 hover:underline text-sm">Go to sign in →</Link>
+  if (error && !invite) {
+    const used = errorStatus === 410
+    const notFound = errorStatus === 404
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10 text-[#0B1B33]" style={{ fontFamily: BODY }}>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 max-w-sm w-full text-center">
+          <Link to="/" aria-label="condo.insure home" className="inline-block mb-6">
+            <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mx-auto" />
+          </Link>
+          <h1 className="text-2xl text-[#001842] mb-2" style={H1}>
+            {used ? 'Setup link already used' : notFound ? 'This setup link isn\u2019t valid' : 'We couldn\u2019t load this setup link'}
+          </h1>
+          <p className="text-sm text-[#54627A] mb-5">
+            {used
+              ? 'This invite has already been accepted. Sign in with your email and password.'
+              : notFound
+              ? 'The link may be incomplete, or a newer invite may have replaced it. Check your most recent invite email, or ask whoever invited you to send a new one.'
+              : error}
+          </p>
+          {used || notFound ? (
+            <Link to="/login"
+              className="block w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors">
+              Go to sign in
+            </Link>
+          ) : (
+            <>
+              <button type="button" onClick={() => window.location.reload()}
+                className="block w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors">
+                Try again
+              </button>
+              <Link to="/login" className="inline-block mt-3 py-1 text-sm text-[#54627A] hover:text-[#001842]">Go to sign in</Link>
+            </>
+          )}
+          {!used && (
+            <p className="text-xs text-[#54627A] mt-5">
+              Still stuck? Email{' '}
+              <a href="mailto:support@condo.insure" className="text-[#014AC5] hover:underline">support@condo.insure</a>.
+            </p>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 w-full max-w-md">
-        <img src="/assets/logo-full.svg" alt="condo.insure" className="h-10 mb-6" />
-        <h1 className="text-2xl font-bold text-blue-800 mb-1">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10 text-[#0B1B33]" style={{ fontFamily: BODY }}>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 w-full max-w-md">
+        <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mb-6" />
+        <h1 className="text-2xl sm:text-3xl text-[#001842] mb-1.5" style={H1}>
           {invite?.existing_account ? 'Accept your invitation'
             : invite?.firm_name ? 'Join your team'
             : invite?.role === 'property_manager' ? 'Set up your property manager account'
             : 'Set up your admin account'}
         </h1>
-        <p className="text-sm text-slate-500 mb-1">
+        <p className="text-sm text-[#54627A] mb-1">
           {invite?.firm_name
-            ? <>You're joining <strong>{invite.firm_name}</strong> — you'll see every association your firm manages</>
+            ? <>You&rsquo;re joining <strong className="text-[#0B1B33]">{invite.firm_name}</strong> on condo.insure.</>
             : invite?.role === 'property_manager'
-            ? <>You're the property manager for <strong>{invite?.hoa_name}</strong></>
-            : <>You're the admin for <strong>{invite?.hoa_name}</strong></>}
+            ? <>You&rsquo;re the property manager for <strong className="text-[#0B1B33]">{invite?.hoa_name}</strong>.</>
+            : <>You&rsquo;re the admin for <strong className="text-[#0B1B33]">{invite?.hoa_name}</strong>.</>}
         </p>
         <p className={invite?.role === 'property_manager' && !invite?.firm_name
-          ? 'text-xs text-slate-400 mb-3' : 'text-xs text-slate-400 mb-6'}>
+          ? 'text-xs text-[#54627A] mb-3' : 'text-xs text-[#54627A] mb-6'}>
           {invite?.email}
         </p>
         {invite?.role === 'property_manager' && !invite?.firm_name && (
@@ -113,23 +160,25 @@ export default function AdminSetup() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!invite?.existing_account && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Set a Password</label>
+              <label htmlFor="as-password" className={LABEL}>Choose a password</label>
               <div className="relative">
                 <input
+                  id="as-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   required
                   minLength={8}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`${INPUT} pr-11`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   title={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     {showPassword ? (
@@ -152,22 +201,22 @@ export default function AdminSetup() {
               required
               checked={agreeTos}
               onChange={e => setAgreeTos(e.target.checked)}
-              className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+              className="mt-0.5 rounded border-slate-300 text-[#014AC5] focus:ring-[#014AC5] flex-shrink-0"
             />
-            <span>I have read and agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Terms of Service</Link>.</span>
+            <span>I have read and agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-[#014AC5] hover:underline">Terms of Service</Link>.</span>
           </label>
 
           {error && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-red-600" role="alert">
               {error}{' '}
               {error.toLowerCase().includes('forgot password') && (
-                <Link to="/forgot-password" className="text-blue-600 hover:underline">Reset it here</Link>
+                <Link to="/forgot-password" className="text-[#014AC5] hover:underline">Reset it here</Link>
               )}
             </p>
           )}
 
           <button type="submit" disabled={submitting}
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 rounded-lg text-sm disabled:opacity-60">
+            className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
             {submitting ? 'Submitting…' : invite?.existing_account ? 'Accept invitation' : 'Create my account'}
           </button>
         </form>

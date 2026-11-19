@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <title>Security &amp; Data Handling | condo.insure</title>
-<meta name="description" content="How condo.insure protects association and unit-owner data: Supabase Postgres and Auth, private document storage with short-lived signed links, role-based access, append-only document backups, TLS, and AI parsing through the Anthropic API." />
+<meta name="description" content="Where condo.insure keeps association and owner data, who can see it, how documents are stored and backed up, and how AI reads dec pages." />
 <link rel="canonical" href="https://www.condo.insure/security.html" />
 
 <meta property="og:type" content="website" />
@@ -98,8 +98,10 @@
     Declaration pages and shared association documents are kept in <strong>private</strong>
     storage buckets &mdash; there is no public URL for any owner or association document.
     When an authorized user opens one, our backend checks their access and issues a
-    <strong>short-lived signed link</strong> (valid for a few hours) for that single file.
-    Uploads are insert-only: an upload never silently overwrites an existing document.
+    <strong>short-lived signed link</strong> for that single file, valid for four hours. When an
+    administrator emails a shared association document to someone, that link lasts seven days so
+    the recipient has time to open it. Uploads are insert-only: an upload never silently
+    overwrites an existing document.
   </p>
 
   <h2 id="access">Who can see what</h2>
@@ -107,7 +109,7 @@
     <li><strong>Association administrators</strong> see their own association's units, owners, and policy records.</li>
     <li><strong>Property management firms</strong> see the associations they manage. Within a firm, owners and managers see the whole portfolio; members can be limited to the associations assigned to them.</li>
     <li><strong>Unit owners</strong> see only their own unit and policies, plus documents their association shares with all owners.</li>
-    <li><strong>Our support team</strong> can access accounts to set them up and help when asked.</li>
+    <li><strong>condo.insure staff</strong> &mdash; a small number of named people &mdash; have administrator access to every association so we can set accounts up and help with support.</li>
   </ul>
   <p>
     These rules are enforced on the server for every request, from the role stored in the
@@ -118,11 +120,12 @@
 
   <h2 id="ai">AI document reading</h2>
   <p>
-    To read declaration pages, we send the document's text (or, for scanned documents, the page
-    images) to Anthropic's Claude models through Anthropic's commercial API. Per Anthropic's
-    commercial terms, API inputs and outputs are not used to train their models by default. The
-    extracted fields (insurer, policy number, dates, coverage limits) are stored with the unit's
-    record so administrators can review them.
+    To read declaration pages and leases, we send the uploaded file itself (the PDF or photo) to
+    Anthropic's Claude models through Anthropic's commercial API. When an administrator imports an
+    owner list, the spreadsheet's column headers and its first few rows go to the same API so it
+    can match columns to our fields. Per Anthropic's commercial terms, API inputs and outputs are
+    not used to train their models by default. The extracted fields (insurer, policy number,
+    dates, coverage limits) are stored with the unit's record so administrators can review them.
   </p>
 
   <h2 id="backups">Backups</h2>
@@ -136,18 +139,22 @@
   <h2 id="export">Your data, your export</h2>
   <p>
     Administrators can download their association's compliance data as a CSV at any time &mdash;
-    units, owners, contact details, and policy status &mdash; and every stored document can be
-    downloaded from the dashboard. To have personal information deleted, email
+    units, owners, contact details, and policy status &mdash; and each stored document can be
+    downloaded from the dashboard, one at a time. To have personal information deleted, email
     <a href="mailto:support@condo.insure">support@condo.insure</a>; see the
     <a href="/privacy">privacy policy</a> for details.
   </p>
 
-  <h2 id="agency">The insurance agency relationship</h2>
+  <h2 id="agency">Our partner insurance agency</h2>
   <p>
-    condo.insure is built by the team behind <a href="https://www.universalcondo.com" rel="noopener">universalcondo.com</a>,
-    a licensed Florida insurance agency. Reminder emails to owners include an optional link to
-    request a quote from that agency. Owners are never required to use it, compliance status
-    never depends on where a policy is bought, and we never sell owner or association data.
+    condo.insure partners with <a href="https://www.universalcondo.com" rel="noopener">universalcondo.com</a>,
+    a licensed Florida insurance agency affiliated with our founders. Reminder emails to owners can include
+    an optional link to request a quote from that agency, and the agency may use basic policy details (such as the
+    expiration date and insurer) to offer an owner a renewal quote. Owners can opt out of quote
+    offers by emailing <a href="mailto:support@condo.insure">support@condo.insure</a>. Nobody is
+    required to buy through the agency, compliance status never depends on where a policy is
+    bought, and we never sell owner or association data. The
+    <a href="/privacy">privacy policy</a> has the details.
   </p>
 
   <div class="g-note">
@@ -182,7 +189,7 @@
     <li><a href="#ai">AI document reading</a></li>
     <li><a href="#backups">Backups</a></li>
     <li><a href="#export">Your data, your export</a></li>
-    <li><a href="#agency">The agency relationship</a></li>
+    <li><a href="#agency">Our partner agency</a></li>
   </ol>
 </aside>
 </div>

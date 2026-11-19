@@ -6,7 +6,7 @@ import useHeadTags from '../useHeadTags'
 
 // /owners (+ /owner) — destination for the postcard mailers sent to condo UNIT
 // OWNERS. Mobile-first: most visitors type the URL off a postcard on a phone.
-// Two offers: (a) a free HO-6 quote from the agency behind condo.insure (the
+// Two offers: (a) a free HO-6 quote from our partner agency (the
 // lead-gen side of the business — see CLAUDE.dad.md §1), (b) a prefilled email
 // the owner sends from THEIR OWN mail client to their board/manager. Nothing on
 // this page sends email from our side.
@@ -152,8 +152,8 @@ export default function Owners() {
             Get a free HO-6 quote
           </h2>
           <p className="mt-2 text-[#54627A]">
-            Renewing soon, or not sure your limits still fit? Compare your current policy against a quote from a
-            Florida insurance agency focused on condo coverage.
+            Renewing soon, or not sure your limits still fit? Compare your current policy against a quote from our
+            partner agency, a Florida insurance agency focused on condo coverage.
           </p>
           <ul className="mt-4 space-y-2 text-[15px]">
             <li className="flex gap-2.5"><Check /><span>No cost and no obligation &mdash; keep your current carrier and agent if you like</span></li>
@@ -169,8 +169,8 @@ export default function Owners() {
             Get my free quote &rarr;
           </a>
           <p className="mt-4 text-xs text-[#54627A] leading-relaxed">
-            Quotes come from <strong>universalcondo.com</strong>, the licensed Florida insurance agency that builds
-            condo.insure. Your association&rsquo;s compliance never depends on where you buy your policy, and we never
+            Quotes come from our partner agency, <strong>universalcondo.com</strong>, a licensed Florida insurance
+            agency. Your association&rsquo;s compliance never depends on where you buy your policy, and we never
             sell your information.{' '}
             <Link to="/privacy" className="text-[#014AC5] hover:underline">Privacy policy</Link>
           </p>
@@ -218,13 +218,13 @@ export default function Owners() {
               onClick={copyLink}
               className="rounded-full border border-slate-300 hover:border-[#001842] text-[#001842] font-semibold px-7 py-3 transition-colors"
             >
-              {copied === 'yes' ? 'Link copied ✓' : copied === 'no' ? 'Copy failed — press and hold the link below' : 'Copy link to share'}
+              {copied === 'yes' ? 'Link copied ✓' : copied === 'no' ? 'Couldn’t copy — press and hold the link below' : 'Copy link to share'}
             </button>
           </div>
-          <p className="mt-3 text-xs text-[#54627A] break-all" style={{ fontFamily: MONO }}>{REFERRAL_URL}</p>
+          <p className="mt-3 text-xs text-[#54627A] break-all" style={{ fontFamily: MONO }}>{REFERRAL_URL.replace(/^https:\/\//, '')}</p>
 
-          <details className="mt-4 text-sm text-[#54627A]">
-            <summary className="cursor-pointer font-semibold text-[#0B1B33]">Preview the note</summary>
+          <details className="mt-2 text-sm text-[#54627A]">
+            <summary className="cursor-pointer py-2 font-semibold text-[#0B1B33]">Preview the note</summary>
             <div className="mt-2 rounded-lg bg-slate-50 border border-slate-200 p-3">
               <p className="font-semibold text-[#0B1B33]">{subject}</p>
               <p className="mt-2 whitespace-pre-line">{body}</p>

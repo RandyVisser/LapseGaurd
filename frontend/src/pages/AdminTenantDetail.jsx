@@ -114,7 +114,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
     const liability = ext.liability_coverage
     if (tenant.ho4_liability_min && liability != null) {
       const meets = Number(liability) >= tenant.ho4_liability_min
-      rItems.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Liability limit ${currency(liability)} ${meets ? 'meets' : 'below'} ${currency(tenant.ho4_liability_min)} minimum` })
+      rItems.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Liability limit ${currency(liability)} ${meets ? 'meets' : 'is below'} ${currency(tenant.ho4_liability_min)} minimum` })
     }
     // (3) Coverage is in force (active now, not expired / not future-dated)
     const today = new Date().toISOString().slice(0, 10)
@@ -162,8 +162,8 @@ function buildComplianceChecks(tenant, currentPolicies) {
         field: 'named_insured',
         type: match ? 'pass' : 'fail',
         text: match
-          ? `Named insured matches unit-owner (${ownerName})`
-          : `Named insured does not match unit-owner — policy lists "${allInsuredNames.join('; ')}", expected "${ownerName}"`,
+          ? `Named insured matches unit owner (${ownerName})`
+          : `Named insured does not match unit owner — policy lists "${allInsuredNames.join('; ')}", expected "${ownerName}"`,
       })
     }
   }
@@ -182,7 +182,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const ho6CovA = ho6?.extracted_data?.dwelling_coverage
   if (tenant.ho6_coverage_a_min && ho6CovA != null) {
     const meets = Number(ho6CovA) >= tenant.ho6_coverage_a_min
-    items.push({ field: 'dwelling_coverage', type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A (Dwelling) ${currency(ho6CovA)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ field: 'dwelling_coverage', type: meets ? 'pass' : 'fail', text: `HO-6 Coverage A (Dwelling) ${currency(ho6CovA)} ${meets ? 'meets' : 'is below'} ${currency(tenant.ho6_coverage_a_min)} minimum` })
   }
   const windCovA = wind?.extracted_data?.dwelling_coverage
   if (wind && windCovA != null)
@@ -190,7 +190,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
   const covE = ho6?.extracted_data?.liability_coverage
   if (tenant.ho6_coverage_e_min && covE != null) {
     const meets = Number(covE) >= tenant.ho6_coverage_e_min
-    items.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'below'} minimum` })
+    items.push({ field: 'liability_coverage', type: meets ? 'pass' : 'fail', text: `Coverage E (Liability) ${currency(covE)} ${meets ? 'meets' : 'is below'} ${currency(tenant.ho6_coverage_e_min)} minimum` })
   }
   if (tenant.ho6_wind_required) {
     const hasWind = ho6?.coverage_type === 'ho6_with_wind' || wind != null
@@ -247,7 +247,7 @@ function buildComplianceChecks(tenant, currentPolicies) {
         items.push({
           group: 'rented',
           type: meets ? 'pass' : 'fail',
-          text: `Lease term ${termDays} days ${meets ? 'meets' : 'below'} ${tenant.lease_min_term_days}-day minimum`,
+          text: `Lease term ${termDays} days ${meets ? 'meets' : 'is below'} ${tenant.lease_min_term_days}-day minimum`,
         })
       }
     }
@@ -613,6 +613,47 @@ function PolicyEditCard({ policyId, form, onChange, aiUpdated, onRunAi, runningA
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 let _draftCounter = 0
+
+// Activity-log descriptions arrive from the backend with raw keys in them
+// ("Alert (non_compliant) sent to …", "coverage a min marked fail"). Display
+// only: rewrite the known shapes into plain English, pass anything else through.
+const ALERT_TYPE_LABELS = {
+  non_compliant: 'Compliance notice',
+  lapsed: 'Expired-policy notice',
+  renewal_30: '30-day renewal reminder',
+  renewal_7: '7-day renewal reminder',
+  renewal_1: '1-day renewal reminder',
+  lease_expired: 'Expired-lease notice',
+  lease_renewal_30: '30-day lease reminder',
+  lease_renewal_7: '7-day lease reminder',
+  lease_renewal_1: '1-day lease reminder',
+  invite_reminder_sent: 'Invite reminder',
+}
+const CHECK_LABELS = {
+  'coverage a min': 'Coverage A minimum',
+  'coverage e min': 'Coverage E minimum',
+  'policy in force': 'Policy in force',
+  'named insured match': 'Named insured match',
+  'property address match': 'Property address match',
+  'wind coverage': 'Wind coverage',
+  'manual approval': 'Manual approval',
+  'association additional interest': 'Association listed as additional interest',
+}
+function prettyActivity(desc) {
+  if (!desc) return desc
+  const alert = desc.match(/^Alert \(([a-z0-9_]+)\) sent to (.*)$/)
+  if (alert) {
+    const label = ALERT_TYPE_LABELS[alert[1]] || alert[1].replace(/_/g, ' ')
+    return `${label[0].toUpperCase()}${label.slice(1)} sent to ${alert[2]}`
+  }
+  const check = desc.match(/^(.*) — ([a-z0-9 ]+) marked (pass|fail|true|false|.+)$/)
+  if (check) {
+    const label = CHECK_LABELS[check[2]] || (check[2][0].toUpperCase() + check[2].slice(1))
+    const verdict = { pass: 'passed', fail: 'failed', true: 'passed', false: 'failed' }[check[3]] || `marked ${check[3]}`
+    return `${check[1]} — ${label} ${verdict}`
+  }
+  return desc
+}
 
 export default function AdminTenantDetail() {
   const { tenantId } = useParams()
@@ -1518,17 +1559,19 @@ export default function AdminTenantDetail() {
             </div>
 
             {/* ── Footer — sticky so Save is always reachable on long pages ── */}
-            <div className="sticky bottom-0 z-40 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-t border-[#E8ECF2] flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            {/* Mobile: extra bottom padding so the floating Feedback / Next Steps
+                pills (bottom-4, left + right) sit under the buttons, not on them. */}
+            <div className="sticky bottom-0 z-40 -mx-4 px-4 pt-3 pb-[4.25rem] sm:pb-3 bg-slate-50/95 backdrop-blur border-t border-[#E8ECF2] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  className="flex items-center gap-2 whitespace-nowrap bg-[#001842] hover:bg-[#0A2A63] text-white text-sm font-semibold px-4 sm:px-5 py-2.5 rounded-lg disabled:opacity-60">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                   </svg>
                   {saving ? 'Saving…' : 'Save changes'}
                 </button>
                 <button type="button" onClick={handleSendReminder} disabled={notifying}
-                  className="flex items-center gap-2 border border-[#DCE3EC] text-[#0B1B33] hover:bg-slate-50 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
+                  className="flex items-center gap-2 whitespace-nowrap border border-[#DCE3EC] text-[#0B1B33] hover:bg-slate-50 text-sm font-medium px-4 sm:px-5 py-2.5 rounded-lg disabled:opacity-60">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -1546,7 +1589,7 @@ export default function AdminTenantDetail() {
                   </p>
                 )}
                 {!saveMsg && lastUpdated && (
-                  <p className="text-xs text-[#8493A8]">Last updated {fmtDateTime(lastUpdated)}</p>
+                  <p className="hidden sm:block text-xs text-[#8493A8]">Last updated {fmtDateTime(lastUpdated)}</p>
                 )}
               </div>
             </div>
@@ -1560,7 +1603,7 @@ export default function AdminTenantDetail() {
                     <div key={entry.id} className="flex gap-3 px-5 py-3">
                       <div className="mt-2 w-1.5 h-1.5 rounded-full bg-[#DCE3EC] flex-shrink-0" />
                       <div>
-                        <p className="text-sm text-[#0B1B33]">{entry.description}</p>
+                        <p className="text-sm text-[#0B1B33]">{prettyActivity(entry.description)}</p>
                         <p className="text-xs text-[#8493A8] mt-0.5">
                           {fmtDateTime(entry.timestamp)}
                           {entry.actor && ` · by ${entry.actor}`}

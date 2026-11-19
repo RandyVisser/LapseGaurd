@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { track, getAttribution } from '../analytics'
 import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
 import { readError, networkErrorMessage } from '../apiError'
 
 const API = import.meta.env.VITE_API_URL || '/api'
@@ -18,7 +19,7 @@ const SQUARES = {
   WebkitMaskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
   maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
 }
-const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base sm:text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
 
 export default function SignupFirm() {
@@ -32,6 +33,7 @@ export default function SignupFirm() {
   const [showPassword, setShowPassword] = useState(false)
   const startedRef = useRef(false)
   usePageTitle('Create your firm account')
+  useHeadTags({ description: 'Create a condo.insure account for your property management firm: one login to track HO-6 compliance across every association you manage, with volume pricing for your whole portfolio.' })
 
   // Fire the funnel beacon once, on the first touch of the form.
   function markStarted() {
@@ -79,7 +81,7 @@ export default function SignupFirm() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4 text-[#0B1B33]" style={{ fontFamily: BODY }}>
         <div className="w-full max-w-md text-center">
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-12 mx-auto mb-8" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mx-auto mb-8" />
           <div className="text-4xl mb-4">🎉</div>
           <h1 className="text-2xl font-bold text-[#001842] mb-2" style={{ fontFamily: DISPLAY, letterSpacing: '-.02em' }}>
             Your firm account is ready
@@ -104,7 +106,7 @@ export default function SignupFirm() {
       <div className="flex-1 flex flex-col px-6 py-10 sm:px-12">
         <div className="w-full max-w-xl mx-auto">
           <Link to="/" className="text-sm text-[#54627A] hover:text-[#001842] mb-7 inline-block">&larr; Back</Link>
-          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-11 mb-6" />
+          <img src="/assets/logo-full.svg" alt="condo.insure" className="h-[59px] mb-6" />
           <h1 className="text-3xl mb-1.5 text-[#001842]" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             Create your firm account
           </h1>
@@ -115,41 +117,43 @@ export default function SignupFirm() {
 
           <form onSubmit={handleSubmit} onFocusCapture={markStarted} className="space-y-4">
             <div>
-              <label className={LABEL}>Firm Name</label>
-              <input type="text" required value={form.firm_name} onChange={set('firm_name')}
+              <label className={LABEL} htmlFor="sf-firm">Firm name</label>
+              <input id="sf-firm" type="text" autoComplete="organization" required value={form.firm_name} onChange={set('firm_name')}
                 placeholder="Gulf Coast Property Management" className={INPUT} />
             </div>
 
             <div>
-              <label className={LABEL}>Your Name</label>
-              <input type="text" required value={form.contact_name} onChange={set('contact_name')}
+              <label className={LABEL} htmlFor="sf-name">Your name</label>
+              <input id="sf-name" type="text" autoComplete="name" required value={form.contact_name} onChange={set('contact_name')}
                 placeholder="Jane Smith" className={INPUT} />
             </div>
 
             <div>
-              <label className={LABEL}>Email</label>
-              <input type="email" required value={form.email} onChange={set('email')}
+              <label className={LABEL} htmlFor="sf-email">Work email</label>
+              <input id="sf-email" type="email" autoComplete="email" inputMode="email" required value={form.email} onChange={set('email')}
                 placeholder="jane@yourfirm.com" className={INPUT} />
             </div>
 
             <div>
-              <label className={LABEL}>Password</label>
+              <label className={LABEL} htmlFor="sf-password">Password</label>
               <div className="relative">
                 <input
+                  id="sf-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   required
                   minLength={8}
                   value={form.password}
                   onChange={set('password')}
                   placeholder="At least 8 characters"
-                  className={`${INPUT} pr-10`}
+                  className={`${INPUT} pr-11`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   title={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     {showPassword ? (
@@ -166,12 +170,12 @@ export default function SignupFirm() {
             </div>
 
             <div>
-              <label className={LABEL}>
-                CAB License Number <span className="text-slate-400 font-normal">(optional)</span>
+              <label className={LABEL} htmlFor="sf-cab">
+                CAB license number <span className="text-slate-400 font-normal">(optional)</span>
               </label>
-              <input type="text" value={form.cab_number} onChange={set('cab_number')}
+              <input id="sf-cab" type="text" autoComplete="off" autoCapitalize="characters" value={form.cab_number} onChange={set('cab_number')}
                 placeholder="CAB1234" className={INPUT} />
-              <p className="text-xs text-slate-400 mt-1">Your Florida community association management firm license, if you have one.</p>
+              <p className="text-xs text-[#54627A] mt-1">Your Florida community association management firm license, if you have one.</p>
             </div>
 
             <label className="flex items-start gap-2 text-sm text-slate-600 pt-2 border-t border-slate-200">
@@ -192,13 +196,13 @@ export default function SignupFirm() {
                   <Link to="/login" className="text-[#014AC5] hover:underline">sign in</Link> instead.
                 </p>
               ) : (
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="text-sm text-red-600" role="alert">{error}</p>
               )
             )}
 
             <button type="submit" disabled={loading}
               className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
-              {loading ? 'Creating your firm…' : 'Create Firm Account'}
+              {loading ? 'Creating your firm…' : 'Create firm account'}
             </button>
 
             <p className="text-center text-xs text-slate-500">

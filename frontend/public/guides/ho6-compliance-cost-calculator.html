@@ -160,7 +160,7 @@
           <div class="lbl">Effective per unit</div>
         </div>
       </div>
-      <div class="note" id="oNote"></div>
+      <div class="note" id="oNote" aria-live="polite"></div>
     </div>
   </div>
 
@@ -183,7 +183,7 @@
     <p>
       Every unit bills at one rate, chosen by your total. That means <strong>751 units costs
       less than 750</strong> — $375.50 versus $750. It's a known consequence of keeping
-      pricing simple enough to quote in one sentence, and it favours you at the boundary.
+      pricing simple enough to quote in one sentence, and it favors you at the boundary.
     </p>
   </div>
 
@@ -191,9 +191,9 @@
 
   <ul>
     <li>Unlimited board members and staff logins — you're billed per unit, not per seat</li>
-    <li>AI declaration-page parsing on every upload</li>
+    <li>AI declarations-page parsing on every upload</li>
     <li>Automated renewal, lapse and non-compliance reminders</li>
-    <li>Email-in submission, so owners never create accounts</li>
+    <li>Email-in submission, so owners never need to create an account</li>
     <li>Owner list built from public property records during setup</li>
     <li>Shared document library and monthly board reports</li>
     <li>90-day free trial · no setup fee · cancel any time</li>
@@ -317,10 +317,10 @@
       note.textContent = 'Enter your unit count.'
     } else if (m === MINIMUM && units * (units <= TIER_1_MAX ? RATE_1 : RATE_2) < MINIMUM) {
       note.innerHTML = 'Below 50 units the <b>$' + MINIMUM + '/month minimum</b> applies, so '
-        + units + ' units bills at $' + MINIMUM + ' rather than $' + (units * RATE_1).toFixed(2) + '.'
+        + units + ' units bill at $' + MINIMUM + ' rather than $' + (units * RATE_1).toFixed(2) + '.'
     } else {
       var tier = units <= TIER_1_MAX ? '$1.00' : units <= TIER_2_MAX ? '$0.50' : '$0.25'
-      note.innerHTML = units.toLocaleString('en-US') + ' units falls in the <b>' + tier
+      note.innerHTML = 'An association of ' + units.toLocaleString('en-US') + ' units falls in the <b>' + tier
         + '/unit</b> tier. That’s <b>' + usd(m * 12, 0) + '</b> a year, with a 90-day free trial before anything bills.'
     }
   }

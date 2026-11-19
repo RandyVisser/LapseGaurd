@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import useHeadTags from '../useHeadTags'
+import usePageTitle from '../usePageTitle'
 import { Link } from 'react-router-dom'
 import { track, loadRb2b } from '../analytics'
 import './landing.css'
@@ -18,6 +19,7 @@ export default function VistaRoyale() {
   // Speculative prebuild for one association's mailer — not a page we want
   // ranking (also deliberately absent from sitemap.xml).
   useHeadTags({ robots: 'noindex, follow' })
+  usePageTitle('For the Vista Royale board')
 
   // Postalytics page-click tracking. Reads the _bn_d token Postalytics appends
   // to the personalized postcard URL (or a cookie), exposes it as a global, then
@@ -62,15 +64,14 @@ export default function VistaRoyale() {
       <header className="nav">
         <div className="wrap nav-in">
           <Link className="brand" to="/">
-            <img src="/assets/logo-mark.svg" alt="condo.insure shield logo" />
-            <span><span className="w-condo">condo</span><span className="w-ins">.insure</span></span>
+            <img src="/assets/logo-full.svg" alt="condo.insure" />
           </Link>
           <nav className="nav-links">
             <a className="txt nav-section-link" href="/#features">Product</a>
             <a className="txt nav-section-link" href="/#how">How it works</a>
             <a className="txt nav-section-link" href="/#pricing">Pricing</a>
             <Link className="txt" to="/login">Sign in</Link>
-            <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
+            <Link className="btn btn-primary" to="/signup">Get started free</Link>
           </nav>
         </div>
       </header>
@@ -90,7 +91,7 @@ export default function VistaRoyale() {
               Royale board always knows which units are covered, and which need follow-up.
             </p>
             <div className="hero-cta">
-              <Link className="btn btn-primary" to="/signup">Request your Dashboard</Link>
+              <Link className="btn btn-primary" to="/signup">Request your dashboard</Link>
               <a className="btn btn-secondary" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')}>Book a 15-min walkthrough</a>
               <button type="button" className="btn btn-tour" onClick={openTour}>
                 <span className="play" aria-hidden="true"></span>Watch the 2-min tour
@@ -130,13 +131,13 @@ export default function VistaRoyale() {
         <div className="wrap">
           <div className="how-head reveal">
             <span className="eyebrow">How it works</span>
-            <h2 className="display">Up and running in a few minutes.</h2>
+            <h2 className="display">A minute from you. We do the rest.</h2>
             <p>You bring the association. We build your Vista Royale unit list from public records, then keep every policy current for you.</p>
           </div>
           <div className="steps">
-            <div className="step reveal"><div className="idx">01</div><div><h3>Sign up Vista Royale</h3><p>Just your name and the association address. We handle the rest.</p><div className="meta">~60 seconds</div></div></div>
-            <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it&rsquo;s ready.</p><div className="meta">done before you log in</div></div></div>
-            <div className="step reveal"><div className="idx">03</div><div><h3>Owners send their dec page</h3><p>Owners upload or email their declaration page — no login needed. AI reads it and checks it against your requirements.</p><div className="meta">AI-reviewed on upload</div></div></div>
+            <div className="step reveal"><div className="idx">01</div><div><h3>Request your setup</h3><p>Your name and email, plus the association&rsquo;s name, address, and number of units.</p><div className="meta">~60 seconds</div></div></div>
+            <div className="step reveal"><div className="idx">02</div><div><h3>We build it out for you</h3><p>We assemble your owner list from property-assessor records and invite you in once it&rsquo;s ready.</p><div className="meta">within one business day</div></div></div>
+            <div className="step reveal"><div className="idx">03</div><div><h3>Owners send their dec page</h3><p>Owners email their declaration page (no login needed) or upload it. AI reads it and checks it against your requirements.</p><div className="meta">AI-reviewed on upload</div></div></div>
             <div className="step reveal"><div className="idx">04</div><div><h3>Watch the board stay green</h3><p>See every unit&rsquo;s status at a glance, with reminders running on autopilot.</p><div className="meta">reminders on autopilot</div></div></div>
           </div>
         </div>
@@ -146,9 +147,9 @@ export default function VistaRoyale() {
       <section className="cta">
         <div className="wrap reveal">
           <h2 className="display">Put all of Vista Royale on one dashboard.</h2>
-          <p>Set up your association in minutes. 90 days free — no credit card required.</p>
+          <p>Request your setup in about a minute. 90 days free — no credit card required.</p>
           <div className="hero-cta">
-            <Link className="btn btn-light" to="/signup">Request your Dashboard</Link>
+            <Link className="btn btn-light" to="/signup">Request your dashboard</Link>
             <a className="btn btn-ghost" href={CAL_URL} target="_blank" rel="noopener noreferrer" onClick={() => track('demo_click')} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>Book a 15-min walkthrough</a>
             <button type="button" className="btn btn-ghost" onClick={openTour} style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,.45)' }}>
               <span className="play" aria-hidden="true"></span>Watch the 2-min tour

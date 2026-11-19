@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { track, getAttribution } from '../analytics'
 import { readError, networkErrorMessage } from '../apiError'
 import usePageTitle from '../usePageTitle'
+import useHeadTags from '../useHeadTags'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
@@ -18,7 +19,7 @@ const SQUARES = {
   WebkitMaskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
   maskImage: 'radial-gradient(90% 90% at 80% 25%,#000,transparent 72%)',
 }
-const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
+const INPUT = 'w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base sm:text-sm text-[#0B1B33] placeholder-slate-400 focus:outline-none focus:border-[#014AC5] focus:ring-1 focus:ring-[#014AC5]'
 const LABEL = 'block text-sm font-medium text-[#0B1B33] mb-1.5'
 
 export default function Signup() {
@@ -35,6 +36,7 @@ export default function Signup() {
   const [success, setSuccess] = useState(false)
   const startedRef = useRef(false)
   usePageTitle('Set up your association')
+  useHeadTags({ description: 'Request a free condo.insure setup for your condo association. We build your unit list from public property records and email your dashboard invite within one business day. 90 days free, no credit card.' })
 
   // Funnel beacon fires on the first touch of the form, not on page load —
   // a page view is not a started signup (matches SignupFirm).
@@ -49,19 +51,22 @@ export default function Signup() {
     return e => setForm(f => ({ ...f, [key]: e.target.value }))
   }
 
-  function renderField({ label, key, placeholder, type, hint }) {
+  function renderField({ label, key, placeholder, type, hint, autoComplete, inputMode }) {
     return (
       <div key={key}>
-        <label className={LABEL}>{label}</label>
+        <label className={LABEL} htmlFor={`su-${key}`}>{label}</label>
         <input
+          id={`su-${key}`}
           type={type || 'text'}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
           required
           value={form[key]}
           onChange={set(key)}
           placeholder={placeholder}
           className={INPUT}
         />
-        {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+        {hint && <p className="text-xs text-[#54627A] mt-1">{hint}</p>}
       </div>
     )
   }
@@ -145,14 +150,16 @@ export default function Signup() {
 
           <form onSubmit={handleSubmit} onFocusCapture={markStarted} className="space-y-4">
             {[
-              { label: 'Association Name', key: 'association_name', placeholder: 'Sunset Villas Condo Association' },
-              { label: 'Address', key: 'address', placeholder: '123 Palm Ave, Miami, FL 33101' },
+              { label: 'Association name', key: 'association_name', placeholder: 'Sunset Villas Condo Association', autoComplete: 'organization' },
+              { label: 'Association address', key: 'address', placeholder: '123 Palm Ave, Miami, FL 33101', autoComplete: 'street-address' },
             ].map(renderField)}
 
             <div>
-              <label className={LABEL}># of units in this association</label>
+              <label className={LABEL} htmlFor="su-unit_count">Number of units</label>
               <input
+                id="su-unit_count"
                 type="number"
+                inputMode="numeric"
                 min="1"
                 required
                 value={form.unit_count}
@@ -162,15 +169,15 @@ export default function Signup() {
               />
             </div>
 
-            <div>
-              <label className={LABEL}>Do you already have email addresses for your owners?</label>
+            <fieldset>
+              <legend className={LABEL}>Do you already have email addresses for your owners?</legend>
               <div className="flex gap-3 mt-1">
                 {['Yes', 'No'].map(opt => {
                   const val = opt.toLowerCase()
                   const active = form.has_owner_emails === val
                   return (
                     <label key={val}
-                      className={`flex-1 flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors ${
+                      className={`flex-1 flex items-center justify-center gap-2 border rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#014AC5] ${
                         active ? 'border-[#014AC5] bg-blue-50 text-[#014AC5] font-medium' : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                       }`}>
                       <input
@@ -187,21 +194,21 @@ export default function Signup() {
                   )
                 })}
               </div>
-            </div>
+            </fieldset>
 
             {[
-              { label: 'Your Name', key: 'admin_name', placeholder: 'Jane Smith' },
-              { label: 'Email', key: 'email', placeholder: 'jane@example.com', type: 'email' },
+              { label: 'Your name', key: 'admin_name', placeholder: 'Jane Smith', autoComplete: 'name' },
+              { label: 'Your email', key: 'email', placeholder: 'jane@example.com', type: 'email', autoComplete: 'email', inputMode: 'email', hint: 'Your dashboard invite goes here.' },
             ].map(renderField)}
 
-            <div className="pt-2 border-t border-slate-200">
+            <div className="pt-4 border-t border-slate-200">
               <p className="text-sm text-slate-600">
                 We&rsquo;ll pre-configure your association using standard Florida condo insurance requirements.
                 You can review and customize them at any time.
               </p>
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-slate-600 pt-2 border-t border-slate-200">
+            <label className="flex items-start gap-2 text-sm text-slate-600">
               <input
                 type="checkbox"
                 required
@@ -224,7 +231,7 @@ export default function Signup() {
               <span>I have read and agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-[#014AC5] hover:underline">Terms of Service</Link>.</span>
             </label>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
 
             <button type="submit" disabled={loading}
               className="w-full rounded-lg bg-[#001842] hover:bg-[#0A2A63] text-white font-semibold py-2.5 text-sm transition-colors disabled:opacity-60">
@@ -232,7 +239,7 @@ export default function Signup() {
             </button>
 
             <p className="text-center text-xs text-slate-500">
-              No credit card required. This sends a setup request — you&rsquo;ll get an email invite to your dashboard within one business day.
+              No credit card required. We&rsquo;ll email your dashboard invite within one business day.
             </p>
           </form>
 
@@ -251,7 +258,7 @@ export default function Signup() {
         <div aria-hidden="true" style={SQUARES} />
         <div className="relative max-w-md">
           <span className="text-xs uppercase tracking-[.14em] text-[#6FE3B6]" style={{ fontFamily: MONO }}>
-            Set up in minutes
+            How setup works
           </span>
           <h2 className="mt-4 text-[34px] leading-[1.1] text-white" style={{ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: '-.02em' }}>
             From a spreadsheet of unknowns to a dashboard that stays green.

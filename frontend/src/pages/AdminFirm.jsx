@@ -30,7 +30,9 @@ function OpenVisibilityNote({ isOwner, onGoSettings }) {
       Right now everyone on your team sees every association (open visibility).
       Assignments and groups are saved but don't limit anything until{' '}
       {isOwner
-        ? <>you turn on <button type="button" onClick={onGoSettings} className="text-[#014AC5] font-medium hover:underline">"Limit members to their assigned associations" in Settings</button>.</>
+        ? <>you turn on <span role="button" tabIndex={0} onClick={onGoSettings}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGoSettings() } }}
+            className="text-[#014AC5] font-medium hover:underline cursor-pointer">"Limit members to their assigned associations" in Settings</span>.</>
         : <>the firm owner limits visibility in Settings.</>}
     </p>
   )
@@ -84,7 +86,7 @@ function PeopleTab({ view, onGoSettings }) {
                     {m.you && <span className="text-[#8493A8]"> (you)</span>}
                     <span className="ml-2">{rolePill(m.role)}</span>
                   </span>
-                  <span className="flex items-center gap-3 flex-shrink-0">
+                  <span className="flex items-center gap-x-3 gap-y-1.5 flex-wrap min-w-0">
                     {groupsOf(m.user_id).map(g => (
                       <span key={g.id} className="text-[11px] font-semibold rounded px-1.5 py-0.5"
                         style={{ background: '#EEF3FB', color: g.color || '#014AC5' }}>{g.name}</span>
