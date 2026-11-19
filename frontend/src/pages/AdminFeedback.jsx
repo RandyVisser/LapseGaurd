@@ -453,6 +453,19 @@ function PagesCard() {
             ))}
           </div>
 
+          {data.actions && (
+            <p className="text-xs text-[#54627A]" title="Distinct sessions per action. 'From the early CTA' is the subset of clicks made on the in-article callout rather than the bottom band.">
+              <span className="font-semibold text-[#0B1B33]">Reader actions:</span>{' '}
+              {[
+                ['reached the bottom CTA', data.actions.guide_cta_seen],
+                ['clicked Start free', data.actions.guide_signup_click],
+                ['clicked owner quote', data.actions.guide_quote_click],
+                ['booked-walkthrough click', data.actions.demo_click],
+                ['from the early CTA', data.actions.guide_inline_click],
+              ].map(([label, n]) => `${n || 0} ${label}`).join(' · ')}
+            </p>
+          )}
+
           {view === 'pages' ? (
             <div className="space-y-1.5">
               <Eyebrow>Most-read guides</Eyebrow>

@@ -40,6 +40,11 @@ _ALLOWED = {
     # organic search and AI-answer traffic, so their referrer is the whole point —
     # see /analytics/pages.
     "guide_view",
+    # Guide conversion (2026-11-19): did a reader reach the bottom CTA, click
+    # through to signup / the owner quote page, and did the early in-article
+    # CTA (.g-inline-cta) earn any of those clicks. Names deliberately avoid
+    # the section_ prefix so the scanner_sessions heuristic (047) ignores them.
+    "guide_cta_seen", "guide_signup_click", "guide_quote_click", "guide_inline_click",
     # /owners — the page printed on unit-owner mailers. Owners are not buyers,
     # so these never feed the B2B funnel tickers; they measure the mailer and
     # the agency-quote / tell-your-board referral paths.
@@ -401,10 +406,25 @@ async def pages(
         days,
     ) or 0
 
+    # What guide readers DID (2026-11-19): sessions per CTA event. demo_click is
+    # shared with the landing page, so it's limited to clicks fired on /guides/.
+    action_rows = await conn.fetch(
+        """SELECT name, count(distinct coalesce(session_id, id::text)) AS sessions
+           FROM human_events
+           WHERE created_at > now() - make_interval(days => $1)
+             AND (name IN ('guide_cta_seen', 'guide_signup_click', 'guide_quote_click',
+                           'guide_inline_click')
+                  OR (name = 'demo_click' AND path LIKE '/guides/%'))
+           GROUP BY name""",
+        days,
+    )
+    actions = {r["name"]: r["sessions"] for r in action_rows}
+
     return {
         "days": days,
         "total_sessions": total_sessions,
         "converted": converted,
+        "actions": actions,
         "buckets": [{"bucket": b, "sessions": n} for b, n in sorted(by_bucket.items(), key=lambda x: -x[1])],
         "pages": [{"path": r["path"], "sessions": r["sessions"], "views": r["views"]} for r in page_rows],
         "sources": sources,

@@ -136,9 +136,28 @@
     // funnel card counts landing and guide bookings together.
     document.addEventListener('click', function (ev) {
       var t = ev.target
-      var a = t && t.closest ? t.closest('a[href*="calendar.app.google"]') : null
-      if (a) send('demo_click')
+      var a = t && t.closest ? t.closest('a[href]') : null
+      if (!a) return
+      var href = a.getAttribute('href') || ''
+      if (href.indexOf('calendar.app.google') !== -1) send('demo_click')
+      else if (href.indexOf('/signup') === 0) send('guide_signup_click')
+      else if (href.indexOf('/owners') === 0) send('guide_quote_click')
+      else return
+      // Same click, attributed to the early in-article CTA when it came from there.
+      if (a.closest('.g-inline-cta')) send('guide_inline_click')
     })
+
+    // Did the reader get as far as the bottom CTA? Without this, zero clicks
+    // can't distinguish "nobody scrolled that far" from "the pitch failed".
+    var bottom = document.querySelector('section.g-cta')
+    if (bottom && 'IntersectionObserver' in window) {
+      var seen = new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) { send('guide_cta_seen'); seen.disconnect(); return }
+        }
+      }, { threshold: 0.4 })
+      seen.observe(bottom)
+    }
 
     // Checklist form: store the lead (backend keeps it for PERSONAL follow-up,
     // never automated email), then go to the checklist page. Without JS the
